@@ -93,11 +93,16 @@ test("ships the public landing page and deployment workflow", async () => {
   const workflow = await readFile(join(pluginRoot, ".github", "workflows", "pages.yml"), "utf8");
   await access(join(pluginRoot, "site", "assets", "directorx-logo.png"));
   await access(join(pluginRoot, "site", "assets", "live-production-canvas.jpg"));
+  await access(join(pluginRoot, "site", "robots.txt"));
+  await access(join(pluginRoot, "site", "sitemap.xml"));
+  await access(join(pluginRoot, "site", "llms.txt"));
   assert.match(landing, /Direct the Goal/);
   assert.match(landing, /Dedicated crew/);
   assert.match(landing, /Live canvas/);
   assert.match(motion, /three@0\.185\.1/);
   assert.match(motion, /resolveSceneTrack/);
+  assert.match(landing, /SoftwareApplication/);
+  assert.match(landing, /Open-Source AI Video Production Harness for Codex/);
   assert.match(workflow, /actions\/deploy-pages@v4/);
   assert.equal(plugin.homepage, "https://laplaceyoung.github.io/director-x/");
 });

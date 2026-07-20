@@ -2,7 +2,7 @@
   "name": "@openmoss/directorx-codex-plugin",
   "version": "0.1.0",
   "private": false,
-  "description": "Director X Codex plugin for approval-aware AI video production.",
+  "description": "Open-source AI video production harness for Codex with native Goals, dedicated DX agents, a live media canvas, provider routing, editing, and review.",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "engines": {

@@ -2,13 +2,15 @@
   <img src="assets/brand/directorx-logo.png" alt="Director X" width="720" />
 </p>
 
+# Director X — 面向 Codex 的开源 AI 视频制片 Harness
+
 <p align="center">
-  <strong>为 Codex 打造的开源视频制片 Harness。</strong>
+  <strong>原生 Goal · 专用视频智能体 · 实时媒体画布 · Provider 中立制片</strong>
 </p>
 
 <p align="center">
-  将一句创意需求转化为可持续运行、可审批、可恢复的视频制作任务，<br />
-  使用原生 Goal、专用 DX 子智能体和实时侧边栏画布完成生产。
+  将创意需求或参考片转化为可持续运行、可审批的视频制片 Run。<br />
+  从研究、脚本和分镜推进到生成、剪辑、审片与成片交付。
 </p>
 
 <p align="center">
@@ -20,22 +22,37 @@
 
 <p align="center">
   <a href="https://laplaceyoung.github.io/director-x/">产品网站</a> ·
+  <a href="#director-x-是什么">Director X 是什么</a> ·
   <a href="#快速开始">快速开始</a> ·
-  <a href="#为什么使用-director-x">产品特色</a> ·
+  <a href="#主要能力">主要能力</a> ·
+  <a href="#常见问题">常见问题</a> ·
   <a href="README.md">English</a> ·
-  <a href="skills/directorx/SKILL.md">生产 Skill</a>
+  <a href="skills/directorx/SKILL.md">核心 Skill</a>
 </p>
 
 ---
 
-Director X 是一层运行在 Codex 原生能力之上的 AI 视频制片编排系统。它不是新的图片、视频、语音或音乐模型，而是把不同模型、本地媒体工具和专业 Agent 组织到同一个持久化生产任务中。
+Director X 是开源的 Codex 插件和 AI 视频制片 Harness。它将用户需求转化为一个持久化 Run，覆盖研究、脚本、分镜、素材、生成、剪辑、质量审查和交付。
 
-当前开源版本是 **Director X Codex 插件**，也是未来完整 Video Harness 产品首先公开的组成部分。
+它不是单一的 AI 视频生成器，而是协调可替换的图片、视频、语音、音乐、搜索和剪辑工具，并把审批、成本、来源、连续性与媒体证据持续绑定在同一次制片任务中。
 
 > [!IMPORTANT]
 > **接下来：**我们正在基于 [Pi Agent Harness](https://github.com/earendil-works/pi) Runtime 改造完整的 **Director X Video Harness**，并同步开发 **Electron 桌面端应用**，用于统一管理本地媒体、画布工作流、Provider、剪辑、审片和交付。
 
 ![Director X 与 Codex 任务及实时制作画布](assets/screenshots/live-production-canvas.jpg)
+
+## Director X 是什么？
+
+Director X 是运行在 Codex 内的智能体视频制片控制层。当前版本由专业视频 Skills、MCP Runtime、专用 DX 智能体和基于 Browser 的制片界面组成。
+
+| 问题 | 回答 |
+| --- | --- |
+| 它是什么？ | 开源 Codex 插件和 AI 视频制片 Harness |
+| 它能产出什么？ | 研究、脚本、分镜、媒体素材、剪辑版本、审片证据和可交付视频 |
+| 唯一事实源是什么？ | 保存在 `.directorx/plugin-runs/` 下的持久化 Director X Run |
+| 它有什么不同？ | 原生 Goal、实名制片智能体、实时媒体画布、明确审批和完整审片 |
+| 必须使用哪些模型？ | 核心不绑定模型；图片、视频、语音、音乐和剪辑 Provider 都可替换 |
+| 是否开源？ | 是。Codex 插件使用 AGPL-3.0-or-later 许可证 |
 
 ## 为什么使用 Director X
 
@@ -92,6 +109,14 @@ Director X 注册了明确的视频制片角色，而不是把所有并行任务
 ```
 
 生产状态保存在 `.directorx/plugin-runs/`。画布只读取和投影这份状态，不维护第二套可能过期的事实源。
+
+## 常见使用场景
+
+- 将产品需求制作成品牌短片、发布视频或产品宣传片
+- 分析参考视频并迁移导演方法，同时避免复制参考片源像素
+- 完成脚本、镜头表、分镜、关键帧、生成镜头和最终审片
+- 编排本地 FFmpeg、Remotion、语音、转录和外部媒体 Provider
+- Runtime 重启后从持久化检查点恢复长时间制片任务
 
 ## 快速开始
 
@@ -162,6 +187,16 @@ flowchart LR
 
 Provider Key 只注入当前会话，不应写入 Git、持久化 Run JSON、日志或制片工件。
 
+### 仓库事实依据
+
+| 能力 | 实现依据 |
+| --- | --- |
+| 制片行为与工件合同 | [`skills/`](skills/) 与 [`directorx` 核心 Skill](skills/directorx/SKILL.md) |
+| 持久化 Run、审批、Provider 与恢复 | [`mcp/`](mcp/) |
+| 实时媒体画布与 Director X Cut | [`app/`](app/) |
+| Provider 中立制片逻辑 | [`runtime/`](runtime/) |
+| 协议与行为回归覆盖 | [`mcp/*.test.mjs`](mcp/) 与 [`runtime/*.test.mjs`](runtime/) |
+
 ## 接下来正在开发
 
 Codex 插件是首个开源版本，也是完整 Director X 产品线的公开验证入口。目前以下产品已经进入开发：
@@ -173,6 +208,28 @@ Codex 插件是首个开源版本，也是完整 Director X 产品线的公开�
 | Director X Desktop | **正在开发** | Electron 桌面端应用，在一个制片工作区内统一管理本地项目、媒体、实时画布、Provider、剪辑、审片、渲染和交付 |
 
 Video Harness 和 Electron 应用尚未包含在当前插件版本中。本仓库是 Director X 的开源 Codex 集成，也是验证视频制片合同和交互方式的公开开发入口。
+
+## 常见问题
+
+### Director X 是 AI 视频生成器吗？
+
+不是。Director X 是视频制片 Harness，负责协调生成模型、本地媒体工具、专业智能体、审批、剪辑和审片。它可以路由多个 Provider，而不是将生产锁定在单一模型上。
+
+### Director X 与可视化工作流工具有什么不同？
+
+Director X 围绕持久化 Production Run 和真实媒体证据运行。画布用于预览图片、音频和视频资产并展示来源关系，而不是展示一张固定节点流程图。
+
+### Director X 必须使用付费 AI 模型吗？
+
+核心插件不要求付费 Provider。制片可以使用本地工具、用户素材或外部服务。所有付费调用都应明确展示预算，并经过用户审批。
+
+### Director X 能恢复中断的制片任务吗？
+
+可以。Run 状态、检查点、审批、工件和恢复动作都会持久化。Browser 或 MCP Runtime 重启后，画布会从这份状态重新构建。
+
+### Video Harness 和 Electron 桌面端现在可以使用吗？
+
+暂时还不可以。Codex 插件已经开放早期版本；基于 Pi Agent Harness 的 Video Harness 和 Electron 桌面制片工作区正在开发。
 
 ## 本地开发
 

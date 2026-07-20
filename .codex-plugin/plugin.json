@@ -1,7 +1,7 @@
 {
   "name": "directorx",
   "version": "0.1.0+codex.20260720123000",
-  "description": "Run approval-aware video production with official-first asset search, quality-gated media, parallel DX agents, a live evidence canvas, exhaustive review, and Director X Cut.",
+  "description": "Open-source AI video production harness for Codex with native Goals, dedicated DX agents, a live media canvas, provider routing, editing, and full-frame review.",
   "author": {
     "name": "openmoss",
     "url": "https://github.com/LaplaceYoung/director-x"

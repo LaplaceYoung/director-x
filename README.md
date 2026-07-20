@@ -2,13 +2,15 @@
   <img src="assets/brand/directorx-logo.png" alt="Director X" width="720" />
 </p>
 
+# Director X — Open-Source AI Video Production Harness for Codex
+
 <p align="center">
-  <strong>The open-source video production harness for Codex.</strong>
+  <strong>Native Goals · dedicated video agents · live media canvas · provider-neutral production</strong>
 </p>
 
 <p align="center">
-  Turn a creative brief into a persistent, approval-aware production run with native Goals,<br />
-  dedicated filmmaking agents, and a live side-panel canvas.
+  Turn a creative brief or reference into a persistent, approval-aware video production Run.<br />
+  Research, script, storyboard, generate, edit, review, and deliver without losing production state.
 </p>
 
 <p align="center">
@@ -20,22 +22,37 @@
 
 <p align="center">
   <a href="https://laplaceyoung.github.io/director-x/">Website</a> ·
+  <a href="#what-is-director-x">What is Director X?</a> ·
   <a href="#quick-start">Quick Start</a> ·
-  <a href="#why-director-x">Why Director X</a> ·
+  <a href="#production-capabilities">Capabilities</a> ·
+  <a href="#frequently-asked-questions">FAQ</a> ·
   <a href="README.zh-CN.md">中文</a> ·
-  <a href="skills/directorx/SKILL.md">Production Skill</a>
+  <a href="skills/directorx/SKILL.md">Core Skill</a>
 </p>
 
 ---
 
-Director X is a Codex-native orchestration layer for AI video production. It does not replace image, video, speech, music, or editing models. It coordinates them through one durable production run with explicit approvals, media evidence, cost controls, continuity checks, editing, and final review.
+Director X is an open-source Codex plugin and AI video production harness. It turns a user brief into one durable Run spanning research, scripts, storyboards, assets, generation, editing, quality review, and delivery.
 
-The current open-source release is the **Director X Codex plugin**. It is the first public part of a larger Video Harness product.
+Unlike a single AI video generator, Director X coordinates replaceable image, video, speech, music, search, and editing tools. It keeps approvals, costs, provenance, continuity, and media evidence attached to the production.
 
 > [!IMPORTANT]
 > **Coming next:** we are actively building the complete **Director X Video Harness** by adapting the [Pi Agent Harness](https://github.com/earendil-works/pi) runtime for video-native production, together with an **Electron desktop application** for local media, canvas workflows, providers, editing, review, and delivery.
 
 ![Director X running beside Codex with the live production canvas](assets/screenshots/live-production-canvas.jpg)
+
+## What Is Director X?
+
+Director X is a production control layer for agentic video creation inside Codex. The current release packages professional video skills, an MCP runtime, dedicated DX agents, and Browser-based production surfaces.
+
+| Question | Answer |
+| --- | --- |
+| What is it? | An open-source Codex plugin and AI video production harness |
+| What does it produce? | Research, scripts, storyboards, media assets, edits, review evidence, and delivery-ready video |
+| What is the source of truth? | One persistent Director X Run stored under `.directorx/plugin-runs/` |
+| What makes it different? | Native Goals, named production agents, a live media canvas, explicit approvals, and exhaustive review |
+| Which models does it require? | None at the core; image, video, voice, music, and editing providers remain replaceable |
+| Is it open source? | Yes. The Codex plugin is licensed under AGPL-3.0-or-later |
 
 ## Why Director X
 
@@ -92,6 +109,14 @@ Review, repair, render, and approve delivery
 ```
 
 Director X keeps production state under `.directorx/plugin-runs/`. The canvas reads that state; it does not maintain a separate version of the truth.
+
+## Common Use Cases
+
+- Turn a product brief into a short brand film or launch video
+- Analyze a reference video and transfer its directing patterns without copying source pixels
+- Build a script, shot list, storyboard, keyframes, generated clips, and a reviewed cut
+- Coordinate local FFmpeg, Remotion, speech, transcription, and external media providers
+- Resume a long-running production from durable checkpoints after a runtime restart
 
 ## Quick Start
 
@@ -162,6 +187,16 @@ The plugin contains three main surfaces:
 
 Provider credentials are session-only. Raw keys must not be written to Git, durable Run JSON, logs, or production artifacts.
 
+### Repository Evidence
+
+| Capability | Implementation evidence |
+| --- | --- |
+| Production behavior and contracts | [`skills/`](skills/) and the [`directorx` core skill](skills/directorx/SKILL.md) |
+| Persistent Run, approvals, providers, recovery | [`mcp/`](mcp/) |
+| Live media canvas and Director X Cut | [`app/`](app/) |
+| Provider-neutral production logic | [`runtime/`](runtime/) |
+| Regression and protocol coverage | [`mcp/*.test.mjs`](mcp/) and [`runtime/*.test.mjs`](runtime/) |
+
 ## What Is Coming Next
 
 The Codex plugin is the open-source first release and proving ground. Work is already underway on the larger Director X product line:
@@ -173,6 +208,28 @@ The Codex plugin is the open-source first release and proving ground. Work is al
 | Director X Desktop | **In active development** | An Electron application that brings local projects, media, the live canvas, provider configuration, editing, review, rendering, and delivery into one production workspace |
 
 The future Video Harness and Electron application are not included in the current plugin release. This repository is the open-source Codex integration and the public proving ground for Director X production contracts.
+
+## Frequently Asked Questions
+
+### Is Director X an AI video generator?
+
+No. Director X is a video production harness that coordinates generators, local media tools, specialist agents, approvals, editing, and review. It can route multiple providers instead of locking production to one model.
+
+### How is Director X different from a visual workflow builder?
+
+Director X is organized around a persistent production Run and its media evidence. The canvas previews real image, audio, and video assets and shows their lineage; it is not a static node diagram.
+
+### Does Director X require paid AI models?
+
+No paid provider is required by the core plugin. A production may use local tools, user-supplied media, or external providers. Paid calls remain explicit, budget-aware, and approval-gated.
+
+### Can Director X resume an interrupted production?
+
+Yes. Run state, checkpoints, approvals, artifacts, and recovery actions are persisted. The canvas is rebuilt from that state after a Browser or MCP runtime restart.
+
+### Are the Video Harness and Electron desktop app available now?
+
+Not yet. The Codex plugin is available in early access. The Pi Agent Harness-based Video Harness and Electron desktop workspace are in active development.
 
 ## Development
 
