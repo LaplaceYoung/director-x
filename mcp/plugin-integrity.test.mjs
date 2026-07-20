@@ -30,6 +30,30 @@ test("keeps the plugin runtime dependency-free and repository-relative", async (
   assert.equal(server.cwd, ".");
 });
 
+test("ships an installable repository marketplace with matching public instructions", async () => {
+  const plugin = JSON.parse(await readFile(join(pluginRoot, ".codex-plugin", "plugin.json"), "utf8"));
+  const marketplace = JSON.parse(await readFile(join(pluginRoot, ".agents", "plugins", "marketplace.json"), "utf8"));
+  const readme = await readFile(join(pluginRoot, "README.md"), "utf8");
+  const chineseReadme = await readFile(join(pluginRoot, "README.zh-CN.md"), "utf8");
+  assert.equal(marketplace.name, "openmoss-local");
+  assert.equal(marketplace.interface.displayName, "OpenMOSS");
+  assert.deepEqual(marketplace.plugins.map((entry) => entry.name), [plugin.name]);
+  assert.deepEqual(marketplace.plugins[0].source, { source: "local", path: "./" });
+  assert.deepEqual(marketplace.plugins[0].policy, { installation: "AVAILABLE", authentication: "ON_INSTALL" });
+  assert.match(readme, /directorx@openmoss-local/);
+  assert.match(chineseReadme, /directorx@openmoss-local/);
+});
+
+test("runs plugin validation in CI", async () => {
+  const packageJson = JSON.parse(await readFile(join(pluginRoot, "package.json"), "utf8"));
+  const workflow = await readFile(join(pluginRoot, ".github", "workflows", "ci.yml"), "utf8");
+  await access(join(pluginRoot, "scripts", "validate-plugin.mjs"));
+  assert.match(packageJson.scripts["validate:plugin"], /validate-plugin\.mjs/);
+  assert.match(packageJson.scripts.ci, /validate:plugin/);
+  assert.match(workflow, /pnpm validate:plugin/);
+  assert.match(workflow, /pnpm test/);
+});
+
 test("fails closed when the Director X MCP runtime is unavailable", async () => {
   const skill = await readFile(join(pluginRoot, "skills", "directorx", "SKILL.md"), "utf8");
   assert.match(skill, /If `directorx_capability_preflight` is absent[\s\S]*fail closed/);

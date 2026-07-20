@@ -279,9 +279,12 @@ cd director-x
 node --version
 pnpm test
 pnpm check
+pnpm validate:plugin
 ```
 
-The plugin runtime intentionally has no production npm dependencies. Tests exercise the MCP protocol, persistent Run, media canvas, provider routing, editing, recovery, and review contracts.
+The plugin runtime intentionally has no production npm dependencies. Tests exercise the MCP protocol, persistent Run, media canvas, provider routing, editing, recovery, and review contracts. Repository marketplace metadata, manifest paths, version alignment, and public installation commands are validated by `pnpm validate:plugin` and GitHub Actions.
+
+Release history is recorded in [CHANGELOG.md](CHANGELOG.md). The immutable pre-optimization baseline is [Director X v0.1.0](https://github.com/LaplaceYoung/director-x/releases/tag/v0.1.0).
 
 ## Contributing
 
@@ -292,6 +295,7 @@ Before opening a pull request:
 ```bash
 pnpm test
 pnpm check
+pnpm validate:plugin
 git diff --check
 ```
 

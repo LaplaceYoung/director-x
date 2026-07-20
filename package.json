@@ -10,6 +10,8 @@
   },
   "scripts": {
     "test": "node --test mcp/*.test.mjs runtime/*.test.mjs",
-    "check": "node --check mcp/server.mjs"
+    "check": "node --check mcp/server.mjs && node --check scripts/validate-plugin.mjs",
+    "validate:plugin": "node scripts/validate-plugin.mjs",
+    "ci": "pnpm validate:plugin && pnpm check && pnpm test"
   }
 }

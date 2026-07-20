@@ -1,0 +1,20 @@
+{
+  "name": "openmoss-local",
+  "interface": {
+    "displayName": "OpenMOSS"
+  },
+  "plugins": [
+    {
+      "name": "directorx",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Creative"
+    }
+  ]
+}
