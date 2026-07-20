@@ -5,7 +5,7 @@ import { promisify } from "node:util";
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { planVideoRead, readVideoEvidence, VIDEO_READ_UPSTREAM } from "./video-reading.mjs";
+import { planVideoRead, readVideoEvidence, summarizeVideoReadCoverage, VIDEO_READ_UPSTREAM } from "./video-reading.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -17,8 +17,27 @@ test("plans duration-aware, focused, transcript-cue, and exhaustive reads", () =
   assert.equal(focused.targetFrames, 30);
   const transcript = planVideoRead({ profile: "transcript_only", durationSeconds: 20, cueTimestamps: [2, 8] });
   assert.equal(transcript.maxFrames, 2);
+  const explicitFps = planVideoRead({ profile: "scene_summary", durationSeconds: 20, fps: 0.5 });
+  assert.equal(explicitFps.fps, 0.5);
+  assert.equal(explicitFps.targetFrames, 10);
+  assert.throws(() => planVideoRead({ profile: "scene_summary", durationSeconds: 20, fps: 2.1 }), /at most 2/);
+  assert.throws(() => planVideoRead({ profile: "scene_summary", durationSeconds: 1200, fps: 0.5 }), /above the 100-frame bound/);
+  assert.throws(() => planVideoRead({ profile: "full_frame_evidence", durationSeconds: 20, fps: 1 }), /not valid for full-frame/);
   assert.throws(() => planVideoRead({ profile: "full_frame_evidence", durationSeconds: 20, startSeconds: 1 }), /complete source/);
   assert.throws(() => planVideoRead({ profile: "full_frame_evidence", durationSeconds: 20, cueTimestamps: [2] }), /already contains every decoded frame/);
+});
+
+test("reports sparse long-video coverage and recommends a focused follow-up", () => {
+  const plan = planVideoRead({ profile: "scene_summary", durationSeconds: 1200 });
+  const coverage = summarizeVideoReadCoverage(plan, [
+    { timestampSeconds: 0 },
+    { timestampSeconds: 600 },
+    { timestampSeconds: 1199 }
+  ]);
+
+  assert.equal(coverage.sparseScan, true);
+  assert.equal(coverage.sourceCoverageRatio, 0.999);
+  assert.match(coverage.recommendedNextAction, /focused range/);
 });
 
 test("reads real video frames, preserves transcript cues, and writes canvas-ready evidence", async () => {
@@ -36,6 +55,12 @@ test("reads real video frames, preserves transcript cues, and writes canvas-read
     assert.equal((await stat(sampled.manifestPath)).isFile(), true);
     assert.equal(sampled.security.shellExecution, false);
     assert.deepEqual(sampled.upstreamInfluence, VIDEO_READ_UPSTREAM);
+    assert.equal(sampled.coverage.frameCount, sampled.frames.length);
+
+    const cadenceRead = await readVideoEvidence({ projectPath, runId: "run-read", readId: "cadence-demo", videoPath, profile: "scene_summary", fps: 0.5, maxFrames: 6, resolution: 320 });
+    assert.equal(cadenceRead.plan.samplingFpsExplicit, true);
+    assert.equal(cadenceRead.selection.engine, "explicit_fps");
+    assert.equal(cadenceRead.frames.length, 2);
 
     const cueRead = await readVideoEvidence({ projectPath, runId: "run-read", readId: "cue-demo", videoPath, transcriptPath, profile: "transcript_only", cueTimestamps: [0.75, 2.25], resolution: 320 });
     assert.equal(cueRead.frames.length, 2);
@@ -64,6 +89,19 @@ test("full-frame evidence checks extracted count against independent identity ev
     assert.equal(result.frames.length, 10);
     assert.deepEqual(result.fullFrameCoverage, { extractedFrameCount: 10, identityFrameCount: 10, probeReachedEof: true, countParity: true, passed: true });
     assert.equal((await stat(result.contactSheetPath)).isFile(), true);
+  } finally {
+    await rm(projectPath, { recursive: true, force: true });
+  }
+});
+
+test("clamps unusually tall evidence frames to a host-safe height", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "dx-video-tall-read-"));
+  const videoPath = join(projectPath, "tall.mp4");
+  try {
+    await execFileAsync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "color=c=black:size=16x2100:rate=1:duration=1", "-c:v", "mpeg4", "-q:v", "5", videoPath]);
+    const result = await readVideoEvidence({ projectPath, runId: "run-tall", readId: "tall-demo", videoPath, profile: "scene_summary", maxFrames: 1, resolution: 512 });
+    const { stdout } = await execFileAsync("ffprobe", ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=height", "-of", "csv=p=0", result.frames[0].path]);
+    assert.ok(Number(stdout.trim()) <= 1998);
   } finally {
     await rm(projectPath, { recursive: true, force: true });
   }

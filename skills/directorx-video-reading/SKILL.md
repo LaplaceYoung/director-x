@@ -17,12 +17,13 @@ Turn a video into inspectable, timestamped production evidence. This skill extra
    - `fast_keyframes`: rapid orientation and first visible result, capped at 50 frames with uniform fallback.
    - `scene_summary`: default visual reading, capped at 100 scene/evenly distributed frames with deduplication.
    - `full_frame_evidence`: every decoded frame plus independent frame-count parity; use only for claims covering the complete source.
-3. Call `directorx_read_video`. Use `startSeconds` and `endSeconds` for a focused question rather than decoding unrelated material.
+3. Call `directorx_read_video`. Use `startSeconds` and `endSeconds` for a focused question rather than decoding unrelated material. Let Director X choose the cadence by default; set `fps` only when the task needs an explicit sampled cadence, and never above 2 FPS.
 4. Prefer available native captions. Otherwise call `directorx_transcribe_media_with_whisper`, then pass the registered transcript artifact or project-contained transcript path into the read.
 5. When the transcript reveals important beats, pass their timestamps as `cueTimestamps`. Cue frames are pinned ahead of sampled frames.
 6. Open and inspect the contact sheet and relevant individual frame artifacts. Tie every observation to a timestamp or bounded range. Separate visible facts, spoken facts, and creative inference.
-7. Keep the complete frame set folded behind the manifest. The canvas should show the source, contact sheet, transcript, and no more than the useful representative frames.
-8. Preserve rights boundaries. A `reference_only` source remains reference-only through every derived frame and transcript artifact; do not move its pixels, audio, subtitles, or logos into the deliverable.
+7. Read the persisted `coverage` summary. When `sparseScan` is true, treat the result as orientation evidence and run a focused follow-up range before making detailed claims about a moment.
+8. Keep the complete frame set folded behind the manifest. The canvas should show the source, contact sheet, transcript, and no more than the useful representative frames.
+9. Preserve rights boundaries. A `reference_only` source remains reference-only through every derived frame and transcript artifact; do not move its pixels, audio, subtitles, or logos into the deliverable.
 
 ## Output Contract
 
@@ -33,6 +34,7 @@ The tool persists:
 - timestamped JPEG evidence frames
 - a bounded representative contact sheet
 - optional normalized transcript JSON
+- coverage span, average frame interval, and an actionable sparse-scan recommendation
 - independent frame-identity evidence for `full_frame_evidence`
 
 Read `references/video-reading-playbook.md` for profile selection, evidence language, and failure handling.

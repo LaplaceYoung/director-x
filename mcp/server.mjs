@@ -798,6 +798,7 @@ const rawTools = [
       profile: { type: "string", enum: VIDEO_READ_PROFILES },
       startSeconds: { type: "number", minimum: 0 }, endSeconds: { type: "number", exclusiveMinimum: 0 },
       cueTimestamps: { type: "array", maxItems: 100, items: { type: "number", minimum: 0 } },
+      fps: { type: "number", exclusiveMinimum: 0, maximum: 2 },
       maxFrames: { type: "integer", minimum: 0, maximum: 3600 }, resolution: { type: "integer", minimum: 160, maximum: 1920 },
       deduplicate: { type: "boolean" }, timeoutMs: { type: "integer", minimum: 1000, maximum: 600000 }
     }, ["projectPath", "runId", "readId", "profile"]),
@@ -3065,13 +3066,13 @@ async function executeTool(name, args) {
     }
     return await withBrowserCanvas(publicSnapshot(await updateRun({ ...args, mutate(run) {
       run.videoReads ??= [];
-      const videoRead = { readId: result.readId, profile: result.plan.profile, sourceArtifactRef, receiptArtifactRef, manifestArtifactRef, contactSheetArtifactRef, transcriptArtifactRef, frameArtifactRefs, frameCount: result.frames.length, fullFrameCoverage: result.fullFrameCoverage, status: result.status };
+      const videoRead = { readId: result.readId, profile: result.plan.profile, sourceArtifactRef, receiptArtifactRef, manifestArtifactRef, contactSheetArtifactRef, transcriptArtifactRef, frameArtifactRefs, frameCount: result.frames.length, coverage: result.coverage, fullFrameCoverage: result.fullFrameCoverage, status: result.status };
       const existingIndex = run.videoReads.findIndex((item) => item.readId === videoRead.readId);
       if (existingIndex >= 0) run.videoReads[existingIndex] = videoRead;
       else run.videoReads.push(videoRead);
       run.artifacts ??= {};
       Object.assign(run.artifacts, records);
-      upsertExecutionCanvasNode(run, { id: `video-read:${result.readId}`, type: "artifact", label: "视频阅读证据", detail: `${result.plan.profile} · ${result.frames.length} 帧${result.transcript ? ` · ${result.transcript.segments.length} 段字幕` : ""}`, stage, status: "complete", artifactRef: contactSheetArtifactRef ?? transcriptArtifactRef ?? manifestArtifactRef, metadata: { owner: "DX-Reference-Analyst", profile: result.plan.profile, sourceArtifactRefs: [sourceArtifactRef], frameArtifactRefs } }, `stage:${stage}`);
+      upsertExecutionCanvasNode(run, { id: `video-read:${result.readId}`, type: "artifact", label: "视频阅读证据", detail: `${result.plan.profile} · ${result.frames.length} 帧${result.transcript ? ` · ${result.transcript.segments.length} 段字幕` : ""}${result.coverage.sparseScan ? " · 建议聚焦复读" : ""}`, stage, status: "complete", artifactRef: contactSheetArtifactRef ?? transcriptArtifactRef ?? manifestArtifactRef, metadata: { owner: "DX-Reference-Analyst", profile: result.plan.profile, coverage: result.coverage, sourceArtifactRefs: [sourceArtifactRef], frameArtifactRefs } }, `stage:${stage}`);
       run.events.push(event(run, "video.read.completed", stage, `${result.readId} · ${result.plan.profile} · ${result.frames.length} evidence frame(s)`));
       return run;
     } })), args);

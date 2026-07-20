@@ -83,7 +83,9 @@ test("serves MCP tools over newline-delimited stdio", async () => {
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_record_intent_resolution"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_write_director_document"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_ingest_reference_video"));
-    assert.ok(message.result.tools.some((tool) => tool.name === "directorx_read_video"));
+    const readVideoTool = message.result.tools.find((tool) => tool.name === "directorx_read_video");
+    assert.ok(readVideoTool);
+    assert.equal(readVideoTool.inputSchema.properties.fps.maximum, 2);
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_compile_reference_replication_plan"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_compile_reference_learning_candidate"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_promote_reference_learning"));

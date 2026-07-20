@@ -20,6 +20,7 @@ const SCENE_MINIMUM = 8;
 const KEYFRAME_MINIMUM = 4;
 const DEDUP_SIDE = 16;
 const DEDUP_THRESHOLD = 2;
+const MAX_FRAME_HEIGHT = 1998;
 const SHOWINFO_PATTERN = /pts_time:([-0-9.]+)/g;
 
 export function planVideoRead(input) {
@@ -32,13 +33,44 @@ export function planVideoRead(input) {
   const durationSeconds = endSeconds - startSeconds;
   const focused = startSeconds > 0 || endSeconds < fullDurationSeconds - 0.05;
   if (profile === "full_frame_evidence" && (input.cueTimestamps?.length ?? 0) > 0) throw new Error("Full-frame evidence already contains every decoded frame; transcript cue frames are only valid for sampled profiles.");
+  if (input.fps != null && profile === "full_frame_evidence") throw new Error("Explicit sampling FPS is not valid for full-frame evidence.");
+  if (input.fps != null && profile === "transcript_only") throw new Error("Explicit sampling FPS is not valid for transcript-only reads.");
+  const explicitFps = input.fps == null ? null : boundedFps(input.fps);
   const defaultCap = profile === "transcript_only" && (input.cueTimestamps?.length ?? 0) > 0
     ? Math.min(100, input.cueTimestamps.length)
     : PROFILE_DEFAULT_CAPS[profile];
   const maxFrames = input.maxFrames == null ? defaultCap : boundedInteger(input.maxFrames, profile === "full_frame_evidence" ? 1 : 0, 3600, "Video read frame cap");
-  const targetFrames = profile === "transcript_only" ? 0 : profile === "full_frame_evidence" ? maxFrames : Math.min(maxFrames, focused ? focusedBudget(durationSeconds) : fullVideoBudget(durationSeconds));
-  const fps = profile === "transcript_only" || profile === "full_frame_evidence" ? null : round(Math.min(2, Math.max(1 / Math.max(durationSeconds, 1), targetFrames / Math.max(durationSeconds, 0.001))));
-  return { profile, fullDurationSeconds, startSeconds, endSeconds, durationSeconds: round(durationSeconds), focused, maxFrames, targetFrames, fps, resolution: boundedInteger(input.resolution ?? 512, 160, 1920, "Video read resolution") };
+  const automaticTarget = focused ? focusedBudget(durationSeconds) : fullVideoBudget(durationSeconds);
+  const explicitTarget = explicitFps == null ? null : Math.max(1, Math.ceil(durationSeconds * explicitFps));
+  if (explicitTarget != null && explicitTarget > maxFrames) throw new Error(`Explicit sampling FPS requires ${explicitTarget} frames, above the ${maxFrames}-frame bound. Raise maxFrames or use a focused range.`);
+  const targetFrames = profile === "transcript_only"
+    ? 0
+    : profile === "full_frame_evidence"
+      ? maxFrames
+      : explicitTarget ?? Math.min(maxFrames, automaticTarget);
+  const fps = profile === "transcript_only" || profile === "full_frame_evidence"
+    ? null
+    : explicitFps ?? round(Math.min(2, Math.max(1 / Math.max(durationSeconds, 1), targetFrames / Math.max(durationSeconds, 0.001))));
+  return { profile, fullDurationSeconds, startSeconds, endSeconds, durationSeconds: round(durationSeconds), focused, maxFrames, targetFrames, fps, samplingFpsExplicit: explicitFps != null, resolution: boundedInteger(input.resolution ?? 512, 160, 1920, "Video read resolution") };
+}
+
+export function summarizeVideoReadCoverage(plan, frames) {
+  const timestamps = frames.map((frame) => Number(frame.timestampSeconds)).filter(Number.isFinite).sort((left, right) => left - right);
+  const firstTimestampSeconds = timestamps[0] ?? null;
+  const lastTimestampSeconds = timestamps.at(-1) ?? null;
+  const spanSeconds = timestamps.length > 1 ? Math.max(0, lastTimestampSeconds - firstTimestampSeconds) : 0;
+  const sourceCoverageRatio = plan.durationSeconds > 0 ? round(Math.min(1, spanSeconds / plan.durationSeconds)) : 0;
+  const sampledProfile = plan.profile === "fast_keyframes" || plan.profile === "scene_summary";
+  const sparseScan = sampledProfile && plan.durationSeconds > 600 && (timestamps.length < 2 || spanSeconds / Math.max(1, timestamps.length - 1) > 10);
+  return {
+    frameCount: timestamps.length,
+    firstTimestampSeconds,
+    lastTimestampSeconds,
+    sourceCoverageRatio,
+    averageSecondsPerFrame: timestamps.length > 1 ? round(spanSeconds / (timestamps.length - 1)) : null,
+    sparseScan,
+    recommendedNextAction: sparseScan ? "Use a focused range with startSeconds and endSeconds before making detailed claims about a specific moment." : null
+  };
 }
 
 export async function readVideoEvidence(input, options = {}) {
@@ -67,7 +99,10 @@ export async function readVideoEvidence(input, options = {}) {
   let selected = [];
   let selection = { engine: "none", candidateCount: 0, deduplicatedCount: 0, selectedCount: 0, fallback: false, candidateCoverageTruncated: false };
 
-  if (plan.profile === "fast_keyframes" && remainingCap > 0) {
+  if ((plan.profile === "fast_keyframes" || plan.profile === "scene_summary") && plan.samplingFpsExplicit && remainingCap > 0) {
+    const candidates = await extractCandidates({ videoPath, candidateDir, plan, mode: "uniform", run, projectPath, timeoutMs: input.timeoutMs });
+    ({ selected, selection } = await selectCandidates(candidates, remainingCap, input.deduplicate !== false, "explicit_fps", projectPath, input.timeoutMs, options.runBufferFn));
+  } else if (plan.profile === "fast_keyframes" && remainingCap > 0) {
     const candidates = await extractCandidates({ videoPath, candidateDir, plan, mode: "keyframes", run, projectPath, timeoutMs: input.timeoutMs });
     if (candidates.length >= KEYFRAME_MINIMUM) {
       ({ selected, selection } = await selectCandidates(candidates, remainingCap, input.deduplicate !== false, "keyframes", projectPath, input.timeoutMs, options.runBufferFn));
@@ -97,6 +132,7 @@ export async function readVideoEvidence(input, options = {}) {
 
   const merged = mergePinnedFrames(selected, cueFrames, plan.maxFrames);
   const frames = await materializeFrames(merged, frameDir, projectPath);
+  const coverage = summarizeVideoReadCoverage(plan, frames);
   const sourceSha256 = await sha256(videoPath);
   let frameIdentity = null;
   let fullFrameCoverage = null;
@@ -120,10 +156,10 @@ export async function readVideoEvidence(input, options = {}) {
   const transcriptPath = transcript ? join(root, "video_read_transcript.json") : null;
   if (transcriptPath) await atomicJson(transcriptPath, transcript);
   const manifestPath = join(root, "video_read_manifest.json");
-  const manifest = { schemaVersion: "1.0", readId, sourceSha256, plan, selection: { ...selection, cueFrameCount: cueFrames.length, selectedCount: frames.length }, frames, transcript: transcript ? { path: transcriptPath, sourceFormat: transcript.sourceFormat, segmentCount: transcript.segments.length } : null, fullFrameCoverage, frameIdentityArtifactRef: frameIdentity?.artifactRef ?? null };
+  const manifest = { schemaVersion: "1.0", readId, sourceSha256, plan, coverage, selection: { ...selection, cueFrameCount: cueFrames.length, selectedCount: frames.length }, frames, transcript: transcript ? { path: transcriptPath, sourceFormat: transcript.sourceFormat, segmentCount: transcript.segments.length } : null, fullFrameCoverage, frameIdentityArtifactRef: frameIdentity?.artifactRef ?? null };
   await atomicJson(manifestPath, manifest);
   const receiptPath = join(root, "video_read_receipt.json");
-  const receipt = { schemaVersion: "1.0", readId, status: "ready", source: { path: videoPath, sha256: sourceSha256, sizeBytes: sourceStat.size }, mediaProbe: probe, plan, selection: manifest.selection, frameManifestPath: manifestPath, contactSheetPath, transcriptPath, fullFrameCoverage, frameIdentityArtifactRef: frameIdentity?.artifactRef ?? null, frameIdentityPath: frameIdentity?.path ?? null, upstreamInfluence: VIDEO_READ_UPSTREAM, security: { projectContainedInput: true, shellExecution: false, providerCallsPerformed: false }, createdAt: new Date().toISOString() };
+  const receipt = { schemaVersion: "1.0", readId, status: "ready", source: { path: videoPath, sha256: sourceSha256, sizeBytes: sourceStat.size }, mediaProbe: probe, plan, coverage, selection: manifest.selection, frameManifestPath: manifestPath, contactSheetPath, transcriptPath, fullFrameCoverage, frameIdentityArtifactRef: frameIdentity?.artifactRef ?? null, frameIdentityPath: frameIdentity?.path ?? null, upstreamInfluence: VIDEO_READ_UPSTREAM, security: { projectContainedInput: true, shellExecution: false, providerCallsPerformed: false }, createdAt: new Date().toISOString() };
   await atomicJson(receiptPath, receipt);
   return { ...receipt, receiptPath, manifestPath, frames, transcript };
 }
@@ -241,12 +277,13 @@ function focusedBudget(duration) { if (duration <= 5) return 10; if (duration <=
 function evenSample(items, count) { if (count <= 0) return []; if (items.length <= count) return items; if (count === 1) return [items[0]]; return Array.from({ length: count }, (_, index) => items[Math.round(index * (items.length - 1) / (count - 1))]); }
 function meanAbsoluteDifference(left, right) { let sum = 0; for (let index = 0; index < left.length; index += 1) sum += Math.abs(left[index] - right[index]); return sum / left.length; }
 function estimatedTimestamp(plan, index, count) { return round(plan.startSeconds + (count <= 1 ? 0 : index * plan.durationSeconds / (count - 1))); }
-function scaleFilter(resolution) { return `scale=w='min(${resolution},iw)':h=-2:force_original_aspect_ratio=decrease:force_divisible_by=2`; }
+function scaleFilter(resolution) { return `scale=w='min(${resolution},iw)':h='min(${MAX_FRAME_HEIGHT},ih)':force_original_aspect_ratio=decrease:force_divisible_by=2`; }
 function exactOrEstimatedFrames(stream, format) { const exact = Number(stream.nb_read_frames ?? stream.nb_frames); if (Number.isInteger(exact) && exact > 0) return exact; const duration = Number(stream.duration ?? format.duration); const rate = rationalNumber(stream.avg_frame_rate ?? stream.r_frame_rate); return Number.isFinite(duration) && rate > 0 ? Math.ceil(duration * rate) : null; }
 function rationalNumber(value) { const [numerator, denominator = 1] = String(value ?? "").split("/").map(Number); const result = numerator / denominator; return Number.isFinite(result) ? result : 0; }
 function normalizeProfile(profile) { if (!VIDEO_READ_PROFILES.includes(profile)) throw new Error(`Unknown Director X video read profile: ${profile}`); return profile; }
 function safeId(value) { const result = String(value ?? "").toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, ""); if (!result) throw new Error("Video read ID is required."); return result.slice(0, 80); }
 function finiteNonNegative(value, label) { const result = Number(value); if (!Number.isFinite(result) || result < 0) throw new Error(`${label} must be finite and non-negative.`); return result; }
+function boundedFps(value) { const result = Number(value); if (!Number.isFinite(result) || result <= 0 || result > 2) throw new Error("Video read FPS must be greater than 0 and at most 2."); return round(result); }
 function boundedInteger(value, minimum, maximum, label) { const result = Number(value); if (!Number.isInteger(result) || result < minimum || result > maximum) throw new Error(`${label} must be an integer from ${minimum} to ${maximum}.`); return result; }
 function round(value) { return Math.round(value * 1000) / 1000; }
 function containedPath(projectPath, path, label) { const absolute = resolve(projectPath, path); const relation = relative(projectPath, absolute); if (relation.startsWith("..") || isAbsolute(relation)) throw new Error(`${label} must stay inside the project workspace.`); return absolute; }
