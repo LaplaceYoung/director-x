@@ -6,5 +6,5 @@ interface:
 dependencies:
   tools:
     - type: "mcp"
-      value: "node_repl"
-      description: "Required to bind the Director X production canvas to the Codex in-app Browser."
+      value: "directorx-production"
+      description: "Bundled Director X MCP server for production Runs, native decisions, provider execution, canvas state, and final review."

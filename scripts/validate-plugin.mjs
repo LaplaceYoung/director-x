@@ -1,12 +1,14 @@
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { validateSkillMcpDependencyContract } from "./skill-mcp-dependencies.mjs";
 
 const pluginRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const errors = [];
 const manifest = await readJson(".codex-plugin/plugin.json");
 const packageJson = await readJson("package.json");
 const marketplace = await readJson(".agents/plugins/marketplace.json");
+const mcpConfig = await readJson(".mcp.json");
 
 requireText(manifest, "name");
 requireText(manifest, "version");
@@ -23,6 +25,7 @@ if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(manifest?.v
 if ((manifest?.version ?? "").split("+")[0] !== packageJson?.version) errors.push("plugin and package base versions must match");
 if (manifest?.mcpServers) await requirePath(manifest.mcpServers, "mcpServers");
 if (manifest?.skills) await requirePath(manifest.skills, "skills");
+await validateSkillMcpDependencies(mcpConfig);
 for (const key of ["composerIcon", "logo", "logoDark"]) {
   if (manifest?.interface?.[key]) await requirePath(manifest.interface[key], `interface.${key}`);
 }
@@ -90,4 +93,18 @@ async function requirePath(relativePath, label) {
 async function requireAbsolutePath(path, label) {
   try { await access(path); }
   catch { errors.push(`${label} points to a missing path: ${path}`); }
+}
+
+async function validateSkillMcpDependencies(config) {
+  const entries = await readdir(join(pluginRoot, "skills"), { withFileTypes: true });
+  const metadataFiles = [];
+  for (const entry of entries.filter((item) => item.isDirectory())) {
+    const relativePath = join("skills", entry.name, "agents", "openai.yaml");
+    try { metadataFiles.push({ path: relativePath, content: await readText(relativePath) }); }
+    catch (error) {
+      if (error?.code === "ENOENT") continue;
+      errors.push(`${relativePath}: ${error.message}`);
+    }
+  }
+  errors.push(...validateSkillMcpDependencyContract({ configuredServers: Object.keys(config?.mcpServers ?? {}), metadataFiles }));
 }

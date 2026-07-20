@@ -6,5 +6,5 @@ interface:
 dependencies:
   tools:
     - type: "mcp"
-      value: "node_repl"
-      description: "Required when this skill is selected directly so it can complete Director X side-Browser startup."
+      value: "directorx-production"
+      description: "Bundled Director X MCP server for booting, resuming, and orchestrating the durable production Run."

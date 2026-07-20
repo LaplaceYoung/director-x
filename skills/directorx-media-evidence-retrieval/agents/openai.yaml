@@ -2,3 +2,9 @@ interface:
   display_name: "Director X Media Evidence"
   short_description: "Index and retrieve timecoded video evidence"
   default_prompt: "Build a bounded, timecoded evidence index and retrieval trace for this video task, then expose selected moments on the Director X canvas."
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "directorx-production"
+      description: "Bundled Director X MCP server for video ingestion, timecoded evidence indexing, retrieval, and canvas projection."

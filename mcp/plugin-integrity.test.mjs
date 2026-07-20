@@ -73,13 +73,23 @@ test("keeps production conversation concise and consumer-facing", async () => {
   assert.match(canvasSkill, /collapsed “制作详情”/);
 });
 
-test("declares the host tool needed to open the side Browser canvas", async () => {
-  const metadata = await readFile(join(pluginRoot, "skills", "directorx", "agents", "openai.yaml"), "utf8");
-  const orchestrationMetadata = await readFile(join(pluginRoot, "skills", "directorx-production-orchestration", "agents", "openai.yaml"), "utf8");
+test("binds every surfaced Director X skill to the bundled production MCP server", async () => {
+  const mcpConfig = JSON.parse(await readFile(join(pluginRoot, ".mcp.json"), "utf8"));
+  assert.ok(mcpConfig.mcpServers["directorx-production"]);
+  const skillEntries = await readdir(join(pluginRoot, "skills"), { withFileTypes: true });
+  const metadataFiles = [];
+  for (const entry of skillEntries.filter((item) => item.isDirectory())) {
+    const path = join(pluginRoot, "skills", entry.name, "agents", "openai.yaml");
+    try { metadataFiles.push({ path, content: await readFile(path, "utf8") }); }
+    catch (error) { if (error?.code !== "ENOENT") throw error; }
+  }
+  assert.ok(metadataFiles.length >= 7);
+  for (const metadata of metadataFiles) {
+    assert.match(metadata.content, /dependencies:\s*[\s\S]*type:\s*["']?mcp["']?[\s\S]*value:\s*["']?directorx-production["']?/);
+    assert.doesNotMatch(metadata.content, /value:\s*["']?node_repl["']?/);
+  }
   const skill = await readFile(join(pluginRoot, "skills", "directorx", "SKILL.md"), "utf8");
   const orchestrationSkill = await readFile(join(pluginRoot, "skills", "directorx-production-orchestration", "SKILL.md"), "utf8");
-  assert.match(metadata, /dependencies:\s*[\s\S]*type:\s*["']?mcp["']?[\s\S]*value:\s*["']?node_repl["']?/);
-  assert.match(orchestrationMetadata, /dependencies:\s*[\s\S]*type:\s*["']?mcp["']?[\s\S]*value:\s*["']?node_repl["']?/);
   assert.match(skill, /browser-client\.mjs/);
   assert.match(skill, /Do not use the MCP App inline surface during preflight/);
   assert.match(orchestrationSkill, /load the main `directorx` skill and complete its canvas-first boot sequence/i);
