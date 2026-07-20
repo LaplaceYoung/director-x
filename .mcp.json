@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "directorx-production": {
+      "command": "node",
+      "args": ["./mcp/server.mjs"],
+      "cwd": "."
+    }
+  }
+}

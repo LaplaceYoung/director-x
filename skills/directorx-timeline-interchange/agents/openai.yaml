@@ -1,0 +1,4 @@
+interface:
+  display_name: "Director X Timeline Interchange"
+  short_description: "Audit cross-editor timeline translation and round trips"
+  default_prompt: "Translate this Director X timeline through a declared adapter, keep source and parent time distinct, and report every interchange loss."

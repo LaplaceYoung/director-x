@@ -1,0 +1,94 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+
+test("browser canvas ships local-only A/B playback and timecoded evidence navigation", async () => {
+  const html = await readFile(new URL("../app/browser-canvas.html", import.meta.url), "utf8");
+  assert.match(html, /候选 A\/B 导演检查/);
+  assert.match(html, /data-compare-player/);
+  assert.match(html, /data-jump-time/);
+  assert.match(html, /时间轴已锁定/);
+  assert.match(html, /成片准备好后，这里会显示镜头、字幕、声音和审片标记/);
+  assert.match(html, /data-timeline-time/);
+  assert.match(html, /timeline\.audioTracks/);
+  assert.match(html, /requestVideoFrameCallback/);
+  assert.match(html, /monitorComparisonDrift/);
+  assert.match(html, /data-timeline-action="zoom-in"/);
+  assert.match(html, /loadWaveformViewport/);
+  assert.match(html, /waveformRequest/);
+  assert.match(html, /内容依据/);
+  assert.match(html, /data-evidence-time/);
+  assert.match(html, /data-evidence-target-node/);
+  assert.match(html, /function seekEvidence/);
+  assert.match(html, /evidenceTargetNode/);
+  assert.match(html, /node\.type === "audio"/);
+  assert.match(html, /document-preview/);
+  assert.match(html, /md\|txt\|json\|srt\|vtt/);
+  assert.match(html, /内容如何组成成片/);
+  assert.match(html, /assetRelations/);
+  assert.match(html, /值得查看和使用的文档、图片、视频与声音/);
+  assert.match(html, /制作团队/);
+  assert.match(html, /activity\.agentBatches/);
+  assert.match(html, /renderEvidenceRail/);
+  assert.match(html, /renderDefectEvidence/);
+  assert.match(html, /frame_evidence\//);
+  assert.match(html, /detectorDisposition/);
+  assert.match(html, /不会改变成片或最终选择/);
+  assert.match(html, /<details class="advanced-details">/);
+  assert.match(html, /<summary>\$\{escapeHtml\(summary\)\}<\/summary>/);
+  assert.match(html, /type="hidden" required/);
+  assert.doesNotMatch(html, /<h3>可追溯数据<\/h3>/);
+  assert.doesNotMatch(html, /会话环境变量（由 Director X 锁定）/);
+  assert.doesNotMatch(html, /批准候选|确认交付/);
+  const script = html.match(/<script>([\s\S]*)<\/script>/)?.[1];
+  assert.ok(script);
+  assert.doesNotThrow(() => new Function(script));
+});
+
+test("preserves a user-controlled viewport across live state refreshes", async () => {
+  const html = await readFile(new URL("../app/browser-canvas.html", import.meta.url), "utf8");
+  assert.doesNotMatch(html, /if \(!state\.pointer && canvas\.viewport\) state\.transform/);
+  assert.match(html, /viewportInitialized/);
+  assert.match(html, /localStorage/);
+  assert.match(html, /directorx:canvas-ui:/);
+  assert.match(html, /\/directorx\/api\/canvas-ui-state/);
+  assert.match(html, /data\.canvas\?\.uiState/);
+  assert.match(html, /function flushUiState/);
+  assert.match(html, /uiStorageKey\(runId/);
+  assert.match(html, /selectedId: state\.selectedId/);
+  assert.match(html, /compareIds: state\.compareIds/);
+  assert.match(html, /timelineViewport: state\.timelineViewport/);
+  assert.match(html, /reviewCurrentTime: state\.reviewTransport\.currentTime/);
+  assert.match(html, /validIds\.has/);
+  assert.match(html, /zoomAroundPoint/);
+});
+
+test("separates workflow, four-kind storyboard assets, review, and activity", async () => {
+  const html = await readFile(new URL("../app/browser-canvas.html", import.meta.url), "utf8");
+  assert.match(html, /data-view="coverage"/);
+  assert.match(html, /摄影覆盖状态/);
+  assert.match(html, /景别\/焦段/);
+  assert.match(html, /头尾余量/);
+  assert.match(html, /data-view="review"/);
+  assert.match(html, /\["文档", assets\.filter/);
+  assert.match(html, /\["图片", assets\.filter/);
+  assert.match(html, /\["视频", assets\.filter/);
+  assert.match(html, /\["音频", assets\.filter/);
+  assert.match(html, /当前没有\$\{label\}内容/);
+  assert.match(html, /\["storyboard", "review"\]\.includes\(state\.view\) \? "asset" : "all"/);
+  assert.doesNotMatch(html, /\["视觉与镜头"/);
+});
+
+test("keeps the side-browser surface alive without treating a hidden tab as disconnected", async () => {
+  const html = await readFile(new URL("../app/browser-canvas.html", import.meta.url), "utf8");
+  assert.match(html, /\/directorx\/api\/surface-heartbeat/);
+  assert.match(html, /surface: "canvas"/);
+  assert.match(html, /const claimToken = params\.get\("claim"\)/);
+  assert.match(html, /X-DirectorX-Claim/);
+  assert.match(html, /surfaceUrl\("\/directorx\/api\/state"/);
+  assert.match(html, /surfaceUrl\("\/directorx\/api\/media"/);
+  assert.match(html, /document\.visibilityState/);
+  assert.match(html, /visibilitychange/);
+  assert.match(html, /pagehide/);
+  assert.match(html, /后台保持/);
+});

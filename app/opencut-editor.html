@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Director X Cut</title>
+  <style>
+    :root { color-scheme: dark; --bg:#090909; --panel:#111; --panel-2:#171717; --line:#2d2d2d; --text:#eee; --muted:#8d8d8d; --accent:#ef6b4a; --accent-soft:#3a211b; --good:#8ebc9b; --warn:#d9a75e; }
+    * { box-sizing:border-box; }
+    html,body { width:100%; height:100%; margin:0; overflow:hidden; background:var(--bg); color:var(--text); font-family:Inter,"PingFang SC","Helvetica Neue",Arial,sans-serif; }
+    button,input,select { font:inherit; }
+    button { border:1px solid var(--line); background:#1b1b1b; color:var(--text); cursor:pointer; }
+    button:hover { border-color:#555; }
+    button:disabled { cursor:not-allowed; opacity:.35; }
+    .app { display:grid; grid-template-rows:52px minmax(0,1fr) 330px; width:100%; height:100%; }
+    header { display:flex; align-items:center; justify-content:space-between; padding:0 14px; border-bottom:1px solid var(--line); background:#0d0d0d; }
+    .brand,.actions,.transport,.tool-row { display:flex; align-items:center; gap:8px; }
+    .mark { display:grid; place-items:center; width:28px; height:28px; background:var(--accent); color:#111; font-weight:900; transform:skew(-8deg); }
+    .brand strong { font-size:14px; letter-spacing:.02em; }
+    .brand small { display:block; margin-top:2px; color:var(--muted); font-size:9px; }
+    .actions button,.transport button,.tool-row button { min-height:30px; padding:5px 10px; }
+    .primary { border-color:var(--accent)!important; background:var(--accent)!important; color:#111!important; font-weight:750; }
+    .workspace { display:grid; grid-template-columns:220px minmax(420px,1fr) 244px; min-height:0; }
+    aside,.preview-shell { min-width:0; min-height:0; border-right:1px solid var(--line); }
+    aside:last-child { border-right:0; border-left:1px solid var(--line); }
+    .panel-head { display:flex; align-items:center; justify-content:space-between; height:39px; padding:0 12px; border-bottom:1px solid var(--line); color:#bbb; font-size:11px; }
+    .asset-list,.inspector { height:calc(100% - 39px); overflow:auto; padding:9px; }
+    .asset { display:grid; grid-template-columns:44px minmax(0,1fr); gap:9px; align-items:center; width:100%; margin-bottom:6px; padding:7px; text-align:left; background:transparent; }
+    .asset.active { border-color:var(--accent); background:var(--accent-soft); }
+    .thumb { display:grid; place-items:center; height:34px; background:#242424; color:#777; font-size:9px; overflow:hidden; }
+    .asset strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; }
+    .asset small { color:var(--muted); font-size:8px; }
+    .preview-shell { display:grid; grid-template-rows:minmax(0,1fr) 48px; background:#060606; }
+    .preview { position:relative; display:grid; place-items:center; min-height:0; padding:14px; }
+    video { max-width:100%; max-height:100%; background:#000; box-shadow:0 0 0 1px #242424; }
+    .caption-preview { position:absolute; right:8%; bottom:28px; left:8%; padding:7px 12px; color:#fff; font-size:15px; font-weight:650; text-align:center; text-shadow:0 2px 5px #000; pointer-events:none; }
+    .transport { justify-content:center; border-top:1px solid var(--line); background:#101010; }
+    .time { min-width:118px; color:#aaa; font-variant-numeric:tabular-nums; font-size:10px; text-align:center; }
+    .inspector section { margin-bottom:14px; border-bottom:1px solid var(--line); padding-bottom:13px; }
+    .inspector h2 { margin:0 0 9px; font-size:11px; }
+    .field { display:grid; grid-template-columns:82px minmax(0,1fr); gap:8px; align-items:center; margin:8px 0; color:#aaa; font-size:9px; }
+    .field input,.field select { width:100%; border:1px solid var(--line); background:#0c0c0c; color:var(--text); padding:7px; }
+    .hint,.status { color:var(--muted); font-size:9px; line-height:1.55; }
+    .status.good { color:var(--good); }
+    .status.warn { color:var(--warn); }
+    .timeline { display:grid; grid-template-rows:42px minmax(0,1fr) 30px; min-height:0; border-top:1px solid var(--line); background:#0e0e0e; }
+    .timeline-head { display:flex; align-items:center; justify-content:space-between; padding:0 12px; border-bottom:1px solid var(--line); }
+    .timeline-head strong { font-size:11px; }
+    .timeline-scroll { position:relative; min-height:0; overflow:auto; overscroll-behavior:contain; }
+    .timeline-inner { position:relative; min-width:100%; padding-bottom:10px; }
+    .ruler-row,.track-row { display:grid; grid-template-columns:76px minmax(0,1fr); }
+    .ruler-label,.track-label { position:sticky; left:0; z-index:7; display:flex; align-items:center; padding-left:12px; border-right:1px solid var(--line); background:#101010; color:#777; font-size:8px; letter-spacing:.08em; }
+    .ruler { position:relative; height:24px; border-bottom:1px solid var(--line); background:#0b0b0b; }
+    .tick { position:absolute; top:0; bottom:0; width:1px; background:#292929; color:#737373; font-size:7px; }
+    .tick span { position:absolute; top:4px; left:4px; white-space:nowrap; }
+    .track-row { min-height:64px; border-bottom:1px solid #222; }
+    .track-body { position:relative; min-height:64px; background:#141414; }
+    .clip,.caption { position:absolute; top:5px; bottom:5px; min-width:3px; padding:8px; overflow:hidden; border:1px solid #323232; background:#242424; text-align:left; }
+    .clip:nth-child(even) { background:#202725; }
+    .clip.selected { box-shadow:inset 0 0 0 2px var(--accent); background:#38231e; }
+    .caption { top:8px; bottom:8px; padding:6px; border-color:#4f4327; background:#302a19; color:#e5c873; }
+    .caption.selected { box-shadow:inset 0 0 0 2px var(--accent); background:#493122; }
+    .clip strong,.caption strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:9px; }
+    .clip small,.caption small { color:#888; font-size:8px; }
+    .waveform { position:absolute; top:0; bottom:0; height:100%; }
+    .waveform-empty { position:absolute; inset:0; display:grid; place-items:center; color:#626262; font-size:9px; }
+    .playhead { position:absolute; z-index:8; top:0; bottom:0; width:2px; background:var(--accent); pointer-events:none; }
+    .playhead::before { content:""; position:absolute; top:0; left:-4px; width:10px; height:8px; background:var(--accent); clip-path:polygon(0 0,100% 0,50% 100%); }
+    .zoom { display:flex; align-items:center; gap:6px; color:#777; font-size:8px; }
+    .zoom input { width:88px; accent-color:var(--accent); }
+    .scrub { display:flex; align-items:center; gap:10px; padding:0 14px; border-top:1px solid var(--line); }
+    .scrub input { width:100%; accent-color:var(--accent); }
+    .legal { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#666; font-size:8px; }
+    dialog { max-width:560px; border:1px solid var(--line); background:#121212; color:var(--text); padding:20px; }
+    dialog p { color:#aaa; font-size:11px; line-height:1.6; }
+    @media (max-width:980px) { .workspace { grid-template-columns:180px minmax(360px,1fr); } .workspace aside:last-child { display:none; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="brand"><span class="mark">DX</span><span><strong>Director X Cut</strong><small id="project-name">正在载入剪辑项目</small></span></div>
+      <div class="actions"><button id="about">来源与许可</button><button id="back-canvas">返回制作画布</button><button class="primary" id="save">保存剪辑草稿</button></div>
+    </header>
+    <section class="workspace">
+      <aside><div class="panel-head"><span>制作资产</span><span id="asset-count">0</span></div><div class="asset-list" id="assets"></div></aside>
+      <section class="preview-shell">
+        <div class="preview"><video id="player" playsinline preload="metadata"></video><div class="caption-preview" id="caption-preview" hidden></div></div>
+        <div class="transport"><button id="previous">上一段</button><button id="toggle">播放</button><button id="next">下一段</button><span class="time" id="time">00:00.000 / 00:00.000</span></div>
+      </section>
+      <aside><div class="panel-head"><span>镜头属性</span><span id="selection-label">未选择</span></div><div class="inspector" id="inspector"></div></aside>
+    </section>
+    <section class="timeline">
+      <div class="timeline-head"><strong>主时间线 · 视频 / 真实波形 / 字幕</strong><div class="tool-row"><button id="undo" title="⌘Z">撤销</button><button id="redo" title="⇧⌘Z">重做</button><button id="split" title="S">播放头分割</button><button id="move-left">左移</button><button id="move-right">右移</button><button id="delete" title="Delete">删除</button><label class="zoom">缩放<input id="zoom" type="range" min="24" max="180" step="4" value="64"></label><span class="status" id="status">源文件保持只读</span></div></div>
+      <div class="timeline-scroll" id="timeline-scroll"><div class="timeline-inner" id="timeline-inner"><div class="ruler-row"><span class="ruler-label">TIME</span><div class="ruler" id="ruler"></div></div><div class="track-row"><span class="track-label">VIDEO 1</span><div class="track-body" id="video-track"></div></div><div class="track-row"><span class="track-label">AUDIO 1</span><div class="track-body" id="audio-track"><canvas class="waveform" id="waveform"></canvas><span class="waveform-empty" id="waveform-empty">未生成真实波形证据</span></div></div><div class="track-row"><span class="track-label">CAPTIONS</span><div class="track-body" id="caption-track"></div></div><span class="playhead" id="playhead"></span></div></div>
+      <div class="scrub"><span class="legal">OpenCut Classic-derived · MIT · upstream cf5e79e9 · 无强制成片水印</span><input id="scrub" type="range" min="0" max="1" step="0.001" value="0"></div>
+    </section>
+  </main>
+  <dialog id="about-dialog"><h2>Director X Cut</h2><p>本剪辑面基于 OpenCut Classic 的项目/轨道/本地编辑思想做了边界化重写，固定上游提交 cf5e79e919144200294fb9fed22a222592a0aeea，并保留 MIT 许可与来源说明。OpenCut 名称和标识不用于本产品品牌，也不表示上游对 Director X 的认可或背书。</p><p>编辑器只生成可审计的时间线补丁，不覆盖原始媒体。保存后需要回到 Codex，通过原生 request_user_input 审核具体修改，再由 Director X 提交、重渲染并重新执行全帧质量检查。</p><button id="close-about">关闭</button></dialog>
+  <script src="/directorx/opencut-editor.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+interface:
+  display_name: "Director X Production Orchestration"
+  short_description: "Orchestrate an already booted Director X production Run."
+  default_prompt: "Load the main Director X entry skill, open its side Browser canvas first, then orchestrate the active production Run."
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "node_repl"
+      description: "Required when this skill is selected directly so it can complete Director X side-Browser startup."

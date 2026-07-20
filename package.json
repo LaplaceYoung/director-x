@@ -1,0 +1,15 @@
+{
+  "name": "@openmoss/directorx-codex-plugin",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Director X Codex plugin for approval-aware AI video production.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test mcp/*.test.mjs runtime/*.test.mjs",
+    "check": "node --check mcp/server.mjs"
+  }
+}

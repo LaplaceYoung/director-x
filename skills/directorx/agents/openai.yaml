@@ -1,0 +1,10 @@
+interface:
+  display_name: "Director X"
+  short_description: "Run a canvas-first, approval-aware AI video production workflow."
+  default_prompt: "Use Director X to produce and verify a playable video, opening the production canvas in the in-app Browser first."
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "node_repl"
+      description: "Required to bind the Director X production canvas to the Codex in-app Browser."

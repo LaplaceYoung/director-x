@@ -1,0 +1,658 @@
+{
+  "libraryId": "directorx-cinematic-reference-library",
+  "revision": "2026-07-17",
+  "entries": [
+    {
+      "referenceId": "remotion-curated-showcase",
+      "title": "Remotion Showcase",
+      "kind": "showcase_collection",
+      "evidenceLevel": "official_page",
+      "source": {
+        "publisher": "Remotion",
+        "url": "https://www.remotion.dev/showcase",
+        "sourceType": "official_showcase",
+        "accessedAt": "2026-07-17"
+      },
+      "rights": {
+        "scope": "reference_only",
+        "deliveryReuseAllowed": false,
+        "localAnalysisRequiresConsent": true,
+        "blockedReuse": ["showcase video pixels", "brand assets", "copy", "music", "voice", "project source code"]
+      },
+      "videoTypes": ["motion_graphics", "product_launch", "tutorial", "creative_tool"],
+      "platforms": ["web", "social", "presentation"],
+      "shotFunctions": ["hook", "feature_proof", "data_explanation", "cta"],
+      "remotionTechniques": ["typed_scene_props", "layered_composition", "deterministic_timeline", "data_driven_motion"],
+      "searchTerms": ["remotion", "launch video", "product demo", "motion graphics"],
+      "structure": {
+        "hook": "Open with a visible product state, result, or motion system rather than a generic title.",
+        "progression": "Move through use-case-specific scenes whose information and motion are controlled by structured props.",
+        "proof": "Let real product states, data, or readable interface changes carry the proof.",
+        "payoff": "Resolve the visual system into one brand proposition and clear action."
+      },
+      "shotGrammar": ["layered scenes", "readable state changes", "shape and data continuity", "motivated overlays"],
+      "audioGrammar": ["timeline-bound cues", "voice-readable mix", "accent sounds on state changes"],
+      "transferRules": [
+        {
+          "ruleId": "showcase-use-case-first",
+          "instruction": "Select a Remotion composition pattern by video use case and proof object before choosing visual effects.",
+          "evidenceLocator": "Showcase introduction: products, campaigns, launch videos, tutorials and creative tools",
+          "appliesTo": ["composition_planning", "product_launch", "screen_demo"]
+        },
+        {
+          "ruleId": "showcase-inspect-motion",
+          "instruction": "Review motion at scene and boundary level; do not judge a template from a static thumbnail.",
+          "evidenceLocator": "Showcase introduction: open any card to watch the motion in detail",
+          "appliesTo": ["transition_review", "frame_audit", "remotion_composition"]
+        }
+      ],
+      "antiPatterns": ["template skin replacement", "uniform pan-and-zoom", "effect-first scene planning"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "volvo-epic-split",
+      "title": "Volvo Trucks — The Epic Split",
+      "kind": "finished_film",
+      "evidenceLevel": "curated_structure",
+      "source": {
+        "publisher": "Volvo Trucks",
+        "url": "https://www.youtube.com/watch?v=M7FIvfx5J10",
+        "sourceType": "official_video",
+        "accessedAt": "2026-07-17"
+      },
+      "rights": {
+        "scope": "reference_only",
+        "deliveryReuseAllowed": false,
+        "localAnalysisRequiresConsent": true,
+        "blockedReuse": ["video pixels", "performer identity", "stunt", "music", "copy", "vehicle branding"]
+      },
+      "videoTypes": ["brand_film", "product_proof", "commercial"],
+      "platforms": ["web", "youtube", "presentation"],
+      "shotFunctions": ["hook", "proof_event", "payoff"],
+      "remotionTechniques": ["minimal_typography", "measured_reveal"],
+      "searchTerms": ["single proof event", "product capability", "commercial proof"],
+      "structure": {
+        "hook": "Begin inside an unusual but controlled situation whose meaning is initially incomplete.",
+        "progression": "Reveal the physical relationship slowly while preserving one unbroken proof event.",
+        "proof": "The central action visibly demonstrates the product capability instead of describing it.",
+        "payoff": "Let the completed proof event become the brand claim."
+      },
+      "shotGrammar": ["single dominant composition", "slow reveal", "stable geometry", "minimal coverage"],
+      "audioGrammar": ["restrained opening", "music-led escalation", "limited explanatory speech"],
+      "transferRules": [
+        {
+          "ruleId": "one-visible-proof-event",
+          "instruction": "Convert the primary product claim into one visually undeniable event and remove shots that do not deepen that proof.",
+          "evidenceLocator": "Official film: central continuous product-proof event",
+          "appliesTo": ["commercial_structure", "proof_shot", "brand_film"]
+        }
+      ],
+      "antiPatterns": ["copying the stunt", "celebrity imitation", "many weak feature shots"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "google-parisian-love",
+      "title": "Google — Parisian Love",
+      "kind": "finished_film",
+      "evidenceLevel": "curated_structure",
+      "source": {
+        "publisher": "Google",
+        "url": "https://www.youtube.com/watch?v=nnsSUqgkDwU",
+        "sourceType": "official_video",
+        "accessedAt": "2026-07-17"
+      },
+      "rights": {
+        "scope": "reference_only",
+        "deliveryReuseAllowed": false,
+        "localAnalysisRequiresConsent": true,
+        "blockedReuse": ["video pixels", "search queries", "story details", "sound design", "brand interface", "copy"]
+      },
+      "videoTypes": ["product_film", "screen_demo", "emotional_commercial"],
+      "platforms": ["web", "youtube", "presentation"],
+      "shotFunctions": ["setup", "state_change", "product_proof", "emotional_payoff"],
+      "remotionTechniques": ["interface_state_sequence", "cursor_and_text_timing", "sound_synchronized_ui"],
+      "searchTerms": ["product UI story", "screen narrative", "state progression"],
+      "structure": {
+        "hook": "Introduce a human intention through a simple product action.",
+        "progression": "Each new product state changes the implied human story.",
+        "proof": "The interface is not decoration; every operation causes a narrative consequence.",
+        "payoff": "Accumulated small actions resolve into an emotional life change."
+      },
+      "shotGrammar": ["single interface viewpoint", "progressive state changes", "readable text hierarchy", "elliptical storytelling"],
+      "audioGrammar": ["precise UI cues", "environmental implication", "music supporting the emotional arc"],
+      "transferRules": [
+        {
+          "ruleId": "ui-action-changes-story",
+          "instruction": "For screen demos, require each UI action to change the audience's understanding, task state, or emotional stakes.",
+          "evidenceLocator": "Official film: sequential product operations carry the complete narrative",
+          "appliesTo": ["screen_demo", "product_film", "semantic_timeline"]
+        }
+      ],
+      "antiPatterns": ["fake unreadable UI", "screen recording without narrative state change", "copying query text"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "dumb-ways-to-die",
+      "title": "Metro Trains Melbourne — Dumb Ways to Die",
+      "kind": "finished_film",
+      "evidenceLevel": "curated_structure",
+      "source": {
+        "publisher": "Metro Trains Melbourne",
+        "url": "https://www.youtube.com/watch?v=IJNR2EpS0jw",
+        "sourceType": "official_video",
+        "accessedAt": "2026-07-17"
+      },
+      "rights": {
+        "scope": "reference_only",
+        "deliveryReuseAllowed": false,
+        "localAnalysisRequiresConsent": true,
+        "blockedReuse": ["characters", "animation designs", "song", "lyrics", "copy", "video pixels"]
+      },
+      "videoTypes": ["public_service", "animation", "music_led_campaign"],
+      "platforms": ["social", "youtube", "broadcast"],
+      "shotFunctions": ["pattern_setup", "variation", "escalation", "message_reveal"],
+      "remotionTechniques": ["repeated_scene_grammar", "beat_synchronized_variation", "character_card_sequence"],
+      "searchTerms": ["repetition", "campaign mnemonic", "message reveal"],
+      "structure": {
+        "hook": "Establish a simple repeatable audiovisual phrase.",
+        "progression": "Repeat the same grammar with escalating visual variation.",
+        "proof": "Memorability is built through pattern recognition before the serious context appears.",
+        "payoff": "Reframe the repeated phrase as a concrete safety message."
+      },
+      "shotGrammar": ["repeated framing grammar", "one gag per beat", "controlled escalation", "late contextual reveal"],
+      "audioGrammar": ["song as structural spine", "repeated verbal motif", "sound-picture synchronization"],
+      "transferRules": [
+        {
+          "ruleId": "repeat-then-reframe",
+          "instruction": "Use repetition only when each variation advances recognition or escalation, then reframe the pattern into the final message.",
+          "evidenceLocator": "Official campaign film: repeated audiovisual syntax resolves into the safety purpose",
+          "appliesTo": ["animation", "campaign", "music_led_edit"]
+        }
+      ],
+      "antiPatterns": ["copying characters or melody", "repetition without escalation", "late message with no structural setup"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "dollar-shave-club-launch",
+      "title": "Dollar Shave Club — Our Blades Are Great",
+      "kind": "finished_film",
+      "evidenceLevel": "curated_structure",
+      "source": {
+        "publisher": "Dollar Shave Club",
+        "url": "https://www.youtube.com/watch?v=ZUG9qYTJMsI",
+        "sourceType": "official_video",
+        "accessedAt": "2026-07-17"
+      },
+      "rights": {
+        "scope": "reference_only",
+        "deliveryReuseAllowed": false,
+        "localAnalysisRequiresConsent": true,
+        "blockedReuse": ["performance", "script", "jokes", "blocking", "brand voice", "video pixels"]
+      },
+      "videoTypes": ["founder_film", "direct_response", "product_launch"],
+      "platforms": ["web", "social", "youtube"],
+      "shotFunctions": ["spokesperson_hook", "feature_proof", "objection", "cta"],
+      "remotionTechniques": ["kinetic_caption_support", "chapter_callouts"],
+      "searchTerms": ["founder pitch", "direct response", "humor proof"],
+      "structure": {
+        "hook": "State the proposition immediately through a distinctive spokesperson voice.",
+        "progression": "Move through objections and product benefits while every visual beat supports the spoken claim.",
+        "proof": "Comedy and blocking carry product information rather than interrupting it.",
+        "payoff": "End on a direct commercial action."
+      },
+      "shotGrammar": ["walk-and-talk", "motivated reveals", "one visual proof per line", "direct address"],
+      "audioGrammar": ["voice-forward mix", "dialogue-led rhythm", "music subordinate to copy"],
+      "transferRules": [
+        {
+          "ruleId": "every-joke-sells",
+          "instruction": "In a humorous product film, every comic beat must also prove a benefit, answer an objection, or strengthen the CTA.",
+          "evidenceLocator": "Official launch film: visual comedy and spoken product argument progress together",
+          "appliesTo": ["founder_film", "direct_response", "script_review"]
+        }
+      ],
+      "antiPatterns": ["copying jokes or profanity", "humor detached from product proof", "generic founder monologue"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "apple-scary-fast-bts",
+      "title": "Apple — Behind the scenes at Scary Fast",
+      "kind": "behind_the_scenes",
+      "evidenceLevel": "official_page",
+      "source": {
+        "publisher": "Apple",
+        "url": "https://www.apple.com/newsroom/2023/10/behind-the-scenes-at-scary-fast-apples-keynote-event-shot-on-iphone/",
+        "sourceType": "official_article",
+        "accessedAt": "2026-07-17"
+      },
+      "rights": {
+        "scope": "reference_only",
+        "deliveryReuseAllowed": false,
+        "localAnalysisRequiresConsent": true,
+        "blockedReuse": ["newsroom media", "Apple marks", "event footage", "presenter identity", "copy", "production stills"]
+      },
+      "videoTypes": ["product_event", "brand_film", "behind_the_scenes"],
+      "platforms": ["web", "presentation", "event"],
+      "shotFunctions": ["establishing", "presenter", "product_context", "workflow_proof"],
+      "remotionTechniques": ["deterministic_titles", "product_data_overlay", "chapter_transitions"],
+      "searchTerms": ["traditional production workflow", "timecode", "dolly", "crane", "drone", "color grade"],
+      "structure": {
+        "hook": "Use a controlled nocturnal visual world to establish the event's production promise.",
+        "progression": "Combine presenters, product contexts, locations, and complex camera movement through a synchronized production workflow.",
+        "proof": "The behind-the-scenes evidence names rigs, timecode, monitoring, Log capture, and color grading.",
+        "payoff": "Production process becomes credible evidence for the product claim."
+      },
+      "shotGrammar": ["traditional dolly and crane grammar", "drone establishing shots", "controlled low light", "multiple synchronized cameras"],
+      "audioGrammar": ["presenter intelligibility", "event-scale score", "consistent ambience across locations"],
+      "transferRules": [
+        {
+          "ruleId": "cinematic-is-workflow",
+          "instruction": "Treat cinematic quality as coordinated camera, lighting, sync, monitoring, and grading decisions; do not reduce it to LUTs or shallow depth of field.",
+          "evidenceLocator": "Apple Newsroom paragraphs 50-75: synchronized devices, rigs, low-light capture, dollies, cranes, drones and post-production",
+          "appliesTo": ["shot_planning", "cinematography", "production_plan", "brand_film"]
+        }
+      ],
+      "antiPatterns": ["Apple-style imitation", "equipment-name decoration", "unmotivated drone and crane shots"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "apple-mami-seeing-red",
+      "title": "Apple MAMI Select — Seeing Red production study",
+      "kind": "behind_the_scenes",
+      "evidenceLevel": "official_page",
+      "source": {
+        "publisher": "Apple",
+        "url": "https://www.apple.com/newsroom/2025/04/meet-four-emerging-filmmakers-bending-cultural-and-creative-lines-with-iphone-16-pro-max/",
+        "sourceType": "official_article",
+        "accessedAt": "2026-07-17"
+      },
+      "rights": {
+        "scope": "reference_only",
+        "deliveryReuseAllowed": false,
+        "localAnalysisRequiresConsent": true,
+        "blockedReuse": ["film footage", "characters", "story", "performances", "production stills", "Apple marks"]
+      },
+      "videoTypes": ["short_film", "narrative", "character_drama"],
+      "platforms": ["film", "web", "social"],
+      "shotFunctions": ["emotional_reversal", "character_relation", "subjective_closeup"],
+      "remotionTechniques": ["editorial_titles", "chapter_cards"],
+      "searchTerms": ["lens as story", "slow motion", "foreground background staging", "emotional reversal"],
+      "structure": {
+        "hook": "Introduce a repeated emotional action whose meaning can later change.",
+        "progression": "Use lens choice, slow motion, and foreground-background staging to connect family power and character emotion.",
+        "proof": "The official production study ties specific focal lengths and frame arrangement to narrative meaning.",
+        "payoff": "Repeat the opening action with a transformed emotional meaning."
+      },
+      "shotGrammar": ["telephoto relationship staging", "subjective closeup", "slow-motion emotional emphasis", "repeated action with changed meaning"],
+      "audioGrammar": ["performance-led sound", "controlled emotional escalation", "room tone continuity"],
+      "transferRules": [
+        {
+          "ruleId": "lens-encodes-relationship",
+          "instruction": "Choose focal length and foreground-background placement to express character power or emotional distance, not merely for visual variety.",
+          "evidenceLocator": "Apple Newsroom production study: 120 mm composition and 4K120 slow-motion scream motif",
+          "appliesTo": ["shot_planning", "character_drama", "cinematography"]
+        }
+      ],
+      "antiPatterns": ["slow motion without emotional purpose", "lens variety without relationship intent", "copying story or performances"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "burger-king-moldy-whopper",
+      "title": "Burger King — Moldy Whopper",
+      "kind": "finished_film",
+      "evidenceLevel": "curated_structure",
+      "source": {"publisher": "D&AD", "url": "https://www.dandad.org/work/d-ad-awards-archive/moldy-whopper", "sourceType": "award_case_with_video", "accessedAt": "2026-07-17"},
+      "rights": {"scope": "reference_only", "deliveryReuseAllowed": false, "localAnalysisRequiresConsent": true, "blockedReuse": ["film pixels", "product identity", "decay art direction", "copy", "music", "photography"]},
+      "videoTypes": ["product_film", "commercial", "proof_event"],
+      "platforms": ["web", "youtube", "social"],
+      "shotFunctions": ["contrarian_hook", "time_proof", "claim_reframe", "brand"],
+      "remotionTechniques": ["time_labels", "deterministic_claim_overlay", "chronological_progression"],
+      "searchTerms": ["contrarian product proof", "time evidence", "visible claim"],
+      "structure": {
+        "hook": "Break the category's beauty convention with an initially undesirable product state.",
+        "progression": "Hold product identity and chronology stable while the visible condition changes.",
+        "proof": "Use time, repeated framing, and an observable physical result as a bounded proof event.",
+        "payoff": "Reframe the undesirable visual outcome as evidence for the approved proposition."
+      },
+      "shotGrammar": ["controlled product framing", "time progression", "texture detail", "restrained explanatory copy"],
+      "audioGrammar": ["contrastive score", "minimal claim narration", "room for visual discomfort"],
+      "transferRules": [
+        {"ruleId": "contrarian-state-as-proof", "instruction": "Look for a category convention the product can truthfully violate, then preserve the conditions and limitations that make the visible state meaningful.", "evidenceLocator": "Award case and film chronology", "appliesTo": ["commercial_structure", "claim_to_proof_map", "product_film"]}
+      ],
+      "antiPatterns": ["copying decay imagery", "treating a visual metaphor as complete scientific evidence", "shock detached from the product claim"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "apple-welcome-home",
+      "title": "Apple HomePod — Welcome Home",
+      "kind": "finished_film",
+      "evidenceLevel": "curated_structure",
+      "source": {"publisher": "D&AD", "url": "https://www.dandad.org/work/d-ad-awards-archive/welcome-home", "sourceType": "award_case_with_video", "accessedAt": "2026-07-17"},
+      "rights": {"scope": "reference_only", "deliveryReuseAllowed": false, "localAnalysisRequiresConsent": true, "blockedReuse": ["film pixels", "performer", "dance", "music", "expanding-room design", "Apple marks"]},
+      "videoTypes": ["brand_film", "product_experience", "music_led_film"],
+      "platforms": ["web", "youtube", "presentation"],
+      "shotFunctions": ["human_setup", "product_trigger", "experience_visualization", "emotional_payoff"],
+      "remotionTechniques": ["music_hit_map", "spatial_graphics", "brand_end_card"],
+      "searchTerms": ["experience metaphor", "music driven transformation", "spatial emotion"],
+      "structure": {
+        "hook": "Establish a constrained human state before the product experience begins.",
+        "progression": "Let music progressively change body, room, scale, and emotional freedom.",
+        "proof": "The film visualizes a subjective experience rather than claiming a measured technical result.",
+        "payoff": "Resolve the expanded physical world into a clear product and brand memory."
+      },
+      "shotGrammar": ["environment transformation", "performance-led camera", "progressive scale", "motivated impossible space"],
+      "audioGrammar": ["music as causal trigger", "beat-synchronized transformation", "limited explanatory speech"],
+      "transferRules": [
+        {"ruleId": "invisible-experience-visible-metaphor", "instruction": "Translate an approved invisible experience into observable changes in environment, body, light, or scale, while labeling it as experiential rather than objective proof.", "evidenceLocator": "Award case description and finished film progression", "appliesTo": ["brand_film", "style_playbook", "audio_cue_sheet"]}
+      ],
+      "antiPatterns": ["copying choreography or room mechanics", "presenting metaphor as measured performance", "music-driven spectacle without product causality"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "nyt-truth-rigor",
+      "title": "The New York Times — The Truth Is Worth It: Rigor",
+      "kind": "finished_film",
+      "evidenceLevel": "curated_structure",
+      "source": {"publisher": "D&AD", "url": "https://www.dandad.org/work/d-ad-awards-archive/the-truth-is-worth-it-rigor", "sourceType": "award_case_with_video", "accessedAt": "2026-07-17"},
+      "rights": {"scope": "reference_only", "deliveryReuseAllowed": false, "localAnalysisRequiresConsent": true, "blockedReuse": ["film pixels", "investigation material", "reporting text", "typography", "sound design", "campaign line"]},
+      "videoTypes": ["brand_film", "process_proof", "documentary_commercial"],
+      "platforms": ["web", "youtube", "presentation"],
+      "shotFunctions": ["in_medias_res_hook", "obstacle", "process_proof", "brand_payoff"],
+      "remotionTechniques": ["evidence_text_overlay", "document_timeline", "chapter_progress"],
+      "searchTerms": ["process proves values", "work cost", "documentary brand"],
+      "structure": {
+        "hook": "Enter the work while the search for truth is already under pressure.",
+        "progression": "Accumulate calls, records, interviews, obstacles, and verification effort.",
+        "proof": "Make rigor visible through repeated actions, cost, and traceable evidence.",
+        "payoff": "Let the completed work justify the brand value statement."
+      },
+      "shotGrammar": ["procedural detail", "document inserts", "pressure escalation", "evidence accumulation"],
+      "audioGrammar": ["work sounds", "fragmented speech", "controlled escalation", "brand-line release"],
+      "transferRules": [
+        {"ruleId": "value-proven-by-work", "instruction": "For an abstract brand value, show the decisions, labor, risk, and result that make the value observable instead of stating it as a slogan.", "evidenceLocator": "Award case and process-led film structure", "appliesTo": ["brand_film", "claim_to_proof_map", "script_review"]}
+      ],
+      "antiPatterns": ["generic hard-work montage", "using confidential evidence without rights", "claiming rigor without showing verification"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "tide-its-a-tide-ad",
+      "title": "Tide — It's a Tide Ad",
+      "kind": "finished_film",
+      "evidenceLevel": "curated_structure",
+      "source": {"publisher": "D&AD", "url": "https://www.dandad.org/work/d-ad-awards-archive/its-a-tide-ad-campaign", "sourceType": "award_case_with_video", "accessedAt": "2026-07-17"},
+      "rights": {"scope": "reference_only", "deliveryReuseAllowed": false, "localAnalysisRequiresConsent": true, "blockedReuse": ["film pixels", "performer", "campaign question", "category parodies", "partner brands", "music"]},
+      "videoTypes": ["commercial", "meta_advertising", "social_campaign"],
+      "platforms": ["broadcast", "web", "social"],
+      "shotFunctions": ["category_disguise", "brand_reveal", "repetition_with_variation", "social_cta"],
+      "remotionTechniques": ["category_title_cards", "repeated_brand_motif", "deterministic_copy"],
+      "searchTerms": ["brand truth", "meta advertising", "reframing repetition"],
+      "structure": {
+        "hook": "Withhold the category identity and invite the viewer to classify the advertisement.",
+        "progression": "Move through different category surfaces while preserving one visual product truth.",
+        "proof": "Repeatedly use the same product benefit to reinterpret each new context.",
+        "payoff": "Turn brand repetition into the rule of a viewer participation game."
+      },
+      "shotGrammar": ["genre switching", "stable proof detail", "comic reveal", "repetition with escalation"],
+      "audioGrammar": ["spokesperson-led timing", "category audio cues", "reveal punctuation"],
+      "transferRules": [
+        {"ruleId": "brand-truth-reframes-context", "instruction": "Find one approved product truth capable of reinterpreting multiple situations, then vary the context while preserving the same observable proof.", "evidenceLocator": "Campaign case and repeated category reveal", "appliesTo": ["commercial_structure", "campaign_variants", "social_video"]}
+      ],
+      "antiPatterns": ["copying the question or performer", "parody without a product truth", "genre switching that obscures the claim"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "channel4-meet-the-superhumans",
+      "title": "Channel 4 — Meet the Superhumans",
+      "kind": "finished_film",
+      "evidenceLevel": "curated_structure",
+      "source": {"publisher": "D&AD", "url": "https://www.dandad.org/work/d-ad-awards-archive/meet-the-superhumans", "sourceType": "award_case_with_video", "accessedAt": "2026-07-17"},
+      "rights": {"scope": "reference_only", "deliveryReuseAllowed": false, "localAnalysisRequiresConsent": true, "blockedReuse": ["athlete footage", "music", "flashback structure", "event identity", "campaign title", "copy"]},
+      "videoTypes": ["event_trailer", "brand_film", "sports_promo"],
+      "platforms": ["broadcast", "web", "social"],
+      "shotFunctions": ["attitude_hook", "training_proof", "cost_reveal", "event_payoff"],
+      "remotionTechniques": ["impact_titles", "music_hit_map", "event_end_card"],
+      "searchTerms": ["reframe audience attitude", "training cost", "sports trailer"],
+      "structure": {
+        "hook": "Establish strength and intensity before explanatory context.",
+        "progression": "Escalate from training and body mechanics to cost, history, and competition.",
+        "proof": "Use observable effort, impact, equipment, and reaction to establish athletic stakes.",
+        "payoff": "Convert changed audience attitude into anticipation for the event."
+      },
+      "shotGrammar": ["impact montage", "physical detail", "reaction", "controlled background flashes"],
+      "audioGrammar": ["music-led escalation", "impact synchronization", "breath and exertion detail"],
+      "transferRules": [
+        {"ruleId": "define-how-to-watch", "instruction": "Decide the attitude the audience should adopt toward the subject, then choose the opening proof images before adding biography or explanation.", "evidenceLocator": "Award case and finished-film progression", "appliesTo": ["event_trailer", "brand_film", "shot_sequence_review"]}
+      ],
+      "antiPatterns": ["copying athlete stories or music", "pity framing", "intensity montage without changing audience understanding"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "google-year-in-search-2020",
+      "title": "Google — Year in Search 2020",
+      "kind": "finished_film",
+      "evidenceLevel": "official_page",
+      "source": {"publisher": "Google", "url": "https://trends.withgoogle.com/en-au/year-in-search/2020/", "sourceType": "official_campaign_page_with_video", "accessedAt": "2026-07-17"},
+      "rights": {"scope": "reference_only", "deliveryReuseAllowed": false, "localAnalysisRequiresConsent": true, "blockedReuse": ["news footage", "user-generated footage", "search data", "music", "voice", "campaign theme"]},
+      "videoTypes": ["brand_film", "archive_montage", "year_in_review"],
+      "platforms": ["web", "youtube", "presentation"],
+      "shotFunctions": ["question_hook", "chapter_word", "collective_evidence", "hopeful_payoff"],
+      "remotionTechniques": ["search_query_typography", "archive_metadata", "chapter_word_transitions"],
+      "searchTerms": ["single word motif", "archive montage", "collective emotion"],
+      "structure": {
+        "hook": "Begin with a recurring human question rather than a corporate answer.",
+        "progression": "Use changing search language to organize heterogeneous public events and emotions.",
+        "proof": "Let queries, archive media, voices, and social actions jointly evidence the collective state.",
+        "payoff": "Allow the same word to evolve from uncertainty toward agency and hope."
+      },
+      "shotGrammar": ["query-led montage", "archive contrast", "text as chapter", "collective reaction"],
+      "audioGrammar": ["voice collage", "music arc", "search and media cues", "hopeful release"],
+      "transferRules": [
+        {"ruleId": "one-word-archive-spine", "instruction": "Choose one approved word or question that can change meaning across the film, then use it to order heterogeneous assets into a causal emotional arc.", "evidenceLocator": "Official campaign page and film's recurring query structure", "appliesTo": ["archive_montage", "brand_film", "script_or_outline"]}
+      ],
+      "antiPatterns": ["copying the annual theme", "using unlicensed archive media", "emotion montage without a semantic spine"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "remotion-github-unwrapped",
+      "title": "GitHub Unwrapped",
+      "kind": "showcase_collection",
+      "evidenceLevel": "official_page",
+      "source": {"publisher": "Remotion", "url": "https://github.com/remotion-dev/github-unwrapped", "sourceType": "official_source_repository", "accessedAt": "2026-07-17"},
+      "rights": {"scope": "reference_only", "deliveryReuseAllowed": false, "localAnalysisRequiresConsent": true, "blockedReuse": ["rendered video pixels", "GitHub brand assets", "project visual identity", "copy", "music", "user contribution data"]},
+      "videoTypes": ["personalized_video", "year_in_review", "data_story"],
+      "platforms": ["web", "social", "presentation"],
+      "shotFunctions": ["personalized_hook", "data_proof", "chapter_progress", "shareable_payoff"],
+      "remotionTechniques": ["typed_scene_props", "data_driven_motion", "deterministic_timeline", "batch_rendering"],
+      "searchTerms": ["personalized video", "year in review", "data storytelling", "remotion source"],
+      "structure": {"hook": "Open with a personally recognizable identity or result.", "progression": "Turn structured activity data into a sequence of increasingly meaningful chapters.", "proof": "Use the viewer's real data as the evidence rather than generic celebratory graphics.", "payoff": "Resolve the accumulated story into a concise, shareable personal summary."},
+      "shotGrammar": ["identity-led opener", "one metric per scene", "progressive scale", "recurring visual tokens"],
+      "audioGrammar": ["chapter accents", "tempo lift", "voice-readable mix"],
+      "transferRules": [
+        {"ruleId": "personal-data-earns-personalization", "instruction": "Map each accepted data field to one scene purpose and one visible conclusion; omit fields that do not change the viewer's understanding.", "evidenceLocator": "Repository purpose and structured year-in-review implementation", "appliesTo": ["data_story", "composition_planning", "semantic_timeline"]},
+        {"ruleId": "fixed-system-variable-content", "instruction": "Keep scene contracts, typography and motion grammar stable while data and selected chapter count vary through validated props.", "evidenceLocator": "Reusable Remotion composition and personalized output structure", "appliesTo": ["remotion_composition", "batch_rendering", "render_preflight"]}
+      ],
+      "antiPatterns": ["metric dump", "fake personalization", "one chart style repeated without escalation", "copying GitHub visual identity"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "remotion-mediaparser-announcement",
+      "title": "Media Parser Announcement",
+      "kind": "finished_film",
+      "evidenceLevel": "official_video_metadata",
+      "source": {"publisher": "Jonny Burger / Remotion", "url": "https://github.com/JonnyBurger/mediaparser-announcement", "sourceType": "official_announcement_source", "accessedAt": "2026-07-17"},
+      "rights": {"scope": "reference_only", "deliveryReuseAllowed": false, "localAnalysisRequiresConsent": true, "blockedReuse": ["announcement video pixels", "source code as final creative", "product UI", "copy", "voice", "music", "brand assets"]},
+      "videoTypes": ["product_launch", "developer_tool", "explainer"],
+      "platforms": ["youtube", "web", "social"],
+      "shotFunctions": ["problem_hook", "capability_reveal", "technical_proof", "launch_payoff"],
+      "remotionTechniques": ["media_state_visualization", "layered_composition", "semantic_typography", "chapter_progress"],
+      "searchTerms": ["developer tool launch", "media parser", "technical announcement"],
+      "structure": {"hook": "Begin with a concrete media problem or surprising result.", "progression": "Reveal the system through increasingly capable media operations and states.", "proof": "Use readable media behavior and structured visual states to demonstrate the capability.", "payoff": "Connect the proof to a clear release or usage action."},
+      "shotGrammar": ["real media states", "focused technical detail", "layered callouts", "result-led chapters"],
+      "audioGrammar": ["narration-led pacing", "state-change accents", "restrained bed"],
+      "transferRules": [
+        {"ruleId": "technical-state-is-proof", "instruction": "For developer products, show valid inputs, state transitions and outputs at readable scale; reserve abstract motion for orientation and emphasis.", "evidenceLocator": "Announcement repository and product-led film structure", "appliesTo": ["product_launch", "screen_demo", "claim_to_proof_map"]}
+      ],
+      "antiPatterns": ["abstract code rain", "unreadable UI", "feature list without state change", "copying the announcement skin"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "remotion-whats-new-announcement",
+      "title": "What’s New in Remotion",
+      "kind": "finished_film",
+      "evidenceLevel": "official_video_metadata",
+      "source": {"publisher": "Jonny Burger / Remotion", "url": "https://github.com/JonnyBurger/whats-new-in-remotion", "sourceType": "official_announcement_source", "accessedAt": "2026-07-17"},
+      "rights": {"scope": "reference_only", "deliveryReuseAllowed": false, "localAnalysisRequiresConsent": true, "blockedReuse": ["announcement video pixels", "source code as final creative", "copy", "voice", "music", "brand system"]},
+      "videoTypes": ["product_launch", "feature_update", "developer_tool"],
+      "platforms": ["youtube", "web", "social"],
+      "shotFunctions": ["update_hook", "feature_chapter", "before_after_proof", "release_cta"],
+      "remotionTechniques": ["chapter_system", "reusable_scene_components", "semantic_typography", "before_after_transition"],
+      "searchTerms": ["feature launch", "software update video", "release announcement"],
+      "structure": {"hook": "State the scale or consequence of the update before enumerating features.", "progression": "Group related features into chapters with distinct proof objects.", "proof": "Show what changed in behavior or output rather than only naming the feature.", "payoff": "Resolve the chapters into an upgrade, try-now, or documentation action."},
+      "shotGrammar": ["chapter title as navigation", "before-after state", "feature-specific motion", "recurring release motif"],
+      "audioGrammar": ["chapter punctuation", "paced narration", "release lift"],
+      "transferRules": [
+        {"ruleId": "feature-chapter-needs-consequence", "instruction": "Give every feature chapter one user consequence and one observable before-after state; delete chapters that only repeat release notes.", "evidenceLocator": "Announcement repository and feature-led sequence", "appliesTo": ["feature_update", "script_or_outline", "semantic_timeline"]}
+      ],
+      "antiPatterns": ["release-note slideshow", "identical transition for every feature", "feature names without user consequence", "copying Remotion brand motion"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "remotion-contribution-graph-vercel",
+      "title": "Ship a Contribution Graph Video Generator with Remotion and Vercel",
+      "kind": "tutorial",
+      "evidenceLevel": "official_page",
+      "source": {"publisher": "Remotion", "url": "https://github.com/remotion-dev/contribution-graph-vercel", "sourceType": "official_tutorial_source", "accessedAt": "2026-07-17"},
+      "rights": {"scope": "reference_only", "deliveryReuseAllowed": false, "localAnalysisRequiresConsent": true, "blockedReuse": ["tutorial video pixels", "GitHub brand assets", "example deployment", "example data", "copy", "music"]},
+      "videoTypes": ["data_story", "video_generator", "developer_tutorial"],
+      "platforms": ["web", "social", "presentation"],
+      "shotFunctions": ["data_ingest", "visualization_build", "render_proof", "deployment_payoff"],
+      "remotionTechniques": ["data_driven_motion", "three_dimensional_composition", "server_rendering", "typed_scene_props"],
+      "searchTerms": ["video generator app", "server rendering", "contribution graph 3d"],
+      "structure": {"hook": "Open with the generated result and its personalization value.", "progression": "Move from data input to visual mapping, composition and hosted rendering.", "proof": "Demonstrate that the same typed pipeline produces a valid personalized output.", "payoff": "End with a usable generator rather than an isolated animation."},
+      "shotGrammar": ["result first", "data-to-geometry mapping", "camera path", "render receipt"],
+      "audioGrammar": ["tutorial narration", "step accents", "minimal bed"],
+      "transferRules": [
+        {"ruleId": "generator-proof-includes-service-path", "instruction": "For a video-generator product, show input validation, deterministic composition, rendering and output delivery as one traceable path.", "evidenceLocator": "Repository architecture and Vercel rendering purpose", "appliesTo": ["video_generator", "render_service", "production_lineage"]}
+      ],
+      "antiPatterns": ["beautiful local preview without deployable render", "unbounded 3D cost", "data mapping without validation", "copying GitHub assets"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "remotion-tiktok-caption-template",
+      "title": "TikTok-Style Captions with Whisper.cpp",
+      "kind": "tutorial",
+      "evidenceLevel": "official_page",
+      "source": {"publisher": "Remotion", "url": "https://github.com/remotion-dev/template-tiktok", "sourceType": "official_template_source", "accessedAt": "2026-07-17"},
+      "rights": {"scope": "reference_only", "deliveryReuseAllowed": false, "localAnalysisRequiresConsent": true, "blockedReuse": ["template visual skin", "example transcript", "example footage", "fonts", "music", "third-party likeness"]},
+      "videoTypes": ["social_short", "captioned_video", "talking_head"],
+      "platforms": ["tiktok", "reels", "shorts"],
+      "shotFunctions": ["caption_emphasis", "word_highlight", "silent_viewing", "retention_refresh"],
+      "remotionTechniques": ["token_timed_captions", "caption_pagination", "frame_accurate_highlight", "speech_transcription"],
+      "searchTerms": ["word by word captions", "whisper captions", "tiktok subtitles"],
+      "structure": {"hook": "Make the spoken hook readable from the first frame of speech.", "progression": "Paginate the transcript into readable thought units while preserving word timing.", "proof": "Highlight the currently spoken word without obscuring the subject or changing the transcript meaning.", "payoff": "Carry the final claim and CTA in a readable, platform-safe caption state."},
+      "shotGrammar": ["speech-led framing", "safe-area captions", "active-word emphasis", "thought-unit pagination"],
+      "audioGrammar": ["speech source of truth", "word timestamps", "music ducking"],
+      "transferRules": [
+        {"ruleId": "timing-before-caption-style", "instruction": "Validate transcript, word timestamps and page boundaries before choosing caption animation; styling cannot repair missing or rushed narration.", "evidenceLocator": "Template purpose, Whisper.cpp integration and animated word-level caption workflow", "appliesTo": ["subtitle_track", "transcript_report", "final_review"]}
+      ],
+      "antiPatterns": ["equal-duration words", "caption effects masking bad timing", "unsafe lower-third placement", "too many simultaneous highlighted words"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "remotion-prompt-to-video-template",
+      "title": "Prompt-to-Video Story Template",
+      "kind": "tutorial",
+      "evidenceLevel": "official_page",
+      "source": {"publisher": "Remotion", "url": "https://github.com/remotion-dev/template-prompt-to-video", "sourceType": "official_template_source", "accessedAt": "2026-07-17"},
+      "rights": {"scope": "reference_only", "deliveryReuseAllowed": false, "localAnalysisRequiresConsent": true, "blockedReuse": ["template visual skin", "example story", "generated images", "generated voice", "provider credentials", "copy"]},
+      "videoTypes": ["ai_video", "explainer", "social_short"],
+      "platforms": ["tiktok", "reels", "shorts", "web"],
+      "shotFunctions": ["script_generation", "visual_generation", "voice_sync", "timeline_assembly"],
+      "remotionTechniques": ["semantic_timeline", "typed_scene_props", "audio_sync", "generated_asset_assembly"],
+      "searchTerms": ["prompt to video", "AI story video", "generated assets remotion"],
+      "structure": {"hook": "Resolve a story premise into a compact opening beat before asset generation.", "progression": "Generate and bind story details, images, text and voice to explicit timeline blocks.", "proof": "Keep generated assets synchronized through a machine-readable timeline instead of manual placement.", "payoff": "Render a reproducible social video that can be regenerated from structured inputs."},
+      "shotGrammar": ["story beat per scene", "generated image with local motion", "text-audio synchronization", "structured transitions"],
+      "audioGrammar": ["voiceover spine", "timeline-aligned text", "bounded music bed"],
+      "transferRules": [
+        {"ruleId": "prompt-video-needs-structured-lineage", "instruction": "Persist script, asset prompts, selected files, voice timings and timeline blocks separately so a failed shot can be regenerated without rebuilding the entire video.", "evidenceLocator": "Template README: generated story, images, voiceover and timeline blocks", "appliesTo": ["generation_request", "asset_manifest", "semantic_timeline", "production_lineage"]}
+      ],
+      "antiPatterns": ["single opaque prompt-to-video call", "manual asset placement without lineage", "uniform slide motion", "voice duration ignored by timeline"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "nike-you-cant-stop-us",
+      "title": "Nike — You Can't Stop Us",
+      "kind": "finished_film",
+      "evidenceLevel": "official_page",
+      "source": {"publisher": "Wieden+Kennedy", "url": "https://www.wk.com/work/nike-you-cant-stop-us/", "sourceType": "official_agency_case", "accessedAt": "2026-07-17"},
+      "rights": {"scope": "reference_only", "deliveryReuseAllowed": false, "localAnalysisRequiresConsent": true, "blockedReuse": ["film pixels", "athlete identity", "sports footage", "split-screen pairings", "copy", "music", "Nike marks"]},
+      "videoTypes": ["brand_film", "sports", "high_density_montage"],
+      "platforms": ["web", "youtube", "social"],
+      "shotFunctions": ["collective_hook", "match_action", "escalation", "brand_payoff"],
+      "remotionTechniques": ["split_screen", "motion_vector_matching", "stable_layout_grammar", "frame_accurate_pairing"],
+      "searchTerms": ["split screen match action", "high density brand montage", "motion vector continuity"],
+      "structure": {"hook": "Create one fixed visual rule that the audience understands immediately.", "progression": "Escalate subjects and contexts while preserving the rule.", "proof": "Every matched action visibly demonstrates connection across difference.", "payoff": "Resolve accumulated matches into one collective proposition."},
+      "shotGrammar": ["fixed split axis", "matched silhouettes", "shared action phase", "directional continuity"],
+      "audioGrammar": ["escalating montage bed", "speech fragments", "collective release"],
+      "transferRules": [{"ruleId": "dense-edit-needs-stable-grammar", "instruction": "When cut density is high, keep layout, subject position, motion vector, color or sound grammar stable so each new shot adds information without resetting comprehension.", "evidenceLocator": "Official agency case and paired-action structure", "appliesTo": ["shot_sequence_review", "transition_language_plan", "render_composition"]}],
+      "antiPatterns": ["copying split pairings", "using unlicensed sports footage", "rapid cuts without a stable visual rule"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "google-fixed-on-pixel",
+      "title": "Google Pixel — Fixed on Pixel",
+      "kind": "finished_film",
+      "evidenceLevel": "official_page",
+      "source": {"publisher": "Google", "url": "https://blog.google/company-news/inside-google/company-announcements/super-bowl-ad-2023-watch-fixed-on-pixel/", "sourceType": "official_campaign_page", "accessedAt": "2026-07-17"},
+      "rights": {"scope": "reference_only", "deliveryReuseAllowed": false, "localAnalysisRequiresConsent": true, "blockedReuse": ["campaign images", "before-after photos", "performers", "copy", "music", "Pixel UI", "Google marks"]},
+      "videoTypes": ["product_film", "software_demo", "commercial"],
+      "platforms": ["web", "youtube", "broadcast"],
+      "shotFunctions": ["problem_state", "operation", "before_after_proof", "reaction", "cta"],
+      "remotionTechniques": ["matched_before_after", "deterministic_labels", "proof_hold", "chapter_repetition"],
+      "searchTerms": ["before after product proof", "software feature commercial", "matched composition demo"],
+      "structure": {"hook": "Open on a familiar flawed result.", "progression": "Repeat problem, operation, matched result and reaction as compact proof units.", "proof": "Hold composition stable enough to compare the exact change.", "payoff": "Accumulate proof units into a memorable product proposition."},
+      "shotGrammar": ["matched before-after", "stable proof frame", "one feature per unit", "reaction punctuation"],
+      "audioGrammar": ["comedic timing", "short explanatory lines", "result accents"],
+      "transferRules": [{"ruleId": "proof-keeps-composition-readable", "instruction": "For software or image changes, keep proof shots stable and comparable; do not combine a moving camera, dense text and a second claim in the same proof interval.", "evidenceLocator": "Official campaign page and before-after feature presentation", "appliesTo": ["claim_to_proof_map", "scene_coverage_plan", "screen_demo"]}],
+      "antiPatterns": ["fake before-after", "unreadable UI", "camera motion hiding the comparison", "copying campaign photos"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "honda-cog",
+      "title": "Honda — Cog",
+      "kind": "finished_film",
+      "evidenceLevel": "official_page",
+      "source": {"publisher": "Honda UK", "url": "https://www.honda.co.uk/engineroom/cog/", "sourceType": "official_campaign_page", "accessedAt": "2026-07-17"},
+      "rights": {"scope": "reference_only", "deliveryReuseAllowed": false, "localAnalysisRequiresConsent": true, "blockedReuse": ["film pixels", "mechanical sequence", "vehicle parts", "copy", "music", "Honda marks"]},
+      "videoTypes": ["product_film", "mechanism_proof", "commercial"],
+      "platforms": ["web", "youtube", "broadcast"],
+      "shotFunctions": ["mechanism_hook", "causal_progression", "insert", "product_payoff"],
+      "remotionTechniques": ["action_phase_chain", "match_action", "causal_timeline", "sound_object_sync"],
+      "searchTerms": ["mechanical chain reaction commercial", "product mechanism proof", "causal action match"],
+      "structure": {"hook": "Begin with one precise physical action whose consequence is not yet known.", "progression": "Make each mechanism trigger the next in visible causal order.", "proof": "Let real component behavior carry product meaning.", "payoff": "Reveal the complete product as the consequence of the chain."},
+      "shotGrammar": ["precise inserts", "action-phase continuity", "causal direction", "controlled reveal"],
+      "audioGrammar": ["object-led sound", "causal accents", "restrained narration"],
+      "transferRules": [{"ruleId": "mechanism-is-the-story", "instruction": "When product mechanics are the proof, preserve action phase, prop state, direction and edit handles so every insert motivates the next shot.", "evidenceLocator": "Official campaign page and causal mechanism structure", "appliesTo": ["scene_coverage_plan", "transition_language_plan", "camera_continuity_graph"]}],
+      "antiPatterns": ["copying the chain reaction", "synthetic mechanism without proof status", "cutting before contact", "unmotivated insert shots"],
+      "requiresTimecodedIngestForReplication": true
+    },
+    {
+      "referenceId": "apple-vision-pro-introduction",
+      "title": "Apple — Introducing Apple Vision Pro",
+      "kind": "finished_film",
+      "evidenceLevel": "official_page",
+      "source": {"publisher": "Apple", "url": "https://www.apple.com/newsroom/2023/06/introducing-apple-vision-pro/", "sourceType": "official_product_launch_page", "accessedAt": "2026-07-17"},
+      "rights": {"scope": "reference_only", "deliveryReuseAllowed": false, "localAnalysisRequiresConsent": true, "blockedReuse": ["film pixels", "product imagery", "UI", "copy", "music", "Apple marks"]},
+      "videoTypes": ["product_launch", "technology_brand_film", "product_demo"],
+      "platforms": ["web", "youtube", "presentation"],
+      "shotFunctions": ["environment_anchor", "human_use", "feature_proof", "product_hero", "cta"],
+      "remotionTechniques": ["feature_chapters", "product_labels", "screen_world_composite", "hero_resolve"],
+      "searchTerms": ["technology product launch film", "spatial computing demo", "product hero coverage"],
+      "structure": {"hook": "Establish a new product category and its human context.", "progression": "Move from environment and use to discrete capability chapters.", "proof": "Pair each capability with readable human action or interface state.", "payoff": "Resolve the experience into a controlled product hero and category claim."},
+      "shotGrammar": ["environment to person", "operation insert", "stable feature proof", "product hero"],
+      "audioGrammar": ["clear narration", "feature punctuation", "premium restraint"],
+      "transferRules": [{"ruleId": "technology-coverage-path", "instruction": "For a new technology, cover environment, human use, mechanism proof, consequence and product hero in that order unless the Director records a deliberate reveal inversion.", "evidenceLocator": "Official launch page and product capability structure", "appliesTo": ["scene_coverage_plan", "commercial_structure", "shotlist"]}],
+      "antiPatterns": ["copying Apple composition", "fake UI", "product beauty shots without capability proof", "generic technology montage"],
+      "requiresTimecodedIngestForReplication": true
+    }
+  ]
+}

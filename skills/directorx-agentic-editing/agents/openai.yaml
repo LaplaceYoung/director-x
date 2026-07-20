@@ -1,0 +1,4 @@
+interface:
+  display_name: "Director X Agentic Editing"
+  short_description: "Plan, preview, approve, and audit timeline edits"
+  default_prompt: "Use Director X to plan a non-destructive timeline edit, show the dry-run impact in the canvas, and obtain Codex approval for material changes."

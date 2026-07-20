@@ -1,0 +1,4 @@
+interface:
+  display_name: "Director X Evidence Rough Cut"
+  short_description: "Turn verified inactivity into an approval-gated first cut"
+  default_prompt: "Have DX-Editor build an evidence-backed rough-cut draft, preserve context and caption timing, then request native approval before commit."
