@@ -117,6 +117,13 @@ test("projects a media-first graph with playable assets and only asset-to-asset 
   assert.equal(canvas.summary.mediaGraphEdgeCount, 2);
 });
 
+test("projects the continuous creative-output heartbeat into media and activity views", () => {
+  const creativeProgressSla = { status: "breached", creativeArtifactCount: 2, elapsedMinutes: 6, thresholdMinutes: 5, breached: true, nextRequiredAction: "dispatch_reference_asset_and_script_work_now" };
+  const canvas = projectCanvas({ stage: "generation", status: "production_in_progress", goal: { outcome: "heartbeat" }, approvals: [], events: [], canvas: { nodes: [], edges: [] }, creativeProgressSla });
+  assert.equal(canvas.summary.creativeProgressSla, creativeProgressSla);
+  assert.equal(canvas.activity.creativeProgressSla, creativeProgressSla);
+});
+
 test("projects per-shot grounding from acquired media through readable reports into prompt documents", () => {
   const canvas = projectCanvas({
     stage: "storyboard", status: "production_in_progress", goal: { outcome: "film" }, approvals: [], events: [], canvas: { nodes: [], edges: [] },

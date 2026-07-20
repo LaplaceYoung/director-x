@@ -42,20 +42,30 @@ export function beginCreativeWork(run, now = new Date().toISOString()) {
 export function evaluateCreativeProgressSla(run, now = new Date().toISOString()) {
   const creativeArtifacts = Object.entries(run.artifacts ?? {}).filter(([artifactRef, artifact]) => isCreativeArtifact(artifactRef, artifact));
   if (!run.fastStart?.startedAt) return { status: "awaiting_fast_start", creativeArtifactCount: creativeArtifacts.length, breached: false, nextRequiredAction: "directorx_begin_creative_work" };
-  const elapsedMinutes = Math.max(0, (Date.parse(now) - Date.parse(run.fastStart.startedAt)) / 60000);
+  const nowMs = Date.parse(now);
+  const startedAtMs = Date.parse(run.fastStart.startedAt);
   const thresholdMinutes = Number(run.fastStart.creativeAssetSlaMinutes ?? 5);
-  const satisfied = creativeArtifacts.length > 0;
-  const breached = !satisfied && elapsedMinutes >= thresholdMinutes;
+  const timestampedArtifacts = creativeArtifacts.map(([artifactRef, artifact]) => ({ artifactRef, timestamp: creativeArtifactTimestamp(artifact) })).filter((item) => Number.isFinite(item.timestamp));
+  const latestCreativeAtMs = timestampedArtifacts.length ? Math.max(...timestampedArtifacts.map((item) => item.timestamp)) : null;
+  const monitoringSinceMs = latestCreativeAtMs ?? startedAtMs;
+  const elapsedMinutes = Math.max(0, (nowMs - monitoringSinceMs) / 60000);
+  const hasCreativeArtifacts = creativeArtifacts.length > 0;
+  const canMonitorContinuously = !hasCreativeArtifacts || latestCreativeAtMs !== null;
+  const breached = canMonitorContinuously && elapsedMinutes >= thresholdMinutes;
+  const status = breached ? "breached" : hasCreativeArtifacts ? "satisfied" : "on_track";
+  const latestCreativeArtifactRefs = latestCreativeAtMs === null ? [] : timestampedArtifacts.filter((item) => item.timestamp === latestCreativeAtMs).map((item) => item.artifactRef);
   return {
     schemaVersion: "1.0",
-    status: satisfied ? "satisfied" : breached ? "breached" : "on_track",
+    status,
     creativeArtifactCount: creativeArtifacts.length,
     creativeArtifactRefs: creativeArtifacts.map(([artifactRef]) => artifactRef),
+    latestCreativeArtifactAt: latestCreativeAtMs === null ? null : new Date(latestCreativeAtMs).toISOString(),
+    latestCreativeArtifactRefs,
     elapsedMinutes: Number(elapsedMinutes.toFixed(2)),
     thresholdMinutes,
     breached,
-    nextRequiredAction: breached ? "dispatch_reference_asset_and_script_work_now" : satisfied ? null : "continue_parallel_creative_work",
-    userFacingMessage: breached ? "五分钟内还没有出现新的脚本、图片、视频或音频，已要求立即切换到创作产出路线。" : null
+    nextRequiredAction: breached ? "dispatch_reference_asset_and_script_work_now" : "continue_parallel_creative_work",
+    userFacingMessage: breached ? (hasCreativeArtifacts ? "最近五分钟没有出现新的脚本、图片、视频或音频，已要求立即恢复并行创作。" : "启动创作五分钟后仍没有出现脚本、图片、视频或音频，已要求立即切换到创作产出路线。") : null
   };
 }
 
@@ -68,6 +78,14 @@ function isCreativeArtifact(artifactRef, artifact = {}) {
   if (["image", "video", "audio"].includes(mediaKind)) return true;
   if (/\.(?:png|jpe?g|webp|gif|mp4|mov|webm|wav|mp3|m4a|aac)$/i.test(artifact.relativePath ?? artifact.path ?? artifactRef)) return true;
   return CREATIVE_DOCUMENTS.has(artifactRef) || /(?:script|storyboard|shotlist|reference_analysis|style_playbook)\.md$/i.test(artifactRef);
+}
+
+function creativeArtifactTimestamp(artifact = {}) {
+  for (const value of [artifact.updatedAt, artifact.registeredAt, artifact.createdAt, artifact.metadata?.updatedAt, artifact.metadata?.registeredAt, artifact.metadata?.createdAt]) {
+    const timestamp = Date.parse(value);
+    if (Number.isFinite(timestamp)) return timestamp;
+  }
+  return null;
 }
 
 function nextTool(blocker) {

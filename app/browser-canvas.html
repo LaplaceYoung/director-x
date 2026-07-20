@@ -86,6 +86,15 @@
     .media-head { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 14px; }
     .media-head h2 { margin: 0; font-size: 15px; }
     .media-head p { margin: 5px 0 0; color: #888; font-size: 10px; }
+    .production-pulse { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 11px; align-items: center; margin-bottom: 14px; padding: 11px 13px; border: 1px solid #303030; background: #151515; }
+    .production-pulse .pulse-mark { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 4px rgba(111,182,138,.1); }
+    .production-pulse strong { display: block; font-size: 11px; font-weight: 560; }
+    .production-pulse p { margin: 3px 0 0; color: #858585; font-size: 9px; line-height: 1.45; }
+    .production-pulse time { color: #777; font-size: 9px; white-space: nowrap; }
+    .production-pulse.on_track .pulse-mark, .production-pulse.awaiting_fast_start .pulse-mark { background: var(--warn); box-shadow: 0 0 0 4px rgba(216,167,80,.1); }
+    .production-pulse.breached { border-color: #674336; background: #1b1614; }
+    .production-pulse.breached .pulse-mark { background: var(--accent); box-shadow: 0 0 0 4px rgba(239,101,72,.12); }
+    .production-pulse.breached strong { color: #f0a18d; }
     .media-stats { display: flex; gap: 6px; flex-wrap: wrap; }
     .media-stat { border: 1px solid #343434; background: #181818; padding: 7px 9px; color: #aaa; font-size: 9px; }
     .media-stat strong { color: #eee; margin-right: 4px; font-size: 12px; }
@@ -332,6 +341,9 @@
       const canvas = state.data?.productionCanvas;
       if (!canvas) return;
       const graph = canvas.mediaGraph ?? { nodes: canvas.assets ?? [], edges: [] };
+      const creativeSla = canvas.summary.creativeProgressSla;
+      const pulse = $("#production-pulse");
+      if (pulse) pulse.outerHTML = renderProductionPulse(creativeSla);
       const signature = JSON.stringify({ nodes: graph.nodes.map((node) => [node.id, node.status, node.previewUri, node.updatedAt]), edges: graph.edges.map((edge) => [edge.id, edge.kind]), selectedId: state.selectedId });
       if (signature === state.mediaSignature) return;
       state.mediaSignature = signature;
@@ -342,8 +354,21 @@
       const nodes = graph.nodes.map((node) => `<button class="media-node ${state.selectedId === node.id ? "selected" : ""}" data-node-id="${escapeHtml(node.id)}" style="left:${Number(node.x)}px;top:${Number(node.y)}px">${mediaMarkup(node, "node-preview")}<strong>${escapeHtml(node.label)}</strong><small>${escapeHtml(shortType(node.type))} · ${escapeHtml(statusLabel(node.status))}</small></button>`).join("");
       const byId = new Map(graph.nodes.map((node) => [node.id, node]));
       const edges = graph.edges.map((edge) => { const source = byId.get(edge.source), target = byId.get(edge.target); if (!source || !target) return ""; const x1 = source.x + 210, y1 = source.y + 58, x2 = target.x, y2 = target.y + 58, mid = (x1 + x2) / 2; return `<path class="media-edge" d="M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}" />`; }).join("");
-      $("#media").innerHTML = `<div class="media-head"><div><h2>媒体关系</h2><p>只展示真实登记的图片、视频、音频和必要文档；点击节点可播放并查看来源关系。</p></div><div class="media-stats">${stats}</div></div><div class="media-preview"><section class="media-preview-panel"><h3>预览 · ${escapeHtml(selected?.label ?? "尚未选择")}</h3><div class="media-preview-frame">${renderPlayablePreview(selected)}</div><div class="media-preview-copy">${escapeHtml(selected?.detail ?? "生成或抓取到的媒体会出现在这里。")}</div></section><section class="media-relations-panel"><h3>文件关系 · ${graph.edges.length}</h3><div class="media-relations">${relations}</div></section></div><section class="media-graph"><div class="media-graph-plane"><svg class="media-edge-layer" aria-hidden="true">${edges}</svg>${nodes || '<div class="empty">还没有可预览的媒体文件。</div>'}</div></section>`;
+      $("#media").innerHTML = `<div class="media-head"><div><h2>媒体关系</h2><p>只展示真实登记的图片、视频、音频和必要文档；点击节点可播放并查看来源关系。</p></div><div class="media-stats">${stats}</div></div>${renderProductionPulse(creativeSla)}<div class="media-preview"><section class="media-preview-panel"><h3>预览 · ${escapeHtml(selected?.label ?? "尚未选择")}</h3><div class="media-preview-frame">${renderPlayablePreview(selected)}</div><div class="media-preview-copy">${escapeHtml(selected?.detail ?? "生成或抓取到的媒体会出现在这里。")}</div></section><section class="media-relations-panel"><h3>文件关系 · ${graph.edges.length}</h3><div class="media-relations">${relations}</div></section></div><section class="media-graph"><div class="media-graph-plane"><svg class="media-edge-layer" aria-hidden="true">${edges}</svg>${nodes || '<div class="empty">还没有可预览的媒体文件。</div>'}</div></section>`;
     }
+    function renderProductionPulse(sla) {
+      const status = sla?.status ?? "awaiting_fast_start";
+      const copy = status === "breached"
+        ? { title: "创作产出已停滞", detail: sla.userFacingMessage ?? "正在要求制作团队立即恢复真实产物输出。" }
+        : status === "satisfied"
+          ? { title: "创作产出持续更新", detail: `画布已登记 ${sla.creativeArtifactCount} 项创作内容，继续并行推进资料、脚本和媒体。` }
+          : status === "on_track"
+            ? { title: "首批创作内容生成中", detail: `目标是在 ${sla.thresholdMinutes ?? 5} 分钟内显示脚本、图片、视频或音频。` }
+            : { title: "等待进入快速生产", detail: "完成必要确认后，资料、脚本和资产将立即并行出现。" };
+      const timing = sla?.latestCreativeArtifactAt ? `最近更新 ${formatRelativeMinutes(sla.elapsedMinutes)}` : sla?.elapsedMinutes !== undefined ? `已等待 ${formatRelativeMinutes(sla.elapsedMinutes)}` : "尚未开始";
+      return `<section class="production-pulse ${escapeHtml(status)}" id="production-pulse"><span class="pulse-mark" aria-hidden="true"></span><div><strong>${escapeHtml(copy.title)}</strong><p>${escapeHtml(copy.detail)}</p></div><time>${escapeHtml(timing)}</time></section>`;
+    }
+    function formatRelativeMinutes(value) { const minutes = Number(value ?? 0); return minutes < 1 ? "不足 1 分钟" : `${Math.floor(minutes)} 分钟前`; }
     function renderCoverage() {
       const coverage = state.data.productionCanvas.sceneCoverage;
       if (!coverage) { $("#coverage").innerHTML = '<div class="empty">镜头表确定后，这里会按场景显示摄影覆盖、机位、布光和剪辑余量。</div>'; return; }
@@ -500,11 +525,12 @@
     }
     function renderActivity() {
       const activity = state.data.productionCanvas.activity ?? { events: [], pendingInteractions: [], missingEvidence: [], agentBatches: [] };
+      const productionPulse = renderProductionPulse(activity.creativeProgressSla);
       const pending = activity.pendingInteractions.length ? activity.pendingInteractions.map((item) => `<div class="activity-item"><span class="tag">需要确认</span><span>${escapeHtml(item.label)}<br><span class="native-badge">请在 Codex 对话中选择，画布不会重复提问</span>${advancedDetails("制作详情", item)}</span></div>`).join("") : '<div class="empty">现在不需要你做选择。</div>';
       const evidence = activity.missingEvidence.length ? `<div class="activity-item"><span class="tag">准备中</span><span class="evidence-missing">还有 ${activity.missingEvidence.length} 项制作内容需要完成。</span>${advancedDetails("查看明细", activity.missingEvidence)}</div>` : '<div class="empty">当前阶段需要的内容已经准备好。</div>';
       const batches = activity.agentBatches?.length ? activity.agentBatches.map((batch) => `<div class="activity-item"><span class="tag">制作团队</span><span><strong>${escapeHtml(statusLabel(batch.status))}</strong><br>${batch.dispatchedCount}/${batch.taskIds.length} 项工作已开始${advancedDetails("制作详情", batch)}</span></div>`).join("") : '<div class="empty">制作团队会在需要时并行处理任务。</div>';
       const events = activity.events.length ? activity.events.map((item) => `<div class="activity-item"><span class="tag">${escapeHtml(stageLabel(item.stage))}</span><span>${escapeHtml(item.detail ?? "制作进度已更新")}${advancedDetails("制作详情", { sequence: item.sequence, type: item.type, stage: item.stage })}</span></div>`).join("") : '<div class="empty">制作开始后，关键进展会显示在这里。</div>';
-      $("#activity").innerHTML = `<div class="native-callout"><strong>需要你决定的事项会出现在 Codex 对话中</strong><br>这里用于查看制作进度和结果，不会重复提问，也不会替你作决定。</div><div class="activity-grid"><div><section class="activity-panel"><h2>等待你的选择</h2>${pending}</section><section class="activity-panel"><h2>当前准备情况</h2>${evidence}</section><section class="activity-panel"><h2>制作团队</h2>${batches}</section></div><section class="activity-panel"><h2>制作记录</h2>${events}</section></div>`;
+      $("#activity").innerHTML = `${productionPulse}<div class="native-callout"><strong>需要你决定的事项会出现在 Codex 对话中</strong><br>这里用于查看制作进度和结果，不会重复提问，也不会替你作决定。</div><div class="activity-grid"><div><section class="activity-panel"><h2>等待你的选择</h2>${pending}</section><section class="activity-panel"><h2>当前准备情况</h2>${evidence}</section><section class="activity-panel"><h2>制作团队</h2>${batches}</section></div><section class="activity-panel"><h2>制作记录</h2>${events}</section></div>`;
     }
     function shortType(type) { return ({ stage: "阶段", brief: "需求", approval: "确认", agent: "制作成员", image: "图片", video: "视频", audio: "音频", shot: "镜头", document: "文档", artifact: "制作记录", decision: "选择" })[type] ?? "制作内容"; }
     function relationLabel(kind) { return ({ derived_from: "来自", frame_handoff: "画面衔接", evidence: "参考依据", dependency: "先后关系", candidate: "备选", edit: "剪辑" })[kind] ?? "关联"; }

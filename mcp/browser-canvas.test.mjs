@@ -69,6 +69,10 @@ test("opens on a media-first relation view and keeps specialist review views ava
   assert.match(html, /媒体关系/);
   assert.match(html, /mediaGraph/);
   assert.match(html, /media-preview/);
+  assert.match(html, /production-pulse/);
+  assert.match(html, /创作产出已停滞/);
+  assert.match(html, /renderProductionPulse/);
+  assert.match(html, /if \(pulse\) pulse\.outerHTML = renderProductionPulse\(creativeSla\)/);
   assert.match(html, /media-edge/);
   assert.match(html, /data-view="review"/);
   assert.match(html, /\["文档", assets\.filter/);

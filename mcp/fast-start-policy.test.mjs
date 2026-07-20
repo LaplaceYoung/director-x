@@ -35,6 +35,20 @@ test("raises a five-minute creative-output breach and clears it after a real ass
   beginCreativeWork(run, "2026-07-20T00:00:00.000Z");
   assert.equal(evaluateCreativeProgressSla(run, "2026-07-20T00:04:59.000Z").status, "on_track");
   assert.equal(evaluateCreativeProgressSla(run, "2026-07-20T00:05:01.000Z").status, "breached");
-  run.artifacts["first-keyframe.png"] = { mediaKind: "image", path: "/tmp/first-keyframe.png" };
-  assert.equal(evaluateCreativeProgressSla(run, "2026-07-20T00:06:00.000Z").status, "satisfied");
+  run.artifacts["first-keyframe.png"] = { mediaKind: "image", path: "/tmp/first-keyframe.png", registeredAt: "2026-07-20T00:05:30.000Z" };
+  const recovered = evaluateCreativeProgressSla(run, "2026-07-20T00:06:00.000Z");
+  assert.equal(recovered.status, "satisfied");
+  assert.equal(recovered.latestCreativeArtifactAt, "2026-07-20T00:05:30.000Z");
+  assert.deepEqual(recovered.latestCreativeArtifactRefs, ["first-keyframe.png"]);
+});
+
+test("breaches again when production stops after the first creative asset", () => {
+  const run = readyRun();
+  beginCreativeWork(run, "2026-07-20T00:00:00.000Z");
+  run.artifacts["script.md"] = { mediaKind: "document", path: "/tmp/script.md", registeredAt: "2026-07-20T00:03:00.000Z" };
+  assert.equal(evaluateCreativeProgressSla(run, "2026-07-20T00:07:59.000Z").status, "satisfied");
+  const stalled = evaluateCreativeProgressSla(run, "2026-07-20T00:08:01.000Z");
+  assert.equal(stalled.status, "breached");
+  assert.equal(stalled.nextRequiredAction, "dispatch_reference_asset_and_script_work_now");
+  assert.match(stalled.userFacingMessage, /最近五分钟/);
 });
