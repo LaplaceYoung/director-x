@@ -3,6 +3,9 @@ interface:
   short_description: "Plan, preview, approve, and audit timeline edits"
   default_prompt: "Use Director X to plan a non-destructive timeline edit, show the dry-run impact in the canvas, and obtain Codex approval for material changes."
 
+policy:
+  allow_implicit_invocation: false
+
 dependencies:
   tools:
     - type: "mcp"

@@ -1,0 +1,13 @@
+interface:
+  display_name: "Director X Director Runtime"
+  short_description: "Maintain Director.md and model-executable directing rules"
+  default_prompt: "Update Director.md or the Director Runtime with evidence-backed video grammar, memory, search, budget, review, editing, and model-facing output contracts."
+
+policy:
+  allow_implicit_invocation: false
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "directorx-production"
+      description: "Bundled Director X MCP server for Director documents, knowledge retrieval, cinematic references, prompt contracts, and production artifacts."

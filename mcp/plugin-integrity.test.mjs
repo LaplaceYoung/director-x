@@ -77,16 +77,25 @@ test("binds every surfaced Director X skill to the bundled production MCP server
   const mcpConfig = JSON.parse(await readFile(join(pluginRoot, ".mcp.json"), "utf8"));
   assert.ok(mcpConfig.mcpServers["directorx-production"]);
   const skillEntries = await readdir(join(pluginRoot, "skills"), { withFileTypes: true });
+  const skillNames = skillEntries.filter((item) => item.isDirectory()).map((entry) => entry.name).sort();
   const metadataFiles = [];
-  for (const entry of skillEntries.filter((item) => item.isDirectory())) {
-    const path = join(pluginRoot, "skills", entry.name, "agents", "openai.yaml");
-    try { metadataFiles.push({ path, content: await readFile(path, "utf8") }); }
+  for (const skillName of skillNames) {
+    const path = join(pluginRoot, "skills", skillName, "agents", "openai.yaml");
+    try { metadataFiles.push({ skillName, path, content: await readFile(path, "utf8") }); }
     catch (error) { if (error?.code !== "ENOENT") throw error; }
   }
-  assert.ok(metadataFiles.length >= 7);
+  assert.equal(metadataFiles.length, skillNames.length);
   for (const metadata of metadataFiles) {
+    assert.match(metadata.content, /interface:\s*[\s\S]*display_name:\s*["'][^"']+["']/);
+    assert.match(metadata.content, /interface:\s*[\s\S]*short_description:\s*["'][^"']+["']/);
+    assert.match(metadata.content, /interface:\s*[\s\S]*default_prompt:\s*["'][^"']+["']/);
     assert.match(metadata.content, /dependencies:\s*[\s\S]*type:\s*["']?mcp["']?[\s\S]*value:\s*["']?directorx-production["']?/);
     assert.doesNotMatch(metadata.content, /value:\s*["']?node_repl["']?/);
+    if (metadata.skillName === "directorx") {
+      assert.match(metadata.content, /allow_implicit_invocation:\s*true/);
+    } else {
+      assert.match(metadata.content, /allow_implicit_invocation:\s*false/);
+    }
   }
   const skill = await readFile(join(pluginRoot, "skills", "directorx", "SKILL.md"), "utf8");
   const orchestrationSkill = await readFile(join(pluginRoot, "skills", "directorx-production-orchestration", "SKILL.md"), "utf8");

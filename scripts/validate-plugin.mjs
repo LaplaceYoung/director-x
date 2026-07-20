@@ -2,6 +2,7 @@ import { access, readFile, readdir } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateSkillMcpDependencyContract } from "./skill-mcp-dependencies.mjs";
+import { validateSkillMetadataCatalog } from "./skill-metadata-catalog.mjs";
 
 const pluginRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const errors = [];
@@ -97,6 +98,7 @@ async function requireAbsolutePath(path, label) {
 
 async function validateSkillMcpDependencies(config) {
   const entries = await readdir(join(pluginRoot, "skills"), { withFileTypes: true });
+  const skillNames = entries.filter((item) => item.isDirectory()).map((item) => item.name);
   const metadataFiles = [];
   for (const entry of entries.filter((item) => item.isDirectory())) {
     const relativePath = join("skills", entry.name, "agents", "openai.yaml");
@@ -106,5 +108,6 @@ async function validateSkillMcpDependencies(config) {
       errors.push(`${relativePath}: ${error.message}`);
     }
   }
+  errors.push(...validateSkillMetadataCatalog({ skillNames, metadataFiles }));
   errors.push(...validateSkillMcpDependencyContract({ configuredServers: Object.keys(config?.mcpServers ?? {}), metadataFiles }));
 }

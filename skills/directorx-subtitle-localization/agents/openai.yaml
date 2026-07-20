@@ -1,0 +1,13 @@
+interface:
+  display_name: "Director X Subtitle Localization"
+  short_description: "Design readable Chinese and bilingual subtitle tracks"
+  default_prompt: "Create synchronized Chinese or bilingual captions with stable terminology, readable line breaks, emphasis, safe-area placement, and platform-specific timing."
+
+policy:
+  allow_implicit_invocation: false
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "directorx-production"
+      description: "Bundled Director X MCP server for transcripts, caption tracks, timeline bindings, audio evidence, render composition, and final subtitle review."

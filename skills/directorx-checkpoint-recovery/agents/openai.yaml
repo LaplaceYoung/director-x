@@ -1,0 +1,13 @@
+interface:
+  display_name: "Director X Checkpoint Recovery"
+  short_description: "Resume production without losing work or repeating cost"
+  default_prompt: "Inspect the durable Director X checkpoint, preserve completed artifacts and approvals, identify one executable recovery action, and resume without duplicate provider work."
+
+policy:
+  allow_implicit_invocation: false
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "directorx-production"
+      description: "Bundled Director X MCP server for checkpoints, failure ledgers, minimal recovery actions, surface rebinding, and safe resume."

@@ -1,0 +1,13 @@
+interface:
+  display_name: "Director X Continuity Memory"
+  short_description: "Preserve characters, products, scenes, voice, and approvals"
+  default_prompt: "Build or update production memory from durable evidence, separating continuity facts, approvals, failures, timeline state, and long-form segment handoffs."
+
+policy:
+  allow_implicit_invocation: false
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "directorx-production"
+      description: "Bundled Director X MCP server for continuity plans, camera graphs, segment boundaries, approvals, failures, and checkpoint state."

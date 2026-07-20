@@ -1,0 +1,13 @@
+interface:
+  display_name: "Director X Screen Demo"
+  short_description: "Produce readable product demos and app walkthroughs"
+  default_prompt: "Plan a screen-led product video with readable crops, cursor choreography, zooms, callouts, narration, captions, proof beats, and platform-safe exports."
+
+policy:
+  allow_implicit_invocation: false
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "directorx-production"
+      description: "Bundled Director X MCP server for product assets, screen-proof shotlists, narration, captions, editing, rendering, and review."

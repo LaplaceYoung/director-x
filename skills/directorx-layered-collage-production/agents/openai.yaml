@@ -1,0 +1,13 @@
+interface:
+  display_name: "Director X Layered Collage"
+  short_description: "Produce configurable collage and parallax animation"
+  default_prompt: "Design a layered collage production with separable visual roles, motivated motion, voice and music routes, editable composition parameters, and FFmpeg QA."
+
+policy:
+  allow_implicit_invocation: false
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "directorx-production"
+      description: "Bundled Director X MCP server for layered scene plans, image generation, TTS, Remotion or HyperFrames rendering, and QA evidence."

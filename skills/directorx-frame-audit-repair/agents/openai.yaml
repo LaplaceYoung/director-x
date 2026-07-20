@@ -1,0 +1,13 @@
+interface:
+  display_name: "Director X Frame Audit Repair"
+  short_description: "Turn exhaustive frame defects into bounded repairs"
+  default_prompt: "Localize exhaustive frame-audit failures to exact clips and PTS evidence, create non-destructive repair work, and require a fresh render and full audit."
+
+policy:
+  allow_implicit_invocation: false
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "directorx-production"
+      description: "Bundled Director X MCP server for full-frame findings, repair branches, timeline markers, targeted edits, rerenders, and re-audit."

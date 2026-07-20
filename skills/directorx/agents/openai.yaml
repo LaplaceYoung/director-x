@@ -3,6 +3,9 @@ interface:
   short_description: "Run a canvas-first, approval-aware AI video production workflow."
   default_prompt: "Use Director X to produce and verify a playable video, opening the production canvas in the in-app Browser first."
 
+policy:
+  allow_implicit_invocation: true
+
 dependencies:
   tools:
     - type: "mcp"

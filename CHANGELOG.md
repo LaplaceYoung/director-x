@@ -8,6 +8,7 @@ All notable public changes to Director X are recorded here.
 
 - Started plugin productization work around marketplace installation, validation, CI, public tool contracts, and progressive disclosure.
 - Bound surfaced Director X skills to the bundled `directorx-production` MCP server and reject stale or unconfigured skill dependencies during plugin validation.
+- Completed UI metadata for every bundled Director X skill, with one implicit entrypoint and explicit-only specialist skills to prevent workflow fragments from bypassing the main production Run.
 
 ## [0.1.0] - 2026-07-21
 

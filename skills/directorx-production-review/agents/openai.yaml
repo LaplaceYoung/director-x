@@ -1,0 +1,13 @@
+interface:
+  display_name: "Director X Production Review"
+  short_description: "Review candidates, continuity, edits, renders, and delivery"
+  default_prompt: "Review the current Director X output against its approved intent, visual quality, continuity, edit fit, cost limits, render evidence, and delivery gates."
+
+policy:
+  allow_implicit_invocation: false
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "directorx-production"
+      description: "Bundled Director X MCP server for candidate review, selection, continuity evidence, render reports, exhaustive audit, and delivery approval."
