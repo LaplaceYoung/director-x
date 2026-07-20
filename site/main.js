@@ -1,317 +1,223 @@
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js";
+import { initialLocale, locales } from "./i18n.js";
 
-const canvas = document.querySelector("#production-scene");
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const narrowScreen = window.matchMedia("(max-width: 720px)").matches;
-const sceneStates = {
-  hero: { camera: [0.3, 0.1, 14], target: [0, 0, 0], spread: 1 },
-  goal: { camera: [-3.8, 0.4, 10.5], target: [-3.2, 0, 0], spread: .72 },
-  agents: { camera: [1.3, 1.6, 12], target: [.4, .2, 0], spread: 1.12 },
-  canvas: { camera: [5.8, -.3, 9.4], target: [4.3, -.8, 0], spread: .78 },
-  flow: { camera: [0, 4.5, 14.5], target: [1.2, -.2, 0], spread: .48 },
-  roadmap: { camera: [0, .5, 19], target: [1.8, 0, 0], spread: 1.55 }
-};
+const canvas = document.querySelector("#production-scene");
+const sceneChapters = [...document.querySelectorAll("[data-scene]")];
+const clamp = (value, minimum = 0, maximum = 1) => Math.min(Math.max(value, minimum), maximum);
+const mix = (from, to, amount) => from + (to - from) * amount;
+const smoothstep = value => value * value * (3 - 2 * value);
 
+let locale = initialLocale();
+let THREE;
 let renderer;
 let scene;
 let camera;
-let activeState = "hero";
 let visible = true;
 let pointerX = 0;
 let pointerY = 0;
-let highlightedAgent = "director";
 let scrollY = window.scrollY;
 let smoothScrollY = scrollY;
 let lastScrollY = scrollY;
 let scrollVelocity = 0;
-let sceneProgress = 0;
+let highlightedAgent = "director";
+let lastWebglFrame = 0;
 const groups = {};
-const pulses = [];
-const sceneChapters = [...document.querySelectorAll("[data-scene]")];
+const nodes = new Map();
+const relations = [];
 
-document.body.classList.toggle("loading", !reducedMotion);
-prepareTextReveals();
+applyLocale(locale, false);
+setupRevealMotion();
 startEntrance();
+bindInteractions();
 requestAnimationFrame(updateDomMotion);
 
-try {
-  renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, narrowScreen ? 1.15 : 1.5));
-  renderer.setClearColor(0x000000, 0);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera(34, 1, .1, 100);
-  document.documentElement.classList.add("webgl-ready");
-  buildScene();
-  resize();
-  if (reducedMotion) renderFrame(0);
-  else renderer.setAnimationLoop(renderFrame);
-} catch {
-  document.documentElement.classList.add("webgl-fallback");
-}
+import("https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js")
+  .then(module => {
+    THREE = module;
+    return document.fonts?.ready;
+  })
+  .then(() => initializeScene())
+  .catch(() => document.documentElement.classList.add("webgl-fallback"));
 
-function buildScene() {
-  const ambient = new THREE.AmbientLight(0xffffff, 2.1);
-  const key = new THREE.DirectionalLight(0xffffff, 4.2);
-  key.position.set(4, 8, 10);
-  scene.add(ambient, key);
-
-  groups.root = new THREE.Group();
-  groups.nodes = new THREE.Group();
-  groups.lines = new THREE.Group();
-  groups.root.add(groups.lines, groups.nodes);
-  scene.add(groups.root);
-
-  const nodes = [
-    node("goal", "GOAL", [-3.5, 0, 0], [1.6, .9, .34], 0xe85d3f, "goal"),
-    node("director", "DX DIRECTOR", [-.5, 2.15, -.5], [1.8, .58, .28], 0x171715, "agent"),
-    node("reference", "REFERENCE", [2.2, 3.1, -1.2], [1.65, .92, .24], 0xf2f0e9, "asset"),
-    node("asset", "ASSET", [2.5, 1.25, .35], [1.55, .92, .24], 0xf2f0e9, "asset"),
-    node("shot", "SHOT PLAN", [.8, -.2, 1.1], [1.75, .86, .24], 0xf2f0e9, "asset"),
-    node("model", "MODEL ROUTE", [3.7, -.7, -.8], [1.82, .58, .25], 0x171715, "agent"),
-    node("editor", "ROUGH CUT", [1.15, -2.35, -.4], [1.9, 1.05, .26], 0xf2f0e9, "asset"),
-    node("review", "REVIEW", [4.15, -2.7, .8], [1.6, .58, .25], 0x171715, "agent"),
-    node("final", "FINAL FILM", [6.7, -.5, 0], [2.25, 1.3, .3], 0x11110f, "final")
-  ];
-  for (const item of nodes) groups.nodes.add(item.mesh);
-
-  const relations = [
-    ["goal", "director"], ["goal", "shot"], ["director", "reference"], ["director", "asset"],
-    ["reference", "shot"], ["asset", "shot"], ["shot", "model"], ["model", "editor"],
-    ["shot", "editor"], ["editor", "review"], ["review", "final"]
-  ];
-  for (const [from, to] of relations) connect(nodes, from, to);
-
-  const floor = new THREE.GridHelper(24, 24, 0xc9c4b9, 0xdad6ce);
-  floor.position.y = -4.6;
-  floor.rotation.z = .03;
-  floor.material.transparent = true;
-  floor.material.opacity = .3;
-  groups.root.add(floor);
-}
-
-function node(id, label, position, scale, color, type) {
-  const geometry = new THREE.BoxGeometry(...scale);
-  const material = new THREE.MeshStandardMaterial({ color, roughness: .78, metalness: .04 });
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.set(...position);
-  mesh.rotation.set(-.08, .08, type === "final" ? -.04 : .02);
-  mesh.userData = { id, type, base: new THREE.Vector3(...position), baseColor: color };
-
-  const labelTexture = textTexture(label, color === 0xf2f0e9 ? "#11110f" : "#f4f1e9");
-  const labelMaterial = new THREE.MeshBasicMaterial({ map: labelTexture, transparent: true, depthWrite: false });
-  const labelMesh = new THREE.Mesh(new THREE.PlaneGeometry(scale[0] * .8, scale[1] * .34), labelMaterial);
-  labelMesh.position.z = scale[2] / 2 + .01;
-  mesh.add(labelMesh);
-  return { id, mesh };
-}
-
-function textTexture(text, color) {
-  const surface = document.createElement("canvas");
-  surface.width = 512;
-  surface.height = 128;
-  const context = surface.getContext("2d");
-  context.clearRect(0, 0, surface.width, surface.height);
-  context.fillStyle = color;
-  context.font = "600 34px Helvetica Neue, Arial";
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.fillText(text, 256, 64);
-  const texture = new THREE.CanvasTexture(surface);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
-}
-
-function connect(nodes, fromId, toId) {
-  const from = nodes.find(item => item.id === fromId).mesh.position;
-  const to = nodes.find(item => item.id === toId).mesh.position;
-  const midpoint = from.clone().lerp(to, .5);
-  midpoint.z += 1.2 + Math.abs(from.y - to.y) * .12;
-  const curve = new THREE.QuadraticBezierCurve3(from.clone(), midpoint, to.clone());
-  const geometry = new THREE.BufferGeometry().setFromPoints(curve.getPoints(42));
-  const material = new THREE.LineBasicMaterial({ color: fromId === "goal" ? 0xe85d3f : 0x484640, transparent: true, opacity: fromId === "goal" ? .9 : .48 });
-  const line = new THREE.Line(geometry, material);
-  line.userData = { fromId, toId };
-  groups.lines.add(line);
-
-  const pulse = new THREE.Mesh(new THREE.SphereGeometry(.055, 10, 10), new THREE.MeshBasicMaterial({ color: 0xe85d3f }));
-  pulse.userData = { curve, offset: Math.random(), speed: .045 + Math.random() * .045, fromId, toId };
-  groups.root.add(pulse);
-  pulses.push(pulse);
-}
-
-function renderFrame(time = 0) {
-  if (!renderer || !visible) return;
-  const { current, next, mix } = resolveSceneTrack(smoothScrollY);
-  activeState = current.dataset.scene;
-  sceneProgress = mix;
-  const currentState = sceneStates[activeState];
-  const nextState = sceneStates[next.dataset.scene] || currentState;
-  const easedMix = mix * mix * (3 - 2 * mix);
-  const state = {
-    camera: currentState.camera.map((value, index) => THREE.MathUtils.lerp(value, nextState.camera[index], easedMix)),
-    target: currentState.target.map((value, index) => THREE.MathUtils.lerp(value, nextState.target[index], easedMix)),
-    spread: THREE.MathUtils.lerp(currentState.spread, nextState.spread, easedMix)
-  };
-  const seconds = time * .001;
-  const cameraTarget = new THREE.Vector3(...state.camera);
-  cameraTarget.x += pointerX * .55;
-  cameraTarget.y += pointerY * .35;
-  camera.position.lerp(cameraTarget, .045);
-  const lookTarget = new THREE.Vector3(...state.target);
-  camera.lookAt(lookTarget);
-
-  groups.root.scale.lerp(new THREE.Vector3(state.spread, state.spread, state.spread), .035);
-  groups.root.rotation.y += ((pointerX * .06 + scrollVelocity * .0012) - groups.root.rotation.y) * .035;
-  groups.root.rotation.x += ((-pointerY * .025 + scrollVelocity * .00045) - groups.root.rotation.x) * .035;
-
-  for (const mesh of groups.nodes.children) {
-    const selected = mesh.userData.id === highlightedAgent;
-    const active = activeState === "goal" ? mesh.userData.id === "goal" : activeState === "agents" ? selected : false;
-    const lift = active ? .16 : 0;
-    mesh.position.y += ((mesh.userData.base.y + lift + Math.sin(seconds * .55 + mesh.userData.base.x) * .025) - mesh.position.y) * .08;
-    mesh.material.emissive.setHex(active ? 0x4a1309 : 0x000000);
-    mesh.material.emissiveIntensity = active ? .85 : 0;
+function applyLocale(nextLocale, updateUrl = true) {
+  locale = locales[nextLocale] ? nextLocale : "en";
+  const bundle = locales[locale];
+  document.documentElement.lang = locale;
+  document.documentElement.style.setProperty("--live-run-label", locale === "zh-CN" ? '"实时运行"' : '"LIVE RUN"');
+  document.title = bundle.meta.title;
+  document.querySelector('meta[name="description"]').content = bundle.meta.description;
+  document.querySelector('meta[property="og:title"]').content = bundle.meta.title;
+  document.querySelector('meta[property="og:description"]').content = bundle.meta.description;
+  for (const element of document.querySelectorAll("[data-i18n]")) {
+    const value = bundle.copy[element.dataset.i18n];
+    if (value != null) element.textContent = value;
   }
-
-  for (const line of groups.lines.children) {
-    const connected = [line.userData.fromId, line.userData.toId].includes(highlightedAgent);
-    line.material.opacity += (((activeState === "agents" && connected) ? .95 : line.userData.fromId === "goal" ? .8 : .35) - line.material.opacity) * .08;
+  for (const element of document.querySelectorAll("[data-i18n-html]")) {
+    const value = bundle.copy[element.dataset.i18nHtml];
+    if (value != null) element.innerHTML = value;
   }
-
-  for (const pulse of pulses) {
-    const progress = (seconds * pulse.userData.speed + pulse.userData.offset) % 1;
-    pulse.position.copy(pulse.userData.curve.getPoint(progress));
-    pulse.visible = activeState !== "roadmap" || pulse.userData.toId === "final";
+  for (const element of document.querySelectorAll("[data-i18n-aria-label]")) {
+    const value = bundle.copy[element.dataset.i18nAriaLabel];
+    if (value != null) element.setAttribute("aria-label", value);
   }
-
-  renderer.render(scene, camera);
+  document.querySelectorAll("[data-locale]").forEach(button => {
+    const selected = button.dataset.locale === locale;
+    button.setAttribute("aria-pressed", String(selected));
+    button.classList.toggle("active", selected);
+  });
+  for (const chapter of sceneChapters) chapter.dataset.chapterName = bundle.chapterNames[chapter.dataset.scene] ?? chapter.dataset.scene;
+  setupRevealMotion();
+  updateSceneLabels();
+  localStorage.setItem("directorx.locale", locale);
+  if (updateUrl) {
+    const url = new URL(location.href);
+    url.searchParams.set("lang", locale);
+    history.replaceState({}, "", url);
+    document.querySelector("[data-language-status]").textContent = bundle.copy["language.changed"];
+  }
 }
 
-function resize() {
-  if (!renderer) return;
-  const rect = canvas.getBoundingClientRect();
-  renderer.setSize(rect.width, rect.height, false);
-  camera.aspect = rect.width / Math.max(rect.height, 1);
-  camera.updateProjectionMatrix();
+function setupRevealMotion() {
+  document.querySelectorAll("[data-reveal]").forEach(element => {
+    element.querySelectorAll(".phrase").forEach((phrase, index) => phrase.style.setProperty("--phrase-index", index));
+  });
 }
 
-window.addEventListener("resize", resize, { passive: true });
-window.addEventListener("pointermove", event => {
-  pointerX = (event.clientX / window.innerWidth - .5) * 2;
-  pointerY = (event.clientY / window.innerHeight - .5) * 2;
-}, { passive: true });
-document.addEventListener("visibilitychange", () => {
-  visible = !document.hidden;
-  if (visible && reducedMotion) renderFrame(0);
-});
-
-const chapterObserver = new IntersectionObserver(entries => {
-  const visibleChapters = entries.filter(entry => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-  if (visibleChapters[0]) activeState = visibleChapters[0].target.dataset.scene;
-}, { threshold: [.2, .4, .65], rootMargin: "-15% 0px -25% 0px" });
-sceneChapters.forEach(chapter => chapterObserver.observe(chapter));
-
-const revealObserver = new IntersectionObserver(entries => {
-  for (const entry of entries) if (entry.isIntersecting) entry.target.classList.add("visible");
-}, { threshold: .14 });
-document.querySelectorAll(".reveal").forEach(item => revealObserver.observe(item));
-
-document.querySelectorAll("[data-agent]").forEach(row => {
-  row.addEventListener("pointerenter", () => selectAgent(row));
-  row.addEventListener("focus", () => selectAgent(row));
-  row.addEventListener("click", () => selectAgent(row));
-});
+function bindInteractions() {
+  document.querySelectorAll("[data-locale]").forEach(button => button.addEventListener("click", () => {
+    if (button.dataset.locale !== locale) applyLocale(button.dataset.locale);
+  }));
+  document.querySelectorAll("[data-agent]").forEach(row => {
+    row.addEventListener("pointerenter", () => selectAgent(row));
+    row.addEventListener("focus", () => selectAgent(row));
+    row.addEventListener("click", () => selectAgent(row));
+  });
+  document.querySelector("[data-copy]").addEventListener("click", async event => {
+    const code = event.currentTarget.nextElementSibling.textContent;
+    try {
+      await navigator.clipboard.writeText(code);
+      event.currentTarget.textContent = locales[locale].copy["install.copied"];
+      document.querySelector(".command-block").style.setProperty("--copy-progress", "1");
+      window.setTimeout(() => {
+        event.currentTarget.textContent = locales[locale].copy["install.copy"];
+        document.querySelector(".command-block").style.setProperty("--copy-progress", "0");
+      }, 1700);
+    } catch {
+      event.currentTarget.textContent = locales[locale].copy["install.select"];
+    }
+  });
+  window.addEventListener("scroll", () => {
+    scrollY = window.scrollY;
+    document.querySelector("[data-nav]").classList.toggle("scrolled", scrollY > 24);
+  }, { passive: true });
+  window.addEventListener("pointermove", event => {
+    pointerX = (event.clientX / window.innerWidth - .5) * 2;
+    pointerY = (event.clientY / window.innerHeight - .5) * 2;
+  }, { passive: true });
+  document.addEventListener("visibilitychange", () => { visible = !document.hidden; });
+  const revealObserver = new IntersectionObserver(entries => {
+    for (const entry of entries) if (entry.isIntersecting) entry.target.classList.add("visible");
+  }, { threshold: .16 });
+  document.querySelectorAll("[data-reveal], .reveal").forEach(element => revealObserver.observe(element));
+  const videoObserver = new IntersectionObserver(entries => {
+    for (const entry of entries) if (!entry.isIntersecting && !entry.target.paused) entry.target.pause();
+  }, { threshold: .12 });
+  document.querySelectorAll("video").forEach(video => videoObserver.observe(video));
+}
 
 function selectAgent(row) {
   highlightedAgent = row.dataset.agent;
   document.querySelectorAll("[data-agent]").forEach(item => item.classList.toggle("active", item === row));
 }
 
-const nav = document.querySelector("[data-nav]");
-window.addEventListener("scroll", () => {
-  scrollY = window.scrollY;
-  nav.classList.toggle("scrolled", scrollY > 24);
-}, { passive: true });
-
-function resolveSceneTrack(position) {
-  const viewportCenter = position + window.innerHeight * .5;
-  let currentIndex = 0;
-  for (let index = 0; index < sceneChapters.length - 1; index += 1) {
-    const currentCenter = sceneChapters[index].offsetTop + sceneChapters[index].offsetHeight * .5;
-    const nextCenter = sceneChapters[index + 1].offsetTop + sceneChapters[index + 1].offsetHeight * .5;
-    if (viewportCenter >= currentCenter) currentIndex = index;
-    if (viewportCenter < nextCenter) {
-      return {
-        current: sceneChapters[index],
-        next: sceneChapters[index + 1],
-        mix: THREE.MathUtils.clamp((viewportCenter - currentCenter) / Math.max(nextCenter - currentCenter, 1), 0, 1)
-      };
-    }
-  }
-  const last = sceneChapters.at(-1);
-  return { current: sceneChapters[currentIndex] || last, next: last, mix: 1 };
-}
-
 function updateDomMotion() {
-  smoothScrollY += (scrollY - smoothScrollY) * (reducedMotion ? 1 : .1);
-  scrollVelocity += ((scrollY - lastScrollY) - scrollVelocity) * .18;
+  smoothScrollY += (scrollY - smoothScrollY) * (reducedMotion ? 1 : .095);
+  scrollVelocity += ((scrollY - lastScrollY) - scrollVelocity) * .17;
   lastScrollY = scrollY;
   const maxScroll = Math.max(document.documentElement.scrollHeight - window.innerHeight, 1);
-  document.body.style.setProperty("--scroll-progress", Math.min(scrollY / maxScroll, 1).toFixed(4));
-  document.body.style.setProperty("--scroll-velocity", scrollVelocity.toFixed(2));
+  document.documentElement.style.setProperty("--scroll-progress", (scrollY / maxScroll).toFixed(4));
 
-  const heroProgress = Math.min(scrollY / Math.max(window.innerHeight, 1), 1);
-  document.body.style.setProperty("--hero-exit", heroProgress.toFixed(3));
+  const hero = document.querySelector(".hero");
+  const heroProgress = clamp(scrollY / Math.max(hero.offsetHeight - window.innerHeight * .25, 1));
+  document.documentElement.style.setProperty("--hero-progress", heroProgress.toFixed(3));
+
+  const goal = document.querySelector(".statement");
+  const goalProgress = sectionTravel(goal);
+  goal.style.setProperty("--goal-progress", goalProgress.toFixed(3));
+  document.querySelectorAll(".event-ledger li").forEach((item, index) => {
+    item.style.setProperty("--event-active", clamp(goalProgress * 5 - index * .72).toFixed(3));
+  });
+
   const canvasSection = document.querySelector(".canvas-section");
-  const canvasRect = canvasSection.getBoundingClientRect();
-  const canvasProgress = THREE.MathUtils.clamp((window.innerHeight - canvasRect.top) / (canvasRect.height + window.innerHeight), 0, 1);
-  const frameProgress = THREE.MathUtils.clamp((window.innerHeight * .88 - canvasRect.top) / (window.innerHeight * .72), 0, 1);
-  canvasSection.style.setProperty("--canvas-shift", canvasProgress.toFixed(3));
-  canvasSection.style.setProperty("--frame-progress", frameProgress.toFixed(3));
-  canvasSection.style.setProperty("--lineage-progress", THREE.MathUtils.clamp(frameProgress * 1.6 - .55, 0, 1).toFixed(3));
-  document.body.style.setProperty("--scene-opacity", canvasRect.top < window.innerHeight * .25 && canvasRect.bottom > 0 ? .08 : 1);
+  const canvasProgress = sectionTravel(canvasSection);
+  canvasSection.style.setProperty("--canvas-progress", canvasProgress.toFixed(3));
+  canvasSection.style.setProperty("--canvas-enter", clamp(canvasProgress * 3.2).toFixed(3));
+  canvasSection.style.setProperty("--canvas-focus-progress", clamp((canvasProgress - .12) * 2.1).toFixed(3));
+  canvasSection.style.setProperty("--lineage-progress", clamp((canvasProgress - .56) * 3.1).toFixed(3));
+  const focusIndex = Math.min(2, Math.floor(clamp((canvasProgress - .3) * 2.7) * 3));
+  document.querySelectorAll("[data-focus]").forEach((item, index) => item.classList.toggle("active", index === focusIndex));
+  document.querySelector("[data-canvas-time]").textContent = timecode(canvasProgress * 31);
+
+  const demos = document.querySelector(".demo-section");
+  const demoProgress = sectionTravel(demos);
+  const demoMonitors = document.querySelectorAll(".demo-monitor");
+  demoMonitors[0].style.setProperty("--demo-x", `${mix(-18, 0, clamp(demoProgress * 2.5))}vw`);
+  demoMonitors[0].style.setProperty("--demo-y", `${mix(18, 0, clamp(demoProgress * 2.5))}vh`);
+  demoMonitors[0].style.setProperty("--demo-rotate", `${mix(10, -2, clamp(demoProgress * 2.5))}deg`);
+  demoMonitors[1].style.setProperty("--demo-x", `${mix(18, 0, clamp((demoProgress - .13) * 2.5))}vw`);
+  demoMonitors[1].style.setProperty("--demo-y", `${mix(24, 0, clamp((demoProgress - .13) * 2.5))}vh`);
+  demoMonitors[1].style.setProperty("--demo-rotate", `${mix(-10, 2, clamp((demoProgress - .13) * 2.5))}deg`);
+
+  const roadmap = document.querySelector(".roadmap");
+  const roadmapProgress = sectionTravel(roadmap);
+  document.querySelectorAll(".roadmap-list article").forEach((item, index) => {
+    item.style.setProperty("--roadmap-line", `${clamp(roadmapProgress * 2.2 - index * .3) * 100}%`);
+  });
 
   const track = resolveSceneTrack(smoothScrollY);
-  const sceneIndex = sceneChapters.indexOf(track.current);
-  document.querySelector("[data-scene-index]").textContent = String(sceneIndex).padStart(2, "0");
+  const chapterIndex = sceneChapters.indexOf(track.current);
+  const chapterProgress = clamp(track.mix);
+  document.documentElement.style.setProperty("--chapter-progress", chapterProgress.toFixed(3));
+  document.querySelectorAll("[data-scene-index]").forEach(element => element.textContent = String(chapterIndex).padStart(2, "0"));
   document.querySelector("[data-scene-name]").textContent = track.current.dataset.chapterName;
+  const canvasVisible = canvasProgress > .08 && canvasProgress < .92;
+  const demosVisible = demoProgress > .08 && demoProgress < .92;
+  document.documentElement.style.setProperty("--scene-opacity", canvasVisible || demosVisible ? ".08" : "1");
   requestAnimationFrame(updateDomMotion);
 }
 
-function prepareTextReveals() {
-  const headings = document.querySelectorAll("h1, h2, h3");
-  for (const heading of headings) {
-    let wordIndex = 0;
-    for (const node of [...heading.childNodes]) {
-      if (node.nodeType !== Node.TEXT_NODE || !node.textContent.trim()) continue;
-      const fragment = document.createDocumentFragment();
-      const parts = node.textContent.split(/(\s+)/);
-      for (const part of parts) {
-        if (!part.trim()) {
-          fragment.append(part);
-          continue;
-        }
-        const mask = document.createElement("span");
-        mask.className = "word-mask";
-        const word = document.createElement("span");
-        word.style.setProperty("--word-index", wordIndex++);
-        word.textContent = part;
-        mask.append(word);
-        fragment.append(mask);
-      }
-      node.replaceWith(fragment);
-    }
-    if (heading.closest(".hero")) heading.classList.add("words-visible");
+function sectionTravel(section) {
+  if (section.offsetHeight <= window.innerHeight * 1.15) {
+    const rect = section.getBoundingClientRect();
+    return clamp((window.innerHeight - rect.top) / (window.innerHeight + rect.height));
   }
-  const textObserver = new IntersectionObserver(entries => {
-    for (const entry of entries) if (entry.isIntersecting) entry.target.classList.add("words-visible");
-  }, { threshold: .28 });
-  headings.forEach(heading => textObserver.observe(heading));
+  const distance = Math.max(section.offsetHeight - window.innerHeight, 1);
+  return clamp(-section.getBoundingClientRect().top / distance);
+}
+
+function resolveSceneTrack(position) {
+  const viewportCenter = position + window.innerHeight * .5;
+  for (let index = 0; index < sceneChapters.length - 1; index += 1) {
+    const current = sceneChapters[index];
+    const next = sceneChapters[index + 1];
+    const currentCenter = current.offsetTop + current.offsetHeight * .5;
+    const nextCenter = next.offsetTop + next.offsetHeight * .5;
+    if (viewportCenter < nextCenter) return { current, next, mix: clamp((viewportCenter - currentCenter) / Math.max(nextCenter - currentCenter, 1)) };
+  }
+  const last = sceneChapters.at(-1);
+  return { current: last, next: last, mix: 1 };
+}
+
+function timecode(seconds) {
+  const frames = Math.floor((seconds % 1) * 30);
+  const whole = Math.floor(seconds);
+  return `00:00:${String(whole).padStart(2, "0")}:${String(frames).padStart(2, "0")}`;
 }
 
 function startEntrance() {
   const loader = document.querySelector("[data-loader]");
+  document.body.classList.toggle("loading", !reducedMotion);
   if (reducedMotion) {
     loader.remove();
     document.body.classList.remove("loading");
@@ -320,9 +226,9 @@ function startEntrance() {
   const counter = document.querySelector("[data-loader-count]");
   const line = loader.querySelector(".loader-line span");
   const start = performance.now();
-  const duration = 1150;
+  const duration = 1050;
   function tick(now) {
-    const progress = Math.min((now - start) / duration, 1);
+    const progress = clamp((now - start) / duration);
     const eased = 1 - Math.pow(1 - progress, 3);
     counter.textContent = String(Math.round(eased * 100)).padStart(2, "0");
     line.style.transform = `scaleX(${eased})`;
@@ -330,18 +236,272 @@ function startEntrance() {
     else window.setTimeout(() => {
       loader.classList.add("done");
       document.body.classList.remove("loading");
-    }, 180);
+    }, 150);
   }
   requestAnimationFrame(tick);
 }
 
-document.querySelector("[data-copy]").addEventListener("click", async event => {
-  const code = event.currentTarget.nextElementSibling.textContent;
-  try {
-    await navigator.clipboard.writeText(code);
-    event.currentTarget.textContent = "Copied";
-    window.setTimeout(() => { event.currentTarget.textContent = "Copy"; }, 1600);
-  } catch {
-    event.currentTarget.textContent = "Select text";
+const sceneStates = {
+  hero: { camera: [.3, .1, 14], target: [0, 0, 0], spread: 1, roll: 0 },
+  goal: { camera: [-3.7, .3, 10.5], target: [-3.1, 0, 0], spread: .78, roll: -.015 },
+  agents: { camera: [1.3, 1.5, 12], target: [.5, .15, 0], spread: 1.06, roll: .01 },
+  canvas: { camera: [5.7, -.2, 9.3], target: [4.25, -.7, 0], spread: .78, roll: .02 },
+  flow: { camera: [1.6, 5.6, 14.8], target: [1.5, -.1, 0], spread: .57, roll: -.025 },
+  demos: { camera: [7.6, .2, 10.6], target: [6.2, -.3, 0], spread: .88, roll: 0 },
+  install: { camera: [2.4, 4.8, 16], target: [2.5, 0, 0], spread: .5, roll: 0 },
+  roadmap: { camera: [0, .7, 19], target: [2, 0, 0], spread: 1.42, roll: .02 },
+  closing: { camera: [5.8, 0, 13], target: [5.8, 0, 0], spread: .72, roll: 0 }
+};
+
+const layouts = {
+  hero: {
+    goal: [-3.5, 0, 0], director: [-.5, 2.15, -.5], reference: [2.2, 3.1, -1.2], asset: [2.5, 1.25, .35], shot: [.8, -.2, 1.1], model: [3.7, -.7, -.8], editor: [1.15, -2.35, -.4], review: [4.15, -2.7, .8], final: [6.7, -.5, 0]
+  },
+  goal: {
+    goal: [-3.3, 0, 1.2], director: [-1.2, 2.6, -1], reference: [2.8, 3.7, -2], asset: [3.6, 1.4, -1.2], shot: [1.8, -.2, -.8], model: [4.7, -.8, -1.8], editor: [2.1, -2.6, -1.2], review: [5.2, -2.9, -1], final: [7.8, -.5, -2]
+  },
+  agents: {
+    goal: [-4.2, 0, -1.2], director: [-1.1, 3.2, .5], reference: [1.6, 3.4, -.5], asset: [2.8, 1.7, .7], shot: [.2, .1, 1.2], model: [4.3, -.2, -.4], editor: [.9, -3.1, .5], review: [4.2, -3.2, 1], final: [7.3, -.6, -.8]
+  },
+  canvas: {
+    goal: [-4.1, 2.7, -1], director: [-1.2, 2.8, 0], reference: [1.7, 3.2, .4], asset: [2.1, 1.1, 1.3], shot: [.1, -.2, .8], model: [4.3, .1, .2], editor: [1.5, -2.6, 1.2], review: [4.6, -2.5, .5], final: [7.1, -.4, 0]
+  },
+  flow: {
+    goal: [-4.2, 0, 0], director: [-2.6, 0, 0], reference: [-.8, 0, 0], asset: [.8, 0, 0], shot: [2.4, 0, 0], model: [4, 0, 0], editor: [5.7, 0, 0], review: [7.4, 0, 0], final: [9.3, 0, 0]
+  },
+  demos: {
+    goal: [-2.5, 3.4, -3], director: [-1.2, 2.4, -2], reference: [1, 3.2, -2], asset: [2, 1.8, -1.4], shot: [3, .5, -1], model: [4.1, -.6, -.8], editor: [4.9, -1.8, -.2], review: [5.8, -2.2, .5], final: [6.5, 0, 2]
+  },
+  install: {
+    goal: [-3.8, 0, -2], director: [-2.3, 0, -1.8], reference: [-.7, 0, -1.6], asset: [.9, 0, -1.4], shot: [2.5, 0, -1.2], model: [4.1, 0, -1], editor: [5.7, 0, -.8], review: [7.3, 0, -.6], final: [9.1, 0, 0]
+  },
+  roadmap: {
+    goal: [-5, 0, -2], director: [-2.7, 3.7, -1], reference: [.2, 4.2, -2], asset: [3.4, 3, -1], shot: [-.2, .1, 1], model: [4.5, .2, 0], editor: [.6, -3.8, -1], review: [4.2, -4, .5], final: [8.4, 0, 1]
+  },
+  closing: {
+    goal: [-2.2, 0, -2], director: [-1.2, 0, -1.7], reference: [-.2, 0, -1.4], asset: [.8, 0, -1.1], shot: [1.8, 0, -.8], model: [2.8, 0, -.5], editor: [3.8, 0, -.2], review: [4.8, 0, .2], final: [6.4, 0, 1.8]
   }
-});
+};
+
+function initializeScene() {
+  renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance" });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, narrowScreen ? 1 : 1.4));
+  renderer.setClearColor(0x000000, 0);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(34, 1, .1, 100);
+  scene.add(new THREE.AmbientLight(0xffffff, 2));
+  const key = new THREE.DirectionalLight(0xffffff, 4.5);
+  key.position.set(4, 8, 11);
+  const signal = new THREE.PointLight(0xe85d3f, 11, 18);
+  signal.position.set(-2, 1, 5);
+  scene.add(key, signal);
+  buildProductionWorld();
+  resizeScene();
+  document.documentElement.classList.add("webgl-ready");
+  new ResizeObserver(resizeScene).observe(canvas);
+  if (reducedMotion) renderFrame(0);
+  else renderer.setAnimationLoop(renderFrame);
+}
+
+function buildProductionWorld() {
+  groups.root = new THREE.Group();
+  groups.nodes = new THREE.Group();
+  groups.lines = new THREE.Group();
+  groups.aperture = buildAperture();
+  groups.root.add(groups.lines, groups.nodes, groups.aperture);
+  scene.add(groups.root);
+
+  const definitions = [
+    ["goal", [1.65, .92, .36], 0xe85d3f, "goal"],
+    ["director", [1.9, .62, .3], 0x171715, "agent"],
+    ["reference", [1.72, .98, .26], 0xf2f0e9, "asset"],
+    ["asset", [1.58, .94, .26], 0xf2f0e9, "asset"],
+    ["shot", [1.8, .9, .26], 0xf2f0e9, "asset"],
+    ["model", [1.88, .62, .28], 0x171715, "agent"],
+    ["editor", [1.95, 1.08, .28], 0xf2f0e9, "asset"],
+    ["review", [1.65, .62, .28], 0x171715, "agent"],
+    ["final", [2.35, 1.34, .34], 0x11110f, "final"]
+  ];
+  for (const [id, scale, color, type] of definitions) createNode(id, scale, color, type);
+  [
+    ["goal", "director"], ["goal", "shot"], ["director", "reference"], ["director", "asset"],
+    ["reference", "shot"], ["asset", "shot"], ["shot", "model"], ["model", "editor"],
+    ["shot", "editor"], ["editor", "review"], ["review", "final"]
+  ].forEach(([from, to]) => createRelation(from, to));
+
+  const floor = new THREE.GridHelper(26, 26, 0xc1bdb3, 0xd8d4cb);
+  floor.position.y = -4.7;
+  floor.material.transparent = true;
+  floor.material.opacity = .25;
+  groups.root.add(floor);
+  const spineGeometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-6, 0, -2), new THREE.Vector3(10, 0, 2)]);
+  const spine = new THREE.Line(spineGeometry, new THREE.LineBasicMaterial({ color: 0xe85d3f, transparent: true, opacity: .35 }));
+  groups.root.add(spine);
+  updateSceneLabels();
+}
+
+function createNode(id, size, color, type) {
+  const material = new THREE.MeshStandardMaterial({ color, roughness: .72, metalness: .05 });
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
+  mesh.userData = { id, type, size, color };
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry), new THREE.LineBasicMaterial({ color: type === "goal" ? 0xffa08d : 0x67645d, transparent: true, opacity: .35 }));
+  mesh.add(edges);
+  groups.nodes.add(mesh);
+  nodes.set(id, mesh);
+}
+
+function updateSceneLabels() {
+  if (!THREE || !nodes.size) return;
+  const labels = locales[locale].sceneLabels;
+  for (const [id, mesh] of nodes) {
+    if (mesh.userData.labelMesh) {
+      mesh.remove(mesh.userData.labelMesh);
+      mesh.userData.labelMesh.material.map.dispose();
+      mesh.userData.labelMesh.material.dispose();
+      mesh.userData.labelMesh.geometry.dispose();
+    }
+    const darkText = mesh.userData.color === 0xf2f0e9;
+    const texture = textTexture(labels[id], darkText ? "#11110f" : "#f4f1e9");
+    const label = new THREE.Mesh(
+      new THREE.PlaneGeometry(mesh.userData.size[0] * .82, mesh.userData.size[1] * .36),
+      new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false })
+    );
+    label.position.z = mesh.userData.size[2] / 2 + .012;
+    mesh.add(label);
+    mesh.userData.labelMesh = label;
+  }
+}
+
+function textTexture(text, color) {
+  const surface = document.createElement("canvas");
+  surface.width = 1024;
+  surface.height = 256;
+  const context = surface.getContext("2d");
+  context.clearRect(0, 0, surface.width, surface.height);
+  context.fillStyle = color;
+  context.font = locale === "zh-CN" ? '600 70px "PingFang SC", "Noto Sans CJK SC", sans-serif' : '600 66px "Helvetica Neue", Arial, sans-serif';
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(text, 512, 128);
+  const texture = new THREE.CanvasTexture(surface);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = Math.min(renderer?.capabilities.getMaxAnisotropy?.() ?? 1, 4);
+  return texture;
+}
+
+function createRelation(fromId, toId) {
+  const pointCount = 34;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(pointCount * 3), 3));
+  geometry.setDrawRange(0, 0);
+  const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: fromId === "goal" ? 0xe85d3f : 0x4f4c46, transparent: true, opacity: .48 }));
+  const pulse = new THREE.Mesh(new THREE.SphereGeometry(.052, 10, 10), new THREE.MeshBasicMaterial({ color: 0xe85d3f }));
+  groups.lines.add(line, pulse);
+  relations.push({ fromId, toId, line, pulse, pointCount, offset: Math.random(), speed: .055 + Math.random() * .04 });
+}
+
+function relationPoint(relation, amount) {
+  const from = nodes.get(relation.fromId).position;
+  const to = nodes.get(relation.toId).position;
+  const midpoint = from.clone().lerp(to, .5);
+  midpoint.z += 1 + Math.abs(from.y - to.y) * .12;
+  const inverse = 1 - amount;
+  return new THREE.Vector3(
+    inverse * inverse * from.x + 2 * inverse * amount * midpoint.x + amount * amount * to.x,
+    inverse * inverse * from.y + 2 * inverse * amount * midpoint.y + amount * amount * to.y,
+    inverse * inverse * from.z + 2 * inverse * amount * midpoint.z + amount * amount * to.z
+  );
+}
+
+function updateRelations(seconds, routeProgress) {
+  for (const relation of relations) {
+    const attribute = relation.line.geometry.attributes.position;
+    for (let index = 0; index < relation.pointCount; index += 1) {
+      const point = relationPoint(relation, index / (relation.pointCount - 1));
+      attribute.setXYZ(index, point.x, point.y, point.z);
+    }
+    attribute.needsUpdate = true;
+    relation.line.geometry.setDrawRange(0, Math.max(2, Math.floor(relation.pointCount * routeProgress)));
+    const connected = [relation.fromId, relation.toId].includes(highlightedAgent);
+    relation.line.material.opacity += (((connected ? .95 : .42) * routeProgress) - relation.line.material.opacity) * .08;
+    relation.pulse.position.copy(relationPoint(relation, (seconds * relation.speed + relation.offset) % 1));
+    relation.pulse.visible = routeProgress > .35;
+  }
+}
+
+function buildAperture() {
+  const group = new THREE.Group();
+  const material = new THREE.MeshStandardMaterial({ color: 0x171715, roughness: .8 });
+  const horizontal = new THREE.BoxGeometry(5.2, .12, .16);
+  const vertical = new THREE.BoxGeometry(.12, 3.05, .16);
+  const top = new THREE.Mesh(horizontal, material);
+  const bottom = new THREE.Mesh(horizontal, material);
+  const left = new THREE.Mesh(vertical, material);
+  const right = new THREE.Mesh(vertical, material);
+  top.position.y = 1.5; bottom.position.y = -1.5; left.position.x = -2.55; right.position.x = 2.55;
+  group.add(top, bottom, left, right);
+  group.position.set(6.4, 0, 1.4);
+  group.visible = false;
+  return group;
+}
+
+function renderFrame(time = 0) {
+  if (!renderer || !visible) return;
+  const videoPlaying = [...document.querySelectorAll("video")].some(video => !video.paused);
+  if (videoPlaying && time - lastWebglFrame < 34) return;
+  lastWebglFrame = time;
+  const { current, next, mix: trackMix } = resolveSceneTrack(smoothScrollY);
+  const currentId = current.dataset.scene;
+  const nextId = next.dataset.scene;
+  const amount = smoothstep(trackMix);
+  const currentState = sceneStates[currentId] ?? sceneStates.hero;
+  const nextState = sceneStates[nextId] ?? currentState;
+  const state = {
+    camera: currentState.camera.map((value, index) => mix(value, nextState.camera[index], amount)),
+    target: currentState.target.map((value, index) => mix(value, nextState.target[index], amount)),
+    spread: mix(currentState.spread, nextState.spread, amount),
+    roll: mix(currentState.roll, nextState.roll, amount)
+  };
+  const desiredCamera = new THREE.Vector3(...state.camera);
+  desiredCamera.x += pointerX * (narrowScreen ? .12 : .42);
+  desiredCamera.y += pointerY * (narrowScreen ? .08 : .28);
+  camera.position.lerp(desiredCamera, .05);
+  camera.lookAt(new THREE.Vector3(...state.target));
+  camera.rotation.z += (state.roll + scrollVelocity * .00032 - camera.rotation.z) * .045;
+  groups.root.scale.lerp(new THREE.Vector3(state.spread, state.spread, state.spread), .045);
+  groups.root.rotation.y += ((pointerX * .035 + scrollVelocity * .0007) - groups.root.rotation.y) * .04;
+  groups.root.rotation.x += ((-pointerY * .018) - groups.root.rotation.x) * .04;
+
+  const currentLayout = layouts[currentId] ?? layouts.hero;
+  const nextLayout = layouts[nextId] ?? currentLayout;
+  const seconds = time * .001;
+  const activeIds = currentId === "goal" ? ["goal"] : currentId === "agents" ? [highlightedAgent] : currentId === "canvas" ? ["reference", "asset", "shot", "editor"] : currentId === "demos" ? ["review", "final"] : currentId === "closing" ? ["final"] : [];
+  for (const [id, mesh] of nodes) {
+    const from = currentLayout[id] ?? layouts.hero[id];
+    const to = nextLayout[id] ?? from;
+    const target = new THREE.Vector3(mix(from[0], to[0], amount), mix(from[1], to[1], amount), mix(from[2], to[2], amount));
+    target.y += Math.sin(seconds * .55 + from[0]) * .018;
+    mesh.position.lerp(target, .085);
+    const active = activeIds.includes(id);
+    const targetScale = active ? 1.1 : 1;
+    mesh.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), .08);
+    mesh.material.emissive.setHex(active ? 0x3d1008 : 0x000000);
+    mesh.material.emissiveIntensity = active ? .72 : 0;
+    mesh.rotation.x += ((currentId === "flow" ? -.18 : -.06) - mesh.rotation.x) * .05;
+    mesh.rotation.y += ((currentId === "demos" ? .12 : .06) - mesh.rotation.y) * .05;
+  }
+  const pageProgress = scrollY / Math.max(document.documentElement.scrollHeight - window.innerHeight, 1);
+  updateRelations(seconds, clamp(pageProgress * 3.4 + .15));
+  groups.aperture.visible = ["demos", "closing"].includes(currentId);
+  if (groups.aperture.visible) groups.aperture.rotation.z = Math.sin(seconds * .25) * .012;
+  renderer.render(scene, camera);
+}
+
+function resizeScene() {
+  if (!renderer) return;
+  const rect = canvas.getBoundingClientRect();
+  renderer.setSize(rect.width, rect.height, false);
+  camera.aspect = rect.width / Math.max(rect.height, 1);
+  camera.updateProjectionMatrix();
+}

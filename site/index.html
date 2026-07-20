@@ -16,6 +16,9 @@
   <meta name="twitter:description" content="Native Goals, dedicated DX agents, a live media canvas, provider routing, editing, and full-frame review." />
   <meta name="twitter:image" content="https://laplaceyoung.github.io/director-x/assets/live-production-canvas.jpg" />
   <link rel="canonical" href="https://laplaceyoung.github.io/director-x/" />
+  <link rel="alternate" hreflang="en" href="https://laplaceyoung.github.io/director-x/?lang=en" />
+  <link rel="alternate" hreflang="zh-CN" href="https://laplaceyoung.github.io/director-x/?lang=zh-CN" />
+  <link rel="alternate" hreflang="x-default" href="https://laplaceyoung.github.io/director-x/" />
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="styles.css" />
   <title>Director X — Open-Source AI Video Production Harness for Codex</title>
@@ -33,201 +36,230 @@
       "license": "https://www.gnu.org/licenses/agpl-3.0.html",
       "isAccessibleForFree": true,
       "softwareVersion": "0.1.0",
-      "author": {
-        "@type": "Organization",
-        "name": "openmoss"
-      },
+      "author": { "@type": "Organization", "name": "openmoss" },
       "sameAs": ["https://github.com/LaplaceYoung/director-x"]
     }
   </script>
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
+  <div class="sr-status" aria-live="polite" data-language-status></div>
 
   <div class="site-loader" data-loader aria-hidden="true">
     <div class="loader-mark">DX</div>
     <div class="loader-line"><span></span></div>
-    <div class="loader-meta"><span>Initializing production room</span><b data-loader-count>00</b></div>
+    <div class="loader-meta"><span data-i18n="loader">Initializing production room</span><b data-loader-count>00</b></div>
   </div>
 
-  <div class="scroll-progress" aria-hidden="true"><span data-scroll-progress></span></div>
+  <div class="scroll-progress" aria-hidden="true"><span></span></div>
+  <div class="chapter-rail" aria-hidden="true">
+    <span data-chapter-progress></span>
+    <b data-scene-index>00</b>
+  </div>
 
   <header class="topbar" data-nav>
-    <a class="wordmark" href="#top" aria-label="Director X home">
-      <span class="wordmark-symbol">DX</span>
-      <span>Director X</span>
+    <a class="wordmark" href="#top" data-i18n-aria-label="nav.home" aria-label="Director X home">
+      <span class="wordmark-symbol">DX</span><span>Director X</span>
     </a>
     <nav aria-label="Primary navigation">
-      <a href="#product">Product</a>
-      <a href="#canvas">Canvas</a>
-      <a href="#roadmap">Roadmap</a>
+      <a href="#product" data-i18n="nav.product">Product</a>
+      <a href="#canvas" data-i18n="nav.canvas">Canvas</a>
+      <a href="#demos" data-i18n="nav.demos">Demos</a>
+      <a href="#roadmap" data-i18n="nav.roadmap">Roadmap</a>
       <a href="https://github.com/LaplaceYoung/director-x">GitHub</a>
     </nav>
-    <a class="nav-cta" href="#install">Install plugin</a>
+    <div class="topbar-actions">
+      <div class="locale-switch" role="group" aria-label="Language">
+        <button type="button" data-locale="en" aria-pressed="true">EN</button>
+        <span>/</span>
+        <button type="button" data-locale="zh-CN" aria-pressed="false">中文</button>
+      </div>
+      <a class="nav-cta" href="#install" data-i18n="nav.install">Install plugin</a>
+    </div>
   </header>
 
   <div class="scene-layer" aria-hidden="true">
     <canvas id="production-scene"></canvas>
     <div class="scene-hud">
       <span data-scene-index>00</span>
-      <span data-scene-name>Production graph</span>
-      <span>Live</span>
+      <span data-scene-name>Production corridor</span>
+      <span data-i18n="scene.live">Live</span>
     </div>
-    <div class="scene-fallback" id="scene-fallback">
+    <div class="scene-fallback">
+      <span class="fallback-spine"></span>
       <span class="fallback-node goal"></span>
       <span class="fallback-node agent agent-a"></span>
       <span class="fallback-node agent agent-b"></span>
       <span class="fallback-node asset asset-a"></span>
       <span class="fallback-node asset asset-b"></span>
-      <span class="fallback-line line-a"></span>
-      <span class="fallback-line line-b"></span>
     </div>
   </div>
 
   <main id="main">
-    <section class="hero scene-chapter" id="top" data-scene="hero" data-chapter-name="Production graph">
+    <section class="hero scene-chapter" id="top" data-scene="hero">
       <div class="hero-copy">
-        <p class="kicker"><span>Open source</span> / Codex plugin / Early access</p>
+        <p class="kicker" data-i18n-html="hero.kicker"><span>Open source</span> / Codex plugin / Early access</p>
         <img class="hero-logo" src="assets/directorx-logo.png" alt="Director X" />
-        <h1>Direct the Goal.<br />Watch production happen.</h1>
-        <p class="hero-summary">Director X turns a native Codex Goal into a persistent video production run—coordinated by dedicated agents, reflected live on a media-first canvas, and carried through to reviewed output.</p>
+        <h1 data-reveal data-i18n-html="hero.title"><span class="phrase"><span>Direct the Goal.</span></span><br><span class="phrase"><span>Watch production happen.</span></span></h1>
+        <p class="hero-summary" data-i18n="hero.summary">Director X turns a native Codex Goal into a persistent video production Run—coordinated by dedicated agents, reflected live on a media-first canvas, and carried through to reviewed output.</p>
         <div class="hero-actions">
-          <a class="button primary" href="#install">Install Director X</a>
-          <a class="button secondary" href="https://github.com/LaplaceYoung/director-x">View on GitHub <span aria-hidden="true">↗</span></a>
+          <a class="button primary" href="#install" data-i18n="hero.install">Install Director X</a>
+          <a class="button secondary" href="https://github.com/LaplaceYoung/director-x"><span data-i18n="hero.github">View on GitHub</span><span aria-hidden="true">↗</span></a>
         </div>
-        <dl class="runtime-strip" aria-label="Director X product characteristics">
-          <div><dt>Goal</dt><dd>Native</dd></div>
-          <div><dt>Crew</dt><dd>DX agents</dd></div>
-          <div><dt>Canvas</dt><dd>Live</dd></div>
-          <div><dt>License</dt><dd>AGPL-3.0</dd></div>
+        <dl class="runtime-strip">
+          <div><dt>Goal</dt><dd data-i18n="hero.goal">Native</dd></div>
+          <div><dt>Crew</dt><dd data-i18n="hero.crew">DX agents</dd></div>
+          <div><dt>Canvas</dt><dd data-i18n="hero.canvas">Live</dd></div>
+          <div><dt>License</dt><dd data-i18n="hero.license">AGPL-3.0</dd></div>
         </dl>
       </div>
       <div class="hero-scene-label" aria-hidden="true">
-        <span>Production graph / live</span>
-        <span>Pointer to inspect</span>
+        <span data-i18n="hero.graph">Production corridor / live</span>
+        <span data-i18n="hero.scroll">Scroll to direct</span>
       </div>
     </section>
 
-    <section class="statement scene-chapter" id="product" data-scene="goal" data-chapter-name="Native Goal">
-      <div class="section-index">01 / Native Goal</div>
-      <div class="statement-grid">
-        <h2>One native Goal.<br />An entire production system.</h2>
-        <div class="statement-copy">
-          <p>The Goal remains open until the requested media exists, has been reviewed, and is ready for delivery. Planning is evidence—not completion.</p>
-          <ol class="event-ledger">
-            <li><span>00:00</span><strong>Codex Goal created</strong><em>durable objective</em></li>
-            <li><span>00:03</span><strong>Director X Run bound</strong><em>single source of truth</em></li>
-            <li><span>00:24</span><strong>Essential decisions resolved</strong><em>native approvals</em></li>
-            <li><span>00:31</span><strong>Creative work started</strong><em>assets begin appearing</em></li>
-          </ol>
+    <section class="statement scene-chapter" id="product" data-scene="goal">
+      <div class="statement-sticky">
+        <div class="section-index" data-i18n="goal.index">01 / Native Goal</div>
+        <div class="statement-grid">
+          <h2 data-reveal data-i18n-html="goal.title"><span class="phrase"><span>One native Goal.</span></span><br><span class="phrase"><span>An entire production system.</span></span></h2>
+          <div class="statement-copy">
+            <p data-i18n="goal.body">The Goal remains open until the requested media exists, has been reviewed, and is ready for delivery. Planning is evidence—not completion.</p>
+            <ol class="event-ledger">
+              <li><span>00:00</span><strong data-i18n="goal.event1">Codex Goal created</strong><em data-i18n="goal.event1meta">durable objective</em></li>
+              <li><span>00:03</span><strong data-i18n="goal.event2">Director X Run bound</strong><em data-i18n="goal.event2meta">single source of truth</em></li>
+              <li><span>00:24</span><strong data-i18n="goal.event3">Essential decisions resolved</strong><em data-i18n="goal.event3meta">native approvals</em></li>
+              <li><span>00:31</span><strong data-i18n="goal.event4">Creative work started</strong><em data-i18n="goal.event4meta">assets begin appearing</em></li>
+            </ol>
+          </div>
         </div>
-      </div>
-      <figure class="evidence-frame native-frame reveal">
-        <img src="assets/native-goal-and-input.jpg" alt="Codex showing Director X native Goal and user input" loading="lazy" />
-        <figcaption><span>Evidence 01</span> Native Goal and native user input keep material production decisions explicit.</figcaption>
-      </figure>
-    </section>
-
-    <section class="crew scene-chapter" data-scene="agents" data-chapter-name="Dedicated crew">
-      <div class="section-index">02 / Dedicated crew</div>
-      <div class="crew-heading">
-        <h2>A crew,<br />not a swarm.</h2>
-        <p>Director X registers specialist production roles with explicit ownership, artifacts, permissions, and handoffs. Independent work can run concurrently without becoming anonymous.</p>
-      </div>
-      <div class="crew-layout">
-        <div class="call-sheet" role="list" aria-label="Director X production agents">
-          <button class="crew-row active" type="button" data-agent="director" role="listitem"><span>DX-Director</span><em>Creative ownership</em><b>Active</b></button>
-          <button class="crew-row" type="button" data-agent="reference" role="listitem"><span>DX-Reference-Analyst</span><em>Source analysis</em><b>Research</b></button>
-          <button class="crew-row" type="button" data-agent="asset" role="listitem"><span>DX-Asset-Manager</span><em>Rights & provenance</em><b>Acquire</b></button>
-          <button class="crew-row" type="button" data-agent="shot" role="listitem"><span>DX-Shot-Planner</span><em>Coverage & continuity</em><b>Design</b></button>
-          <button class="crew-row" type="button" data-agent="model" role="listitem"><span>DX-Model-Router</span><em>Provider routing</em><b>Route</b></button>
-          <button class="crew-row" type="button" data-agent="editor" role="listitem"><span>DX-Editor</span><em>Timeline & delivery</em><b>Cut</b></button>
-          <button class="crew-row" type="button" data-agent="review" role="listitem"><span>DX-Quality-Reviewer</span><em>Final audit</em><b>Review</b></button>
-        </div>
-        <figure class="agent-proof reveal">
-          <img src="assets/dx-specialist-agents.jpg" alt="Dedicated DX specialist agents running in Codex" loading="lazy" />
-          <figcaption>Named roles remain visible in Codex and in the persistent production record.</figcaption>
+        <figure class="evidence-frame reveal">
+          <img src="assets/native-goal-and-input.jpg" alt="Codex showing Director X native Goal and user input" loading="lazy" />
+          <figcaption><span>Evidence 01</span><span data-i18n="goal.caption">Native Goal and native user input keep material production decisions explicit.</span></figcaption>
         </figure>
       </div>
     </section>
 
-    <section class="canvas-section scene-chapter" id="canvas" data-scene="canvas" data-chapter-name="Live canvas">
-      <div class="canvas-intro">
-        <div class="section-index">03 / Live canvas</div>
-        <h2>The canvas shows the work.<br />Not just the workflow.</h2>
-        <p>References, research, scripts, images, audio, shots, cuts, approvals, and review evidence appear as they are created. Their relationships remain visible throughout the Run.</p>
+    <section class="crew scene-chapter" data-scene="agents">
+      <div class="section-index" data-i18n="crew.index">02 / Dedicated crew</div>
+      <div class="crew-heading">
+        <h2 data-reveal data-i18n-html="crew.title"><span class="phrase"><span>A crew,</span></span><br><span class="phrase"><span>not a swarm.</span></span></h2>
+        <p data-i18n="crew.body">Specialist production roles own explicit artifacts, permissions, and handoffs. Independent work can run concurrently without becoming anonymous.</p>
       </div>
-      <figure class="canvas-stage reveal" data-depth-frame>
-        <img src="assets/live-production-canvas.jpg" alt="Director X live side-panel production canvas showing workflow and production state" loading="lazy" />
-        <figcaption>
-          <span><b>01</b> Media previews</span>
-          <span><b>02</b> Asset relationships</span>
-          <span><b>03</b> Approvals & recovery</span>
-        </figcaption>
-      </figure>
-      <div class="lineage-strip" aria-label="Example production lineage">
-        <span>Reference</span><i>→</i><span>Analysis</span><i>→</i><span>Script</span><i>→</i><span>Keyframe</span><i>→</i><span>Clip</span><i>→</i><span>Cut</span><i>→</i><span>Review</span>
-      </div>
-      <p class="canvas-note">Not a static flowchart. A live map of what exists, where it came from, and what it becomes next.</p>
-    </section>
-
-    <section class="principles scene-chapter" data-scene="flow" data-chapter-name="Continuous Run">
-      <div class="section-index">04 / Continuous Run</div>
-      <div class="principle-grid">
-        <article><span>Goal</span><h3>Persistent intent</h3><p>Objectives, approvals, checkpoints, and recovery remain bound to one production Run.</p></article>
-        <article><span>Crew</span><h3>Specialist execution</h3><p>Each DX agent owns concrete artifacts and hands them to the next production role.</p></article>
-        <article><span>Canvas</span><h3>Observable media</h3><p>Generated and acquired files become previewable nodes with visible lineage and review state.</p></article>
+      <div class="crew-layout">
+        <div class="call-sheet" role="list">
+          <button class="crew-row active" type="button" data-agent="director"><span>DX-Director</span><em data-i18n="crew.director">Creative ownership</em><b data-i18n="crew.active">Active</b></button>
+          <button class="crew-row" type="button" data-agent="reference"><span>DX-Reference-Analyst</span><em data-i18n="crew.reference">Source analysis</em><b data-i18n="crew.research">Research</b></button>
+          <button class="crew-row" type="button" data-agent="asset"><span>DX-Asset-Manager</span><em data-i18n="crew.asset">Rights & provenance</em><b data-i18n="crew.acquire">Acquire</b></button>
+          <button class="crew-row" type="button" data-agent="shot"><span>DX-Shot-Planner</span><em data-i18n="crew.shot">Coverage & continuity</em><b data-i18n="crew.design">Design</b></button>
+          <button class="crew-row" type="button" data-agent="model"><span>DX-Model-Router</span><em data-i18n="crew.model">Provider routing</em><b data-i18n="crew.route">Route</b></button>
+          <button class="crew-row" type="button" data-agent="editor"><span>DX-Editor</span><em data-i18n="crew.editor">Timeline & delivery</em><b data-i18n="crew.cut">Cut</b></button>
+          <button class="crew-row" type="button" data-agent="review"><span>DX-Quality-Reviewer</span><em data-i18n="crew.review">Final audit</em><b data-i18n="crew.reviewStatus">Review</b></button>
+        </div>
+        <figure class="agent-proof reveal">
+          <img src="assets/dx-specialist-agents.jpg" alt="Dedicated DX specialist agents running in Codex" loading="lazy" />
+          <figcaption data-i18n="crew.caption">Named roles remain visible in Codex and in the persistent production record.</figcaption>
+        </figure>
       </div>
     </section>
 
-    <section class="install" id="install">
+    <section class="canvas-section scene-chapter" id="canvas" data-scene="canvas">
+      <div class="canvas-sticky">
+        <div class="canvas-intro">
+          <div class="section-index" data-i18n="canvas.index">03 / Live canvas</div>
+          <h2 data-reveal data-i18n-html="canvas.title"><span class="phrase"><span>The canvas shows the work.</span></span><br><span class="phrase"><span>Not just the workflow.</span></span></h2>
+          <p data-i18n="canvas.body">References, scripts, images, audio, shots, cuts, approvals, and review evidence appear as they are created. Their relationships stay visible throughout the Run.</p>
+        </div>
+        <figure class="canvas-stage">
+          <div class="monitor-bezel"><span>DX / LIVE RUN</span><span data-canvas-time>00:00:00</span></div>
+          <img src="assets/live-production-canvas.jpg" alt="Director X live side-panel production canvas showing media and production state" />
+          <div class="canvas-focus">
+            <span data-focus="0"><b>01</b><span data-i18n="canvas.focus1">Media previews</span></span>
+            <span data-focus="1"><b>02</b><span data-i18n="canvas.focus2">Asset lineage</span></span>
+            <span data-focus="2"><b>03</b><span data-i18n="canvas.focus3">Review state</span></span>
+          </div>
+        </figure>
+        <div class="lineage-strip">
+          <span data-i18n="canvas.reference">Reference</span><i>→</i><span data-i18n="canvas.analysis">Analysis</span><i>→</i><span data-i18n="canvas.script">Script</span><i>→</i><span data-i18n="canvas.keyframe">Keyframe</span><i>→</i><span data-i18n="canvas.clip">Clip</span><i>→</i><span data-i18n="canvas.cut">Cut</span><i>→</i><span data-i18n="canvas.review">Review</span>
+        </div>
+        <p class="canvas-note" data-i18n="canvas.note">A live map of what exists, where it came from, and what it becomes next.</p>
+      </div>
+    </section>
+
+    <section class="principles scene-chapter" data-scene="flow">
+      <div class="section-index" data-i18n="run.index">04 / Continuous Run</div>
+      <div class="principle-stack">
+        <article><span data-i18n="run.goal">Goal</span><div><h3 data-i18n="run.goalTitle">Persistent intent</h3><p data-i18n="run.goalBody">Objectives, approvals, checkpoints, and recovery remain bound to one production Run.</p></div></article>
+        <article><span data-i18n="run.crew">Crew</span><div><h3 data-i18n="run.crewTitle">Specialist execution</h3><p data-i18n="run.crewBody">Each DX agent owns concrete artifacts and hands them to the next production role.</p></div></article>
+        <article><span data-i18n="run.canvas">Canvas</span><div><h3 data-i18n="run.canvasTitle">Observable media</h3><p data-i18n="run.canvasBody">Generated and acquired files become previewable nodes with visible lineage and review state.</p></div></article>
+      </div>
+    </section>
+
+    <section class="demo-section scene-chapter" id="demos" data-scene="demos">
+      <div class="demo-sticky">
+        <div class="demo-heading">
+          <div class="section-index" data-i18n="demo.index">05 / Review theater</div>
+          <h2 data-reveal data-i18n-html="demo.title"><span class="phrase"><span>0-Key production.</span></span><br><span class="phrase"><span>Real films to review.</span></span></h2>
+          <p data-i18n="demo.body">Two 60-second WAIC × MOSS promotional films produced through a Director X 0-Key route. Playback is user-controlled; production evidence stays visible.</p>
+        </div>
+        <div class="review-theater">
+          <article class="demo-monitor" data-demo="0">
+            <video controls playsinline preload="metadata" poster="assets/demos/directorx-waic-moss-promo-v4-poster.jpg">
+              <source src="assets/demos/directorx-waic-moss-promo-v4.mp4" type="video/mp4" />
+            </video>
+            <div><strong data-i18n="demo.v4">WAIC × MOSS Promo / v4</strong><span data-i18n="demo.route">0-Key route · 60 seconds · reviewed output</span></div>
+          </article>
+          <article class="demo-monitor" data-demo="1">
+            <video controls playsinline preload="metadata" poster="assets/demos/directorx-waic-moss-promo-v2-poster.jpg">
+              <source src="assets/demos/directorx-waic-moss-promo-v2.mp4" type="video/mp4" />
+            </video>
+            <div><strong data-i18n="demo.v2">WAIC × MOSS Promo / v2</strong><span data-i18n="demo.route">0-Key route · 60 seconds · reviewed output</span></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="install scene-chapter" id="install" data-scene="install">
       <div>
-        <div class="section-index">Install / Codex</div>
-        <h2>Open the production room.</h2>
-        <p>Install from the openmoss-local marketplace, fully restart Codex, then start a new task with <code>@directorx</code>.</p>
+        <div class="section-index" data-i18n="install.index">Install / Codex</div>
+        <h2 data-reveal data-i18n-html="install.title"><span class="phrase"><span>Open the production room.</span></span></h2>
+        <p data-i18n="install.body">Install from the openmoss-local marketplace, fully restart Codex, then start a new task with @directorx.</p>
       </div>
-      <div class="command-block" aria-label="Director X installation commands">
-        <button class="copy-button" type="button" data-copy>Copy</button>
+      <div class="command-block">
+        <button class="copy-button" type="button" data-copy data-i18n="install.copy">Copy</button>
         <pre><code>codex plugin marketplace add https://github.com/LaplaceYoung/director-x.git --ref main
 codex plugin add directorx@openmoss-local
 codex plugin list</code></pre>
       </div>
     </section>
 
-    <section class="roadmap scene-chapter" id="roadmap" data-scene="roadmap" data-chapter-name="What ships next">
+    <section class="roadmap scene-chapter" id="roadmap" data-scene="roadmap">
       <div class="roadmap-title">
-        <div class="section-index">05 / Next production</div>
-        <h2>The plugin is the first release.<br />The full harness is next.</h2>
-        <p>Director X is expanding from a Codex-native proving ground into a complete video-production runtime and desktop environment.</p>
+        <div class="section-index" data-i18n="roadmap.index">06 / Next production</div>
+        <h2 data-reveal data-i18n-html="roadmap.title"><span class="phrase"><span>The plugin is the first release.</span></span><br><span class="phrase"><span>The full harness is next.</span></span></h2>
+        <p data-i18n="roadmap.body">Director X is expanding from a Codex-native proving ground into a complete video-production runtime and desktop environment.</p>
       </div>
       <div class="roadmap-list">
-        <article>
-          <span>In active development / 01</span>
-          <h3>Video Harness</h3>
-          <p>A video-native production runtime rebuilt by adapting the <a href="https://github.com/earendil-works/pi">Pi Agent Harness</a> model for persistent execution, provider routing, media memory, editing, review, and delivery.</p>
-        </article>
-        <article>
-          <span>In active development / 02</span>
-          <h3>Director X Desktop</h3>
-          <p>An Electron workspace for local projects, media, providers, canvas workflows, review, rendering, and final delivery.</p>
-        </article>
+        <article><span data-i18n="roadmap.status1">In active development / 01</span><h3 data-i18n="roadmap.harness">Video Harness</h3><p data-i18n="roadmap.harnessBody">A video-native production runtime adapting the Pi Agent Harness model for persistent execution, provider routing, media memory, editing, review, and delivery.</p></article>
+        <article><span data-i18n="roadmap.status2">In active development / 02</span><h3 data-i18n="roadmap.desktop">Director X Desktop</h3><p data-i18n="roadmap.desktopBody">An Electron workspace for local projects, media, providers, canvas workflows, review, rendering, and final delivery.</p></article>
       </div>
     </section>
 
-    <section class="closing">
-      <p>Persistent state. Explicit approvals. Reviewable media.</p>
-      <h2>Direct the Run.<br />Ship the film.</h2>
+    <section class="closing scene-chapter" data-scene="closing">
+      <p data-i18n="closing.eyebrow">Persistent state. Explicit approvals. Reviewable media.</p>
+      <h2 data-reveal data-i18n-html="closing.title"><span class="phrase"><span>Direct the Run.</span></span><br><span class="phrase"><span>Ship the film.</span></span></h2>
       <div class="hero-actions">
-        <a class="button primary" href="#install">Install Director X</a>
-        <a class="button secondary" href="https://github.com/LaplaceYoung/director-x">Star on GitHub <span aria-hidden="true">↗</span></a>
+        <a class="button primary" href="#install" data-i18n="closing.install">Install Director X</a>
+        <a class="button secondary" href="https://github.com/LaplaceYoung/director-x"><span data-i18n="closing.star">Star on GitHub</span><span aria-hidden="true">↗</span></a>
       </div>
     </section>
   </main>
 
   <footer>
-    <div><strong>Director X</strong><span>by openmoss</span></div>
-    <div><a href="https://github.com/LaplaceYoung/director-x/blob/main/README.md">English</a><a href="https://github.com/LaplaceYoung/director-x/blob/main/README.zh-CN.md">中文</a><a href="https://github.com/LaplaceYoung/director-x/blob/main/LICENSE">AGPL-3.0</a></div>
-    <span>2026 / Early access</span>
+    <div><strong>Director X</strong><span data-i18n="footer.by">by openmoss</span></div>
+    <div><button type="button" data-locale="en">English</button><button type="button" data-locale="zh-CN">中文</button><a href="https://github.com/LaplaceYoung/director-x/blob/main/LICENSE">AGPL-3.0</a></div>
+    <span data-i18n="footer.status">2026 / Early access</span>
   </footer>
 
   <script type="module" src="main.js"></script>

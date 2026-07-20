@@ -99,6 +99,7 @@ test("ships a standalone Chinese project README", async () => {
 test("ships the public landing page and deployment workflow", async () => {
   const landing = await readFile(join(pluginRoot, "site", "index.html"), "utf8");
   const motion = await readFile(join(pluginRoot, "site", "main.js"), "utf8");
+  const { locales } = await import(new URL("../site/i18n.js", import.meta.url));
   const plugin = JSON.parse(await readFile(join(pluginRoot, ".codex-plugin", "plugin.json"), "utf8"));
   const workflow = await readFile(join(pluginRoot, ".github", "workflows", "pages.yml"), "utf8");
   await access(join(pluginRoot, "site", "assets", "directorx-logo.png"));
@@ -109,12 +110,23 @@ test("ships the public landing page and deployment workflow", async () => {
   assert.match(landing, /Direct the Goal/);
   assert.match(landing, /Dedicated crew/);
   assert.match(landing, /Live canvas/);
+  assert.match(landing, /data-locale="zh-CN"/);
+  assert.match(landing, /Review theater/);
+  assert.match(landing, /assets\/demos\/directorx-waic-moss-promo-v4\.mp4/);
   assert.match(motion, /three@0\.185\.1/);
   assert.match(motion, /resolveSceneTrack/);
+  assert.match(motion, /updateSceneLabels/);
   assert.match(landing, /SoftwareApplication/);
   assert.match(landing, /Open-Source AI Video Production Harness for Codex/);
   assert.match(workflow, /actions\/deploy-pages@v4/);
   assert.equal(plugin.homepage, "https://laplaceyoung.github.io/director-x/");
+  const translationKeys = [...landing.matchAll(/data-i18n(?:-html|-aria-label)?="([^"]+)"/g)].map((match) => match[1]);
+  assert.ok(translationKeys.length > 80);
+  for (const locale of Object.values(locales)) {
+    assert.deepEqual([...new Set(translationKeys)].filter((key) => !(key in locale.copy)), []);
+    assert.ok(Object.keys(locale.chapterNames).length >= 8);
+    assert.equal(Object.keys(locale.sceneLabels).length, 9);
+  }
 });
 
 test("bundles an evidence-grounded directing knowledge seed", async () => {
