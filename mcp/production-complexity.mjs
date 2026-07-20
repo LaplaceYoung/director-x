@@ -33,7 +33,9 @@ export function planProductionComplexity(input) {
       firstPreviewStrategy: "one_director_pass_one_generation_pass",
       checkpointCadence: "stage_boundary",
       reviewMode: "single_internal_preview_then_exhaustive_final_audit",
-      targetFirstPreviewMinutes: 12
+      creativeAssetSlaMinutes: 5,
+      firstKeyframeTargetMinutes: 8,
+      targetFirstPreviewMinutes: 10
     },
     standard: {
       maxConcurrency: 4,
@@ -44,7 +46,9 @@ export function planProductionComplexity(input) {
       firstPreviewStrategy: "keyframe_review_then_generation",
       checkpointCadence: "stage_and_paid_attempt",
       reviewMode: "keyframe_review_plus_exhaustive_final_audit",
-      targetFirstPreviewMinutes: 30
+      creativeAssetSlaMinutes: 5,
+      firstKeyframeTargetMinutes: 10,
+      targetFirstPreviewMinutes: 15
     },
     complex: {
       maxConcurrency: 6,
@@ -55,7 +59,9 @@ export function planProductionComplexity(input) {
       firstPreviewStrategy: "scene_proof_then_continuity_generation",
       checkpointCadence: "stage_scene_and_paid_attempt",
       reviewMode: "scene_gates_continuity_review_and_exhaustive_final_audit",
-      targetFirstPreviewMinutes: 60
+      creativeAssetSlaMinutes: 5,
+      firstKeyframeTargetMinutes: 15,
+      targetFirstPreviewMinutes: 30
     }
   }[profile];
   return {

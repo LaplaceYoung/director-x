@@ -18,7 +18,7 @@ test("stops native interaction resolution errors instead of allowing blind retri
         assert.ok(error instanceof DirectorXToolExecutionError);
         assert.equal(error.details.code, "native_interaction_required");
         assert.equal(error.details.stop, true);
-        assert.equal(error.details.nextRequiredAction, "request_user_input");
+        assert.equal(error.details.nextRequiredAction, "directorx_create_and_ask_native_question");
         assert.match(error.details.userFacingMessage, /原生确认/);
         return true;
       }
@@ -110,12 +110,14 @@ test("hard-blocks unrelated work while a recovery gate is active", async () => {
       }),
       (error) => {
         assert.equal(error.details.code, "recovery_gate_active");
-        assert.equal(error.details.nextRequiredAction, "request_user_input");
+        assert.equal(error.details.nextRequiredAction, "directorx_create_and_ask_native_question");
         return true;
       }
     );
     assert.equal(executed, false);
     await withToolFailureGuard("directorx_get_run_snapshot", args, async () => ({ status: "snapshot" }));
+    await withToolFailureGuard("directorx_get_recovery_action", args, async () => ({ status: "recovery" }));
+    await withToolFailureGuard("directorx_create_and_ask_native_question", args, async () => ({ status: "question_created" }));
   } finally {
     await rm(projectPath, { recursive: true, force: true });
   }
@@ -157,7 +159,7 @@ test("blocks the failed native-gated operation until its interaction is resolved
       }),
       (error) => {
         assert.equal(error.details.code, "recovery_gate_active");
-        assert.equal(error.details.nextRequiredAction, "request_user_input");
+        assert.equal(error.details.nextRequiredAction, "directorx_create_and_ask_native_question");
         return true;
       }
     );

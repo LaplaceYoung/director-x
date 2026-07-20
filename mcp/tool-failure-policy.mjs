@@ -34,7 +34,8 @@ export async function withToolFailureGuard(toolName, args, operation) {
       stop: failure.stop || recorded.attempts >= MAX_RETRIES,
       nextRequiredAction: failure.code === "execution_failure" ? "directorx_recover_run_then_retry_corrected_arguments" : failure.nextRequiredAction,
       userFacingMessage: userFacingMessage(failure, recorded.attempts),
-      technicalMessage: String(cause?.message ?? cause)
+      technicalMessage: String(cause?.message ?? cause),
+      recovery: projectRecoveryAction({ toolName, code: failure.code, nextRequiredAction: recoveryActionFor(failure), technicalMessage: String(cause?.message ?? cause) })
     };
     throw new DirectorXToolExecutionError(details.technicalMessage, details, cause);
   }
@@ -50,12 +51,12 @@ async function assertRecoveryGateAllows(toolName, args) {
   }
   const gate = run.recoveryGate;
   if (gate?.status !== "blocked") return;
-  if (toolName === "directorx_get_run_snapshot") return;
+  if (toolName === "directorx_get_run_snapshot" || toolName === "directorx_get_recovery_action") return;
   if (toolName === "directorx_checkpoint_run" || toolName === "directorx_resume_run" || toolName === "directorx_recover_run") return;
   if (toolName === gate.toolName && gate.code === "transient_execution_failure" && gate.attempts < MAX_RETRIES) return;
   if (toolName === gate.toolName && gate.code === "execution_failure" && gate.failedInputKey && failureKey(toolName, args) !== gate.failedInputKey) return;
   if (gate.nextRequiredAction === "bind_native_goal" && toolName === "directorx_bind_goal") return;
-  if (gate.code === "native_interaction_required" && toolName === "directorx_resolve_user_interaction") return;
+  if (gate.code === "native_interaction_required" && ["directorx_create_and_ask_native_question", "directorx_request_user_interaction", "directorx_resolve_user_interaction"].includes(toolName)) return;
   if (gate.code === "native_reference_consent_required" && toolName === "directorx_record_reference_download_consent") return;
   if (gate.code === "native_reference_consent_required" && toolName === gate.toolName && run.referenceDownloadConsent?.decision === "authorized") return;
   throw new DirectorXToolExecutionError("Director X recovery gate is active.", {
@@ -68,7 +69,8 @@ async function assertRecoveryGateAllows(toolName, args) {
     stop: true,
     nextRequiredAction: gate.nextRequiredAction,
     userFacingMessage: "当前环节已暂停，请先完成恢复动作，再继续制作。",
-    technicalMessage: `Recovery gate is active for ${gate.toolName}.`
+    technicalMessage: `Recovery gate is active for ${gate.toolName}.`,
+    recovery: gate.recovery ?? projectRecoveryAction(gate)
   });
 }
 
@@ -80,7 +82,7 @@ export function toolFailurePayload(error) {
 function classifyFailure(toolName, args, cause) {
   const message = String(cause?.message ?? cause);
   if (/request_user_input|native interaction|raw request_user_input answer envelope|confirmed through Codex/i.test(message)) {
-    return { code: "native_interaction_required", retryable: false, stop: true, nextRequiredAction: "request_user_input" };
+    return { code: "native_interaction_required", retryable: false, stop: true, nextRequiredAction: "directorx_create_and_ask_native_question" };
   }
   if (/authorization|consent|download.*authorized|authorized.*download|reference.*download/i.test(message)) {
     return { code: "native_reference_consent_required", retryable: false, stop: true, nextRequiredAction: "resolve_reference_download" };
@@ -141,7 +143,8 @@ async function recordFailure(args, key, failure) {
           failedInputKey: key,
           recoveryCheckpointId: recoveryCheckpoint?.checkpoint?.checkpointId ?? null,
           nextRequiredAction: recoveryActionFor(failure),
-          updatedAt: recorded.lastAt
+          updatedAt: recorded.lastAt,
+          recovery: projectRecoveryAction({ toolName: key.split(":", 1)[0], code: failure.code, nextRequiredAction: recoveryActionFor(failure) })
         };
       }
       run.events ??= [];
@@ -159,6 +162,22 @@ async function recordFailure(args, key, failure) {
     // Failure reporting must never hide the original tool error.
   }
   return recorded;
+}
+
+export function projectRecoveryAction(gate = {}) {
+  return {
+    blockedOperation: gate.toolName ?? null,
+    rootCause: gate.technicalMessage ?? gate.code ?? "unknown_failure",
+    correctedExample: correctedExample(gate.code),
+    resumeWith: gate.nextRequiredAction ?? "directorx_get_run_snapshot",
+    preservesCompletedArtifacts: true
+  };
+}
+
+function correctedExample(code) {
+  if (code === "native_interaction_required") return { tool: "directorx_create_and_ask_native_question", rule: "persist_then_ask_then_resolve" };
+  if (code === "native_reference_consent_required") return { tool: "directorx_create_and_ask_native_question", kind: "reference_download" };
+  return { rule: "change the invalid argument once, then retry the blocked operation" };
 }
 
 function recoveryActionFor(failure) {

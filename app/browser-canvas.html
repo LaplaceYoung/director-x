@@ -297,7 +297,8 @@
       $("#sync").textContent = surfaceStatus === "hidden" ? "后台保持" : surfaceStatus === "stale" ? "正在恢复" : "已同步";
       $("#run-label").textContent = data.goal?.outcome ?? "制作空间";
       $("#asset-count").textContent = canvas.summary.assetCount;
-      $("#rail-foot").textContent = friendly?.headline ?? `当前正在${stageLabel(data.stage)}`;
+      const creativeSla = canvas.summary.creativeProgressSla;
+      $("#rail-foot").textContent = creativeSla?.breached ? creativeSla.userFacingMessage : friendly?.headline ?? `当前正在${stageLabel(data.stage)}`;
       renderObjectList(); renderGraph(); renderMediaBoard(); renderCoverage(); renderStoryboard(); renderReview(); renderActivity(); updateTransform();
     }
     function renderObjectList() {

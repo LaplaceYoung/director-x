@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 const MAX_NATIVE_QUESTIONS = 3;
-const BATCHABLE_MEDIA_ROUTE_KINDS = new Set(["image_model", "video_model", "voice_model", "music_route"]);
+const BATCHABLE_MEDIA_ROUTE_KINDS = new Set(["image_model", "video_model", "voice_model", "music_strategy", "music_asset_selection", "music_route"]);
 
 export function compileDirectorXGoalBootProtocol({ projectPath, outcome, preflightId, goalInteractionRequestId, questions, goalAccepted = false }) {
   if (!String(projectPath ?? "").trim() || !String(outcome ?? "").trim() || !String(preflightId ?? "").trim() || !String(goalInteractionRequestId ?? "").trim()) {

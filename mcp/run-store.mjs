@@ -4,9 +4,12 @@ import { randomUUID } from "node:crypto";
 import { completionPolicy } from "./completion-policy.mjs";
 import { buildUserFacingRunSummary } from "./conversation-ux.mjs";
 import { appendRunCheckpoint } from "./run-control.mjs";
+import { evaluateCreativeProgressSla } from "./fast-start-policy.mjs";
 
 const SECRET_PATTERN = /(api[_-]?key|access[_-]?token|refresh[_-]?token|secret|password|private[_-]?key)/i;
 const writeQueues = new Map();
+const RUNTIME_INSTANCE_ID = process.env.DIRECTORX_RUNTIME_INSTANCE_ID || randomUUID();
+const RUNTIME_LEASE_ENABLED = !process.env.NODE_TEST_CONTEXT;
 
 export function assertSecretFree(value, path = "payload") {
   if (!value || typeof value !== "object") return;
@@ -92,6 +95,8 @@ export async function createRun({ projectPath, outcome, codexGoalId = null }) {
     interactions: { pending: [], history: [] },
     toolFailureLedger: {},
     recoveryGate: null,
+    fastStart: null,
+    runtimeLease: RUNTIME_LEASE_ENABLED ? { instanceId: RUNTIME_INSTANCE_ID, pid: process.pid, heartbeatAt: now } : null,
     decisions: [],
     intakeGate: null,
     intentResolution: null,
@@ -129,7 +134,7 @@ export async function createRun({ projectPath, outcome, codexGoalId = null }) {
       { id: "image-model", kind: "image_model", status: "pending" },
       { id: "video-model", kind: "video_model", status: "pending" },
       { id: "voice-model", kind: "voice_model", status: "pending" },
-      { id: "music-route", kind: "music_route", status: "pending" },
+      { id: "music-strategy", kind: "music_strategy", status: "pending" },
       { id: "final-delivery", kind: "delivery", status: "pending" }
     ],
     canvas: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 0.72 } },
@@ -178,6 +183,8 @@ function normalizeApprovalSchema(run) {
   run.interactions.history ??= [];
   run.toolFailureLedger ??= {};
   run.recoveryGate ??= null;
+  run.fastStart ??= null;
+  run.runtimeLease ??= null;
   const legacyIndex = run.approvals.findIndex((approval) => approval.kind === "model");
   if (legacyIndex >= 0) {
     run.approvals.splice(legacyIndex, 1,
@@ -185,11 +192,16 @@ function normalizeApprovalSchema(run) {
       { id: "video-model", kind: "video_model", status: "pending" },
       { id: "voice-model", kind: "voice_model", status: "pending" });
   }
-  if (!run.approvals.some((approval) => approval.kind === "music_route")) {
+  const legacyMusicApproval = run.approvals.find((approval) => approval.kind === "music_route");
+  if (legacyMusicApproval && !run.approvals.some((approval) => approval.kind === "music_strategy")) {
+    legacyMusicApproval.id = "music-strategy";
+    legacyMusicApproval.kind = "music_strategy";
+  }
+  if (!run.approvals.some((approval) => approval.kind === "music_strategy")) {
     const deliveryIndex = run.approvals.findIndex((approval) => approval.kind === "delivery");
     const voiceIndex = run.approvals.findIndex((approval) => approval.kind === "voice_model");
     const insertAt = deliveryIndex >= 0 ? deliveryIndex : voiceIndex >= 0 ? voiceIndex + 1 : run.approvals.length;
-    run.approvals.splice(insertAt, 0, { id: "music-route", kind: "music_route", status: "pending" });
+    run.approvals.splice(insertAt, 0, { id: "music-strategy", kind: "music_strategy", status: "pending" });
   }
   return run;
 }
@@ -198,12 +210,25 @@ export async function updateRun({ projectPath, runId, mutate }) {
   const path = statePath(projectPath, runId);
   return serialize(path, async () => {
     const run = await readRun({ projectPath, runId });
+    if (RUNTIME_LEASE_ENABLED) claimRuntimeLease(run);
     const next = await mutate(structuredClone(run));
+    if (RUNTIME_LEASE_ENABLED) next.runtimeLease = { instanceId: RUNTIME_INSTANCE_ID, pid: process.pid, heartbeatAt: new Date().toISOString() };
     assertSecretFree(next);
     next.updatedAt = new Date().toISOString();
     await writeAtomic(path, next);
     return next;
   });
+}
+
+function claimRuntimeLease(run) {
+  const lease = run.runtimeLease;
+  if (!lease || lease.instanceId === RUNTIME_INSTANCE_ID) return;
+  if (processIsAlive(lease.pid)) throw new Error(`Director X Run is owned by another active MCP runtime (pid ${lease.pid}). Reuse the existing runtime instead of starting an auxiliary process.`);
+}
+
+function processIsAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try { process.kill(pid, 0); return true; } catch (error) { return error?.code === "EPERM"; }
 }
 
 export function publicSnapshot(run) {
@@ -257,6 +282,8 @@ export function publicSnapshot(run) {
     interactions: run.interactions ?? { pending: [], history: [] },
     toolFailureLedger: run.toolFailureLedger ?? {},
     recoveryGate: run.recoveryGate ?? null,
+    fastStart: run.fastStart ?? null,
+    creativeProgressSla: evaluateCreativeProgressSla(run),
     avReviewTimeline: run.avReviewTimeline ?? null,
     waveformWindows: run.waveformWindows ?? {},
     waveformPyramids: run.waveformPyramids ?? {},

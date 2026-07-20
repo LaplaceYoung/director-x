@@ -96,7 +96,7 @@ export function musicRouteSetup() {
     schemaVersion: "1.0",
     selectionQuestion: {
       header: "背景音乐",
-      id: "music_route",
+      id: "music_strategy",
       question: "这支片的背景音乐从哪里来？",
       options: [
         { label: "正版曲库检索 (Recommended)", description: "从可商用或明确授权曲库寻找音乐，下载后检查授权、音质和剪辑适配。" },
@@ -118,7 +118,8 @@ export function musicRouteSetup() {
       actions: ["search_official_library", "open_track_page", "capture_license", "download_local_copy", "audit_audio_quality", "register_rights_evidence"],
       requiredArtifactRefs: ["music_asset_plan.json", "music_rights_receipt.json", "music_quality_audit_<assetId>.json"],
       rule: "A search result URL is not a usable music asset until a local file, track-level license evidence, and a passing quality audit are registered."
-    }
+    },
+    assetSelectionKind: "music_asset_selection"
   };
 }
 

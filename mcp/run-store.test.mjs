@@ -12,7 +12,7 @@ test("creates and updates a durable run", async () => {
     await updateRun({ projectPath, runId: created.runId, mutate(run) { run.goal.codexGoalId = "goal-1"; return run; } });
     const stored = await readRun({ projectPath, runId: created.runId });
     assert.equal(stored.goal.codexGoalId, "goal-1");
-    assert.deepEqual(stored.approvals.map(({ kind }) => kind), ["budget", "image_model", "video_model", "voice_model", "music_route", "delivery"]);
+    assert.deepEqual(stored.approvals.map(({ kind }) => kind), ["budget", "image_model", "video_model", "voice_model", "music_strategy", "delivery"]);
     assert.equal(stored.completionPolicy.objectiveScope, "playable_final_video");
     assert.equal(stored.goal.terminalOutcome, "Deliver a playable final video for: Make a 60-second brand film");
     assert.deepEqual(stored.canvas.nodes, []);
@@ -53,7 +53,7 @@ test("migrates a legacy generic model gate into explicit media and music route g
       { kind: "image_model", status: "pending" },
       { kind: "video_model", status: "pending" },
       { kind: "voice_model", status: "pending" },
-      { kind: "music_route", status: "pending" }
+      { kind: "music_strategy", status: "pending" }
     ]);
   } finally {
     await rm(projectPath, { recursive: true, force: true });

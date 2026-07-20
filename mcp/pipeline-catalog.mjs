@@ -1,9 +1,9 @@
 export const CORE_PIPELINE_STAGES = [
-  stage("intake", "需求澄清、导演化与制片约束", "directorx-production-orchestration", ["intake_confirmation.json", "intent_resolution.json", "Director.md", "director_contract.json", "project_brief.json", "intent_analysis.json", "delivery_promise.json", "budget_plan.json", "production_complexity_plan.json", "audio_responsibility_plan.json", "capability_route.json", "tool_inventory.json", "capability_execution_plan.json", "execution_graph.json", "parallel_subagent_plan.json"], ["goal_entry", "budget"]),
+  stage("intake", "最小确认与快速创作启动", "directorx-production-orchestration", ["intake_confirmation.json", "intent_resolution.json", "Director.md", "director_contract.json", "project_brief.json", "delivery_promise.json", "production_complexity_plan.json"], ["goal_entry", "budget"], ["intent_analysis.json", "budget_plan.json", "audio_responsibility_plan.json", "capability_route.json", "tool_inventory.json", "capability_execution_plan.json", "execution_graph.json", "parallel_subagent_plan.json"]),
   stage("research", "联网研究、资产与参考分析", "directorx-reference-intake", ["research_plan.json", "web_research_receipt.json", "reference_manifest.json", "reference_analysis.json", "reference_video_assessment.json", "reference_learning_report.json", "asset_manifest.json", "rights_ledger.json", "visual_asset_coverage.json", "style_playbook.json"]),
   stage("script", "脚本与声音结构", "directorx-script-craft", ["script_or_outline.json", "claim_to_proof_map.json", "audio_cue_sheet.json"]),
   stage("storyboard", "镜头、分镜与连续性", "directorx-shot-planning", ["shotlist.json", "keyframe_storyboard.json", "continuity_plan.json", "scene_coverage_plan.json", "transition_language_plan.json", "shot_sequence_review.json", "shot_grounding_plan.json", "shot_grounding_report.json", "visual_prompt_pack.json"]),
-  stage("generation", "素材与候选生成", "directorx-visual-prompting", ["generation_request.json", "attempt_log.json", "selected_clips.json"], ["image_model", "video_model", "voice_model", "music_route"]),
+  stage("generation", "素材与候选生成", "directorx-visual-prompting", ["audio_responsibility_plan.json", "capability_route.json", "tool_inventory.json", "capability_execution_plan.json", "execution_graph.json", "parallel_subagent_plan.json", "generation_request.json", "attempt_log.json", "selected_clips.json"], ["image_model", "video_model", "voice_model", "music_strategy"]),
   stage("edit", "剪辑、混音、字幕与渲染", "directorx-render-composition", ["edit_intent.json", "edit_graph.json", "timeline_patch.json", "timeline_preview.json", "edit_receipt.json", "timeline_revision.json", "semantic_timeline.json", "edit_decisions.json", "render_quality_contract.json", "render_report.json"]),
   stage("review", "画面、连续性、成本与交付审查", "directorx-production-review", ["review_session.json", "shot_review_report.json", "continuity_report.json", "production_lineage.json", "execution_telemetry.json", "route_regret_report.json", "model_knowledge_patch.json", "frame_audit_report.json", "frame_identity.jsonl", "frame_audit_repair_plan.json", "scene_coverage_conformance_report.json", "final_review_evidence.json", "final_review.json"]),
   stage("delivery", "平台包装与交付", "directorx-publish-packaging", ["publish_package.json", "delivery_manifest.json"], ["delivery"])
@@ -58,8 +58,8 @@ export function missingRegisteredArtifacts(pipeline, stageId, artifacts = {}) {
   return definition.requiredOutputs.filter((artifactRef) => !artifacts[artifactRef]);
 }
 
-function stage(id, label, ownerSkill, requiredOutputs, approvalKinds = []) {
-  return { id, label, ownerSkill, requiredOutputs, approvalKinds, reviewRequired: !["intake", "delivery"].includes(id) };
+function stage(id, label, ownerSkill, requiredOutputs, approvalKinds = [], deferredOutputs = []) {
+  return { id, label, ownerSkill, requiredOutputs, deferredOutputs, approvalKinds, reviewRequired: !["intake", "delivery"].includes(id) };
 }
 
 function pipeline(id, label, overlaySkills, useWhen) {

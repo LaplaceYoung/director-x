@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 
 export const NATIVE_INTERACTION_KINDS = Object.freeze([
   "goal_entry", "role_install", "run_mode", "intake", "pipeline", "budget",
-  "image_model", "video_model", "voice_model", "music_route", "reference_download",
+  "image_model", "video_model", "voice_model", "music_strategy", "music_asset_selection", "music_route", "reference_download",
   "stage_approval", "provider_input", "post_production_edit", "edit_change", "candidate", "delivery", "knowledge"
 ]);
 

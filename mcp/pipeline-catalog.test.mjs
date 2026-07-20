@@ -5,10 +5,10 @@ import { CORE_PIPELINE_STAGES, createPipelineRunState, getPipeline, missingRegis
 test("ships complete production pipelines with stable stage contracts", () => {
   assert.equal(PIPELINE_CATALOG.length, 8);
   assert.deepEqual(CORE_PIPELINE_STAGES.map((stage) => stage.id), ["intake", "research", "script", "storyboard", "generation", "edit", "review", "delivery"]);
-  assert.deepEqual(getPipeline("brand-film").stages.find((stage) => stage.id === "generation").approvalKinds, ["image_model", "video_model", "voice_model", "music_route"]);
-  assert.ok(getPipeline("brand-film").stages.find((stage) => stage.id === "intake").requiredOutputs.includes("audio_responsibility_plan.json"));
-  assert.ok(getPipeline("brand-film").stages.find((stage) => stage.id === "intake").requiredOutputs.includes("execution_graph.json"));
-  assert.ok(getPipeline("brand-film").stages.find((stage) => stage.id === "intake").requiredOutputs.includes("parallel_subagent_plan.json"));
+  assert.deepEqual(getPipeline("brand-film").stages.find((stage) => stage.id === "generation").approvalKinds, ["image_model", "video_model", "voice_model", "music_strategy"]);
+  assert.ok(getPipeline("brand-film").stages.find((stage) => stage.id === "generation").requiredOutputs.includes("audio_responsibility_plan.json"));
+  assert.ok(getPipeline("brand-film").stages.find((stage) => stage.id === "intake").deferredOutputs.includes("execution_graph.json"));
+  assert.ok(getPipeline("brand-film").stages.find((stage) => stage.id === "intake").deferredOutputs.includes("parallel_subagent_plan.json"));
   assert.ok(getPipeline("brand-film").stages.find((stage) => stage.id === "research").requiredOutputs.includes("visual_asset_coverage.json"));
   assert.ok(getPipeline("brand-film").stages.find((stage) => stage.id === "storyboard").requiredOutputs.includes("scene_coverage_plan.json"));
   assert.ok(getPipeline("brand-film").stages.find((stage) => stage.id === "storyboard").requiredOutputs.includes("transition_language_plan.json"));

@@ -62,7 +62,8 @@ test("media submission cannot override the approved audio route", () => {
 
 test("music setup requires native questions and local rights evidence", () => {
   const setup = musicRouteSetup();
-  assert.equal(setup.selectionQuestion.id, "music_route");
+  assert.equal(setup.selectionQuestion.id, "music_strategy");
+  assert.equal(setup.assetSelectionKind, "music_asset_selection");
   assert.equal(setup.fallbackQuestion.id, "native_audio_fallback");
   assert.ok(setup.searchContract.requiredArtifactRefs.includes("music_quality_audit_<assetId>.json"));
 });

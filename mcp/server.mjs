@@ -12,7 +12,7 @@ import { buildResearchPackageTemplate, validateResearchPackage, writeReferenceDo
 import { beginGenerationAttempt, recordGenerationCandidate, registerGenerationPlan, reviewGenerationCandidate, selectGenerationCandidate, writeGenerationArtifacts } from "./generation-control.mjs";
 import { confirmDxSubagentHostClosed, DX_SUBAGENT_CATALOG, dxIdentityInstruction, registerDxSubagent, updateDxSubagent } from "./subagent-registry.mjs";
 import { inspectCodexAgentRoles, installCodexAgentRoles } from "./codex-agent-roles.mjs";
-import { toolFailurePayload, withToolFailureGuard } from "./tool-failure-policy.mjs";
+import { projectRecoveryAction, toolFailurePayload, withToolFailureGuard } from "./tool-failure-policy.mjs";
 import { evaluateRunCompletion } from "./completion-policy.mjs";
 import { assertIntakeReady, confirmIntake } from "./intake-gate.mjs";
 import { analyzeMediaWaveform, executeHyperframesRender, executeMosiTts, executeRemotionRender, executeWhisperTranscription, inspectAudioSource, inspectMediaDelivery, writeExecutionReceipt } from "./media-execution.mjs";
@@ -66,6 +66,7 @@ import { auditMusicAsset, listMusicLibraries, registerMusicAudit, writeMusicAudi
 import { compileReferenceReplicationPlan, writeReferenceReplicationPlan } from "./reference-replication.mjs";
 import { assertRenderQualityReady, compileRenderQualityContract } from "./render-quality-contract.mjs";
 import { planProductionComplexity } from "./production-complexity.mjs";
+import { beginCreativeWork, evaluateCreativeProgressSla, evaluateFastStartReadiness } from "./fast-start-policy.mjs";
 import { compileTransitionLanguagePlan, DIRECTOR_TRANSITION_METHODS, writeTransitionLanguagePlan } from "./transition-language.mjs";
 import { assertRenderPropsBindTransitionExecution, preserveTransitionExecutionRenderEvidence } from "./transition-execution-contract.mjs";
 import { assertRenderPropsBindRemotionProjection, compileRemotionRenderProjection } from "./remotion-render-projection.mjs";
@@ -87,8 +88,8 @@ import { detectCodexHostCapabilities } from "./codex-host-capabilities.mjs";
 const CANVAS_URI = "ui://directorx/production-canvas-v1.html";
 const SCENE_CONFORMANCE_INSTRUCTIONS = "After directorx_verify_final_media, require scene_coverage_conformance_report.json to pass all non-waivable shot identity, order, duration, source-handle, full-frame, and PTS checks. Dispatch DX-Quality-Reviewer to inspect every planned shot's first/middle/last identity-bound frame, then call directorx_record_scene_coverage_review before final frame-finding acceptance. Metadata cannot prove camera, blocking, composition, lighting, movement, proof, reaction, or narrative fulfillment.";
 const SERVER_INSTRUCTIONS = "Use a concise consumer-facing Director X voice. In the Codex conversation, never narrate tool calls, file registration, JSON artifacts, schemas, MCP/runtime details, IDs, paths, test counts, or subagent plumbing unless the user asks for technical details or a failure requires diagnosis. Do not use Current Problem / Plan / Risks / Changed / Verified templates during production. Send one short start message, then only tangible stage milestones, blockers, native questions, preview availability, and final delivery. A normal update is at most two short sentences and should reuse userFacingSummary.suggestedUpdate. Do not duplicate a request_user_input question in chat. A returned native interaction may batch up to three independent image, video, voice, or music route questions; execute it once, then execute every afterAnswer resolution action with the same answer map before continuing. Never batch Goal, budget, credential, rights, stage, edit, or delivery approvals. Keep technical execution in collapsed tool results and the canvas Activity details. A delegated DX child must never call directorx_plan_production_team or create another background delegation plan. " +
-  "For every Director X trigger, call directorx_capability_preflight before all other work. Inspect the current spawn_agent schema: when it exposes agent_type.enum, pass those values as availableAgentTypes; when it exposes task_name/fork_turns/message without agent_type, pass the single sentinel collaboration_task. Pass the exact currently exposed host tool names as hostToolNames and enabled skill names as hostSkillNames when the host inventory is available; these names are capability evidence only and must never be treated as agent types. Preflight starts and verifies the local canvas service; immediately open its browserCanvasUrl in the Codex in-app Browser, set Browser visibility to true, then call directorx_get_preflight_status before asking any question. Never use inline canvas during preflight. If the MCP process restarts before Run creation, call directorx_get_preflight_status with the original preflightId, open its newly issued URL, and follow bootTransaction.nextRequiredAction; preserve resolved Goal acceptance and never repeat the native question. If preflight returns invalid_agent_type_evidence after the side canvas opens, reread the exact spawn_agent schema and retry preflight immediately without asking the user to restart. Browser is Skill-backed and may not appear as a direct ALL_TOOLS name; an empty Browser tool-name search is not unavailability. Load browser:control-in-app-browser or bootstrap its official runtime directly. The final Browser action of every active turn must be browser.tabs.finalize({keep:[{tab,status:'handoff'}]}); use deliverable only after final delivery. Do not call directorx_create_run until that exact URL has loaded and the post-open status reports subagentNamingStatus.sessionReady true. directorx_open_inline_canvas is only for a durable Run whose side Browser opened earlier and later disconnected. After Goal acceptance, resolve the preflight goal interaction, call Codex create_goal, create the Run, and bind that Goal before asking Intake questions or ending the turn. All user decisions must first be persisted with directorx_request_user_interaction, then asked with the returned request_user_input host action, then resolved with directorx_resolve_user_interaction; never downgrade to chat text, and execute its afterAnswer action so the same request ID cannot reopen. After registering execution_graph.json, call directorx_plan_production_team with the detected spawn contract and the host concurrency limit when exposed. It compiles the bounded DX tasks directly from execution-graph ownership and the production-complexity profile. Use directorx_plan_parallel_subagents only for an intentionally custom task graph that cannot be represented by execution_graph.json. Execute every action in the current parallelGroup concurrently before awaiting any individual result and register every host agent through the exact afterSpawn action. Typed hosts use agent_type and close_agent; collaboration-task hosts use task_name/fork_turns/message, bind sub_agent_activity.agent_thread_id, and complete through terminal events without inventing close_agent. When sessionMode is builtin_compatibility or collaboration_task, proceed without a restart. In every mode, canonical DX-* identity comes from the delegated prompt and registry; host nicknames or task paths are trace metadata only. A delegated DX child is always at depth 1/1 and must never call spawn_agent, directorx_plan_parallel_subagents, create_thread, create_goal, or any skill/tool that creates background agents. During research, first call directorx_register_asset_search_plan with official sources ahead of public-domain and licensed image/video libraries, then actually execute host web search and source-open actions and persist their receipts. Before downloading uncertain-rights images, create a reference_download request with gateKey asset-download:<assetId>, execute request_user_input, and pass its resolved request ID; before yt-dlp, record source-scoped reference download consent. Downloads never grant reuse rights. For every user-supplied reference-video link, open the source, obtain source-scoped authorization, call directorx_ingest_reference_video, and require all-decoded-frame extraction plus independent FFprobe frame-count parity. Dispatch DX-Reference-Analyst to inspect the real frame/audio evidence and call directorx_compile_reference_replication_plan before scripting or generation; recreate shot function, pacing, camera, motion, composition, audio energy, and edit structure with new brand/topic expression, never source pixels, voices, music, subtitles, logos, copy, or protected identity unless separate reuse rights are proven. Acquire selected public originals with directorx_acquire_web_image_asset, run directorx_audit_visual_asset_coverage, and require directorx_audit_asset_quality from DX-Asset-Manager before any downloaded asset enters research conclusions or generation anchors; URLs, thumbnails, caller-asserted paths, and unaudited files are not usable assets. Before completing Storyboard, call directorx_compile_scene_coverage_plan against the registered real shotlist with geography, action, reaction, proof, blocking, focal length, camera position, composition depth, lighting continuity, generated-video handles, fallbacks, setup groups, and execution waves. Repair scene_coverage_plan.json until ready before compiling transitions. Then call directorx_compile_transition_language_plan for every multi-shot sequence; derive every boundary from action, emotion, eyeline, screen direction, graphic anchors, scene changes, and audio bridges, and preserve the returned prompt handoffs and review criteria. Then call directorx_review_shot_sequence against the registered real shotlist.json; it rereads and SHA-binds the file, then checks identity/order/purpose/duration, story function, scene coverage, scale and movement variation, axis, eyeline, action phase, information density, emotional arc, and movement motivation. Storyboard cannot complete until both scene_coverage_plan.json and shot_sequence_review.json are ready. Evidence-backed intentional rule breaks remain visible warnings, while unexplained axis, eyeline, action, duration, camera-motivation, lighting, blocking, perspective, or edit-handle failures block generation. Before generating any multi-shot continuity-sensitive sequence, call directorx_compile_camera_continuity_graph, dispatch DX-Reference-Analyst to inspect every eligible first/last-frame candidate, and persist that multimodal review with directorx_review_camera_references; do not register video generation until the camera graph is ready. For every multi-segment video, register the first/end-frame chain, extract real decoded boundaries, pass continuity audit, and register the exact stitch plan before render. For an image/video provider or exact model outside directorx_list_media_providers, call directorx_get_custom_media_provider_intake, resolve its provider/model questions through native request_user_input, search and open only official API docs, persist those host actions separately with directorx_record_provider_api_research, then register a constrained declarative adapter with directorx_register_custom_media_provider_adapter. Never generate executable adapter code. Resolve its keySetupInteraction natively and collect the actual key only in the canvas secure password field, which injects the expected current-session environment variable without persistence. Before every speech route question, call directorx_get_mosi_voice_setup and use its selectionQuestion unchanged so MOSS-TTS is the first recommended option; guide users without a key to https://platform.mosi.cn. Ask the returned music_route question natively, prefer a user-owned track or a track-level rights-safe library asset, and dispatch DX-Asset-Manager to search, download, retain license proof, and audit every selected music file. Never treat a web result as usable music. Register audio_responsibility_plan.json before video generation: external TTS disables video speech responsibility, external/local music disables video music responsibility, and video-native full audio is allowed only when both are absent and the user explicitly approves it. Before budget approval or any paid attempt, quote cost from a current official pricing page; stale, missing, or unmatched pricing evidence blocks estimation instead of permitting a caller-supplied number. Register durable artifact relationships while keeping Storyboard limited to generated Markdown and essential real image/video/audio media. Before rendering, register a ready render_quality_contract.json that compiles every Director boundary into an exact cut/transition frame window, easing, visual overlap, video handles, boundary-frame refs, J/L or room-tone offsets and runtime adapter. For Remotion, call directorx_compile_remotion_render_projection after the quality contract and pass its remotion_render_props.json unchanged to DirectorXTimeline; the compiler derives scene order, timing, captions, registered audio tracks, absolute-frame volume envelopes, transition execution, and audio bridges from the SHA-bound semantic timeline. Every timeline audio binding must reference the same registered local audio artifact under a Remotion public directory; compile probes its real duration and rendering rejects short, replaced, caller-authored, or stale sources and props. HyperFrames must preserve the transitionExecution fingerprint, plan/sequence identity, and exact boundary order in its binding. After every render, call directorx_verify_final_media, then dispatch the canonical DX-Quality-Reviewer to inspect all PTS-bound findings and before/trigger/after evidence frames and call directorx_record_final_review_evidence. A detector signal is only a review candidate; critical decode/coverage failures cannot be dismissed. Confirmed defects must flow through an evidence-linked Director X Cut patch with repairLineage, native edit_change approval, rerender, and fresh audits. Only after structured reviewer acceptance call directorx_prepare_goal_completion and ask the returned post_production_edit request_user_input before delivery. If the user chooses editing, call directorx_start_opencut_editor and execute its editorHostAction immediately. DX-Editor may call directorx_propose_evidence_rough_cut only from registered silence/inactivity evidence; the result remains a draft. Import every saved draft with directorx_import_opencut_edit_result, obtain native edit_change approval, commit the patch, call directorx_render_opencut_timeline, and run directorx_verify_final_media again before delivery. Before Script or Storyboard completion, query directorx_query_cinematic_references for the active video type and required shot functions, record selected transferable patterns in Director.md or style_playbook.json, and never treat indexed source media as an acquired asset. Before Script completion call directorx_compile_claim_proof_map; factual claims without named proof shots and durable source evidence are blocked. Before Storyboard completion, call directorx_compile_shot_grounding_plan against the real shotlist, execute its source/rights/quality tasks, and call directorx_finalize_shot_grounding. Then call directorx_compile_visual_prompt_pack only after scene_coverage_plan.json, shot_sequence_review.json, and shot_grounding_report.json are ready; the pack must preserve the same coverage/shotlist/review/grounding hashes and exact shot order, purpose, duration, and per-shot authorized generation anchors. Use separate mode contracts for text-to-image, image edit, text-to-video, image-to-video, and first/last-frame video, and send unsupported exact text to deterministic Remotion overlays.";
-const FAILURE_POLICY_INSTRUCTIONS = "When a tool fails, inspect the structured error fields retryable, attempts, stop, and nextRequiredAction. Retry the same semantic operation at most once after a transient failure; never repeat an identical failed search, download, ingest, or native-interaction resolution blindly. If stop is true or the same operation reaches its retry limit, follow nextRequiredAction, keep the canvas alive, and do not continue generating or claim progress. For a deterministic execution failure, call directorx_recover_run with a concise correction detail, then retry only the corrected operation; do not create a replacement Run. directorx_checkpoint_run, directorx_resume_run, directorx_recover_run, and directorx_get_run_snapshot remain safe during recovery. After directorx_request_user_interaction returns, execute request_user_input and wait for its raw answers envelope before calling directorx_resolve_user_interaction; a user message such as ‘继续’ cannot satisfy a pending native gate. Use directorx_get_run_snapshot to resume from recoveryGate instead of creating a replacement Run.";
+  "For every Director X trigger, call directorx_capability_preflight before all other work. Use directorx_create_and_ask_native_question as the single model-visible native interaction entry. After Goal, minimum Intake, budget, essential image/video/voice routes, complexity, and any required reference-download consent are ready, call directorx_begin_creative_work immediately. Research, reference analysis, asset search, and scripting must begin before execution_graph.json, tool_inventory.json, audio_responsibility_plan.json, or parallel_subagent_plan.json are complete; these governance artifacts are required before Generation. The canvas is a projection of the durable Run and must prioritize growing real image, video, audio, research, script, storyboard, keyframe, and preview assets. If the five-minute creative-output SLA breaches, stop adding configuration work and dispatch the creative tracks immediately. Record music_strategy before research, then music_asset_selection only after search, local acquisition, rights proof, and quality audit. Never start an auxiliary Director X MCP runtime; one active runtime owns each Run. Preserve all existing provider, rights, pricing, continuity, render, exhaustive review, and delivery gates.";
+const FAILURE_POLICY_INSTRUCTIONS = "When a tool fails, inspect retryable, attempts, stop, recovery, and nextRequiredAction. Retry a transient semantic operation at most once. Use directorx_get_recovery_action for the minimal blocked operation, root cause, corrected example, and unique resume action; completed artifacts remain available. For deterministic failures, call directorx_recover_run and retry only corrected arguments. Use directorx_create_and_ask_native_question for native gates; a chat message such as ‘继续’ cannot satisfy them. Never create a replacement Run or auxiliary MCP runtime.";
 const credentialStatus = new Map();
 const preflightSessions = new Map();
 const ENV_NAME_PATTERN = /^[A-Z][A-Z0-9_]{2,80}$/;
@@ -111,6 +112,12 @@ const tools = [
   {
     name: "directorx_request_user_interaction",
     description: "Create or reuse one durable, deduplicated Codex request_user_input gate and return the exact host-tool action. The model must execute that host action and wait for its raw answer envelope; never infer an answer from chat text or continue the gated stage while it is pending.",
+    inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema(), kind: { enum: NATIVE_INTERACTION_KINDS, type: "string" }, gateKey: { type: "string", pattern: "^[A-Za-z0-9._:-]{1,120}$" }, reason: stringSchema(), questions: { type: "array", minItems: 1, maxItems: 3, items: nativeQuestionSchema() } }, ["projectPath", "runId", "kind", "reason", "questions"]),
+    annotations: writeAnnotations()
+  },
+  {
+    name: "directorx_create_and_ask_native_question",
+    description: "Preferred atomic native-question entry. Persist the Director X request first, then return one request_user_input host action whose afterAnswer resolves the same durable request automatically.",
     inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema(), kind: { enum: NATIVE_INTERACTION_KINDS, type: "string" }, gateKey: { type: "string", pattern: "^[A-Za-z0-9._:-]{1,120}$" }, reason: stringSchema(), questions: { type: "array", minItems: 1, maxItems: 3, items: nativeQuestionSchema() } }, ["projectPath", "runId", "kind", "reason", "questions"]),
     annotations: writeAnnotations()
   },
@@ -496,6 +503,24 @@ const tools = [
       referenceVideoCount: { type: "integer", minimum: 0, maximum: 100 }, modalities: { type: "array", minItems: 1, items: { enum: ["image", "video", "voice", "music", "screen", "avatar", "live_action"], type: "string" } },
       characterContinuity: { type: "boolean" }, deliveryTier: { enum: ["preview", "review", "publish"], type: "string" }
     }, ["projectPath", "runId", "durationSeconds", "shotCount", "modalities", "characterContinuity", "deliveryTier"]),
+    annotations: writeAnnotations()
+  },
+  {
+    name: "directorx_get_fast_start_status",
+    description: "Return the minimum production blockers and the five-minute creative-output SLA without requiring deferred governance artifacts.",
+    inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema() }, ["projectPath", "runId"]),
+    annotations: readOnlyAnnotations()
+  },
+  {
+    name: "directorx_get_recovery_action",
+    description: "Return only the blocked operation, root cause, corrected example, unique resume action, and artifact-preservation guarantee.",
+    inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema() }, ["projectPath", "runId"]),
+    annotations: readOnlyAnnotations()
+  },
+  {
+    name: "directorx_begin_creative_work",
+    description: "Complete minimal Intake and immediately enter Research once Goal, essential routes, budget, consent, and required Intake artifacts are ready. Deferred governance moves to Generation.",
+    inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema() }, ["projectPath", "runId"]),
     annotations: writeAnnotations()
   },
   {
@@ -1699,7 +1724,7 @@ const tools = [
   {
     name: "directorx_record_decision",
     description: "Persist an approved provider, model, budget, delivery promise, or candidate decision. Raw credentials are rejected.",
-    inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema(), kind: { enum: ["budget", "image_model", "video_model", "voice_model", "music_route", "provider", "delivery", "candidate"], type: "string" }, interactionRequestId: stringSchema(), value: { type: "object" } }, ["projectPath", "runId", "kind", "interactionRequestId", "value"]),
+    inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema(), kind: { enum: ["budget", "image_model", "video_model", "voice_model", "music_strategy", "music_asset_selection", "music_route", "provider", "delivery", "candidate"], type: "string" }, interactionRequestId: stringSchema(), value: { type: "object" } }, ["projectPath", "runId", "kind", "interactionRequestId", "value"]),
     annotations: writeAnnotations()
   },
   {
@@ -1937,7 +1962,7 @@ async function executeTool(name, args) {
       conversationExperience: DIRECTORX_CONVERSATION_POLICY,
       hostMechanism: "Codex Goal",
       requestUserInput: { required: true, fallback: null },
-      requiredApprovals: ["goal_entry", "production_budget", "image_provider_and_model", "video_provider_and_model", "voice_provider_model_and_voice", "background_music_route"],
+      requiredApprovals: ["goal_entry", "production_budget", "image_provider_and_model", "video_provider_and_model", "voice_provider_model_and_voice", "background_music_strategy"],
       credentialPolicy: "Collect keys only through the browser-canvas password field, inject them into the current MCP process, and persist only credential references.",
       canvasUri: CANVAS_URI,
       browserCanvasUrl,
@@ -1992,7 +2017,7 @@ async function executeTool(name, args) {
     canvasSurfaceHost.bind("canvas", args.preflightId, { projectPath: args.projectPath, runId: run.runId }, { rotateClaim: true });
     return await withBrowserCanvas(publicSnapshot(run), args);
   }
-  if (name === "directorx_request_user_interaction") {
+  if (["directorx_request_user_interaction", "directorx_create_and_ask_native_question"].includes(name)) {
     requireNativeGoalBound(await readRun(args), "Director X Intake and production questions");
     let interaction;
     const snapshot = await updateRun({ ...args, mutate(run) {
@@ -2000,6 +2025,9 @@ async function executeTool(name, args) {
       if (!interaction.deduplicated) run.events.push(event(run, "interaction.requested", run.stage, `${interaction.request.kind} · ${interaction.request.requestId}`));
       return run;
     } });
+    if (name === "directorx_create_and_ask_native_question") {
+      interaction = { ...interaction, ...compilePendingInteractionBatch({ projectPath: args.projectPath, runId: args.runId, requests: [interaction.request] }) };
+    }
     return { ...(await withBrowserCanvas(publicSnapshot(snapshot), args)), interaction };
   }
   if (name === "directorx_resolve_user_interaction") {
@@ -3858,6 +3886,29 @@ async function executeTool(name, args) {
       return run;
     } }), args);
   }
+  if (name === "directorx_get_fast_start_status") {
+    const run = await readRun(args);
+    return { readiness: evaluateFastStartReadiness(run), creativeProgressSla: evaluateCreativeProgressSla(run) };
+  }
+  if (name === "directorx_get_recovery_action") {
+    const run = await readRun(args);
+    return { recovery: run.recoveryGate?.recovery ?? projectRecoveryAction(run.recoveryGate ?? {}) };
+  }
+  if (name === "directorx_begin_creative_work") {
+    return await withRunResumeActions(await updateRun({ ...args, mutate(run) {
+      const fastStart = beginCreativeWork(run);
+      const intake = run.pipeline.stages.find((stage) => stage.id === "intake");
+      const evidenceRefs = intake.requiredOutputs;
+      run.pipeline = transitionPipelineStage(run.pipeline, run.approvals, { stageId: "intake", action: "complete", detail: "Minimum Intake complete; deferred governance moved to Generation.", evidenceRefs });
+      run.pipeline = transitionPipelineStage(run.pipeline, run.approvals, { stageId: "research", action: "begin", detail: "Fast-start research, reference analysis, asset search, and scripting can run in parallel." });
+      run.stage = "research";
+      run.status = "production_in_progress";
+      run.events.push(event(run, "fast_start.ready", "research", `Creative asset SLA ${fastStart.creativeAssetSlaMinutes} minutes`));
+      run.events.push(event(run, "stage.complete", "intake", "Minimum Intake complete"));
+      run.events.push(event(run, "stage.active", "research", "Creative work started"));
+      return run;
+    } }), args);
+  }
   if (name === "directorx_plan_production_team") {
     const current = await readRun(args);
     if (!current.executionGraph) throw new Error("Register execution_graph.json before planning the DX production team.");
@@ -4245,16 +4296,18 @@ async function executeTool(name, args) {
         const modelId = decisionValue.modelId ?? decisionValue.model_id;
         if (!notUsed && (!providerId || !modelId)) throw new Error(`${args.kind} requires an exact providerId and modelId, or notUsed=true.`);
       }
-      if (args.kind === "music_route") validateMusicRouteDecision(decisionValue);
+      if (["music_strategy", "music_route"].includes(args.kind)) validateMusicStrategyDecision(decisionValue);
+      if (args.kind === "music_asset_selection") validateMusicAssetSelectionDecision(run, decisionValue);
       if (args.kind === "delivery") {
         if (!run.finalMediaReview?.passed) throw new Error("Final delivery cannot be approved until the tier-aware media quality gate passes.");
         if (decisionValue.acceptedTier !== run.finalMediaReview.deliveryTier) throw new Error(`Delivery approval must explicitly accept the verified ${run.finalMediaReview.deliveryTier} tier.`);
       }
       run.decisions.push({ id: randomUUID(), kind: args.kind, value: decisionValue, approvedAt: new Date().toISOString() });
-      const gate = run.approvals.find((item) => item.kind === args.kind);
+      const approvalKind = args.kind === "music_route" ? "music_strategy" : args.kind;
+      const gate = run.approvals.find((item) => item.kind === approvalKind);
       if (gate) gate.status = "approved";
       run.events.push(event(run, "decision.approved", run.stage, `${args.kind} approved`));
-      const productionApprovalsReady = ["budget", "image_model", "video_model", "voice_model", "music_route"].every((kind) => run.approvals.some((item) => item.kind === kind && item.status === "approved"));
+      const productionApprovalsReady = ["budget", "image_model", "video_model", "voice_model"].every((kind) => run.approvals.some((item) => item.kind === kind && item.status === "approved"));
       if (productionApprovalsReady && args.kind !== "delivery") run.status = "production_in_progress";
       return run;
     } })), args);
@@ -5110,7 +5163,7 @@ async function handleCanvasRequest(request, response) {
           { kind: "image_model", status: "pending" },
           { kind: "video_model", status: "pending" },
           { kind: "voice_model", status: "pending" },
-          { kind: "music_route", status: "pending" }
+          { kind: "music_strategy", status: "pending" }
         ],
         events: [{ sequence: 1, type: preflight.subagentSessionReady === false ? "preflight.agent_bootstrap_required" : "preflight.ready", stage: "intake", detail: preflight.subagentSessionReady === false ? `No compatible Codex host agent is available for: ${preflight.subagentNamingStatus?.unroutableRoleIds?.join(", ")}` : preflight.subagentNamingStatus?.sessionMode === "builtin_compatibility" ? "Director X is ready for Goal confirmation using built-in Codex hosts with canonical DX production identities." : "Director X is ready for Goal confirmation." }]
       };
@@ -5233,17 +5286,29 @@ function assertOfficialPricingResearchEvidence(run, evidence) {
   if (!matched) throw new Error("Register model pricing only after provider_api_research_receipt.json contains the opened official pricing page.");
 }
 
-function validateMusicRouteDecision(value = {}) {
+function validateMusicStrategyDecision(value = {}) {
   const route = value.route ?? value.musicRoute ?? value.music_route;
-  if (!["local_file", "rights_safe_library", "generated_music", "none", "video_native_fallback"].includes(route)) throw new Error("music_route requires one supported background-music route.");
-  if (["local_file", "rights_safe_library"].includes(route) && !(value.assetRef ?? value.asset_ref)) throw new Error(`${route} requires a selected local music assetRef.`);
-  if (route === "generated_music" && (!(value.providerId ?? value.provider_id) || !(value.modelId ?? value.model_id))) throw new Error("generated_music requires an exact providerId and modelId.");
+  if (!["local_file", "rights_safe_library", "generated_music", "none", "video_native_fallback"].includes(route)) throw new Error("music_strategy requires one supported background-music route.");
   if (route === "video_native_fallback" && value.nativeFallbackApproved !== true && value.native_fallback_approved !== true) throw new Error("video_native_fallback requires explicit nativeFallbackApproved=true.");
+}
+
+function validateMusicAssetSelectionDecision(run, value = {}) {
+  const strategy = [...(run.decisions ?? [])].reverse().find((decision) => ["music_strategy", "music_route"].includes(decision.kind))?.value ?? {};
+  validateMusicStrategyDecision(strategy);
+  const route = strategy.route ?? strategy.musicRoute ?? strategy.music_route;
+  if (["local_file", "rights_safe_library"].includes(route)) {
+    const assetRef = value.assetRef ?? value.asset_ref;
+    if (!assetRef) throw new Error(`${route} requires a selected local music assetRef after search and audit.`);
+    const selected = (run.musicAssets ?? []).find((asset) => [asset.assetId, asset.artifactRef].includes(assetRef) && asset.status === "ready");
+    if (!selected) throw new Error("music_asset_selection requires a passing local rights and quality audit from DX-Asset-Manager.");
+  }
+  if (route === "generated_music" && (!(value.providerId ?? value.provider_id) || !(value.modelId ?? value.model_id))) throw new Error("generated_music asset selection requires an exact providerId and modelId.");
+  if (["none", "video_native_fallback"].includes(route)) throw new Error(`${route} does not accept a separate music asset selection.`);
 }
 
 function assertAudioPlanMatchesDecisions(run, plan) {
   if (plan.confirmedBy !== "request_user_input") throw new Error("Audio responsibility planning requires Codex request_user_input confirmation.");
-  for (const kind of ["budget", "video_model", "voice_model", "music_route"]) {
+  for (const kind of ["budget", "video_model", "voice_model", "music_strategy"]) {
     if (!run.approvals?.some((approval) => approval.kind === kind && approval.status === "approved")) throw new Error(`Approve ${kind} before registering the audio responsibility plan.`);
   }
   const decisions = [...(run.decisions ?? [])].reverse();
@@ -5253,11 +5318,13 @@ function assertAudioPlanMatchesDecisions(run, plan) {
   const voiceNotUsed = voice.notUsed === true || voice.not_used === true;
   if (voiceNotUsed !== (plan.voice.enabled !== true)) throw new Error("Audio plan voice responsibility must match the user-approved voice decision.");
   if (!voiceNotUsed && ((voice.providerId ?? voice.provider_id) !== plan.voice.providerId || (voice.modelId ?? voice.model_id) !== plan.voice.modelId)) throw new Error("Audio plan TTS route must match the exact user-approved voice provider/model.");
-  const music = decisions.find((decision) => decision.kind === "music_route")?.value ?? {};
-  validateMusicRouteDecision(music);
+  const music = decisions.find((decision) => ["music_strategy", "music_route"].includes(decision.kind))?.value ?? {};
+  validateMusicStrategyDecision(music);
   const approvedRoute = music.route ?? music.musicRoute ?? music.music_route;
   if (approvedRoute !== plan.music.route) throw new Error("Audio plan music route must match the user-approved background-music decision.");
-  const approvedAsset = music.assetRef ?? music.asset_ref;
+  const selection = decisions.find((decision) => decision.kind === "music_asset_selection")?.value ?? {};
+  if (["local_file", "rights_safe_library", "generated_music"].includes(approvedRoute)) validateMusicAssetSelectionDecision(run, selection);
+  const approvedAsset = selection.assetRef ?? selection.asset_ref ?? music.assetRef ?? music.asset_ref;
   if (approvedAsset && approvedAsset !== plan.music.assetRef) throw new Error("Audio plan music asset must match the user-approved local track.");
 }
 

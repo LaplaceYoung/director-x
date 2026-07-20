@@ -3,6 +3,12 @@ import { compilePendingInteractionBatch, compileSubagentHostProtocol } from "./h
 const TERMINAL_AGENT_STATES = new Set(["complete", "failed"]);
 
 export function buildRunResumeActionPlan(snapshot, context = {}) {
+  const recovery = snapshot.recoveryGate?.status === "blocked" ? snapshot.recoveryGate.recovery ?? {
+    blockedOperation: snapshot.recoveryGate.toolName,
+    rootCause: snapshot.recoveryGate.code,
+    resumeWith: snapshot.recoveryGate.nextRequiredAction,
+    preservesCompletedArtifacts: true
+  } : null;
   const surfaceActions = surfaceRebindActions(snapshot, context);
   const releaseActions = terminalReleaseActions(snapshot, context);
   const nativeInteractionBatch = compilePendingInteractionBatch({
@@ -12,7 +18,9 @@ export function buildRunResumeActionPlan(snapshot, context = {}) {
   });
   const dispatch = !nativeInteractionBatch && !releaseActions.length ? readyParallelDispatch(snapshot, context) : null;
   const finalizeActions = surfaceFinalizeActions(snapshot, context);
-  const blockedBy = nativeInteractionBatch
+  const blockedBy = recovery
+    ? `recovery:${recovery.blockedOperation}`
+    : nativeInteractionBatch
     ? `native_interactions:${nativeInteractionBatch.sourceRequestIds.join(",")}`
     : releaseActions.length
       ? "terminal_subagent_host_release"
@@ -30,7 +38,8 @@ export function buildRunResumeActionPlan(snapshot, context = {}) {
     runId: snapshot.runId,
     generatedAt: context.now ?? new Date().toISOString(),
     blockedBy,
-    attention: attentionMessage(surfaceActions, releaseActions, nativeInteractionBatch, dispatch),
+    attention: recovery ? `Recover ${recovery.blockedOperation} with ${recovery.resumeWith}; completed artifacts remain available.` : attentionMessage(surfaceActions, releaseActions, nativeInteractionBatch, dispatch),
+    recovery,
     groups,
     readyBatchId: dispatch?.batchId ?? null,
     nativeInteraction: nativeInteractionBatch?.request ?? null,
@@ -53,7 +62,10 @@ function productionBootstrapState(snapshot, dispatch) {
   let state = "awaiting_goal_binding";
   let nextRequiredAction = "bind_goal";
   if (snapshot.goal?.boundAt) {
-    if (!snapshot.productionComplexityPlan) {
+    if (snapshot.fastStart?.startedAt && !snapshot.executionGraph) {
+      state = "creative_work_active_governance_deferred";
+      nextRequiredAction = snapshot.creativeProgressSla?.breached ? "dispatch_creative_work_now" : "continue_research_asset_and_script_work";
+    } else if (!snapshot.productionComplexityPlan) {
       state = "awaiting_complexity_plan";
       nextRequiredAction = "plan_production_complexity";
     } else if (!snapshot.executionGraph) {

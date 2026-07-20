@@ -11,7 +11,7 @@ export function configureRunMode(run, config, now = new Date().toISOString()) {
     mode: config.mode, confirmedAt: now, confirmedBy: config.confirmedBy,
     lowRiskAutoAdvance: config.mode !== "stage_approval",
     stageApprovalRequired: config.mode === "stage_approval",
-    hardGates: ["budget", "image_model", "video_model", "voice_model", "music_route", "provider_reroute", "reference_download", "delivery_promise_change", "delivery"]
+    hardGates: ["budget", "image_model", "video_model", "voice_model", "music_strategy", "music_asset_selection", "provider_reroute", "reference_download", "delivery_promise_change", "delivery"]
   };
   run.stageApprovals ??= {};
   return run.runMode;
