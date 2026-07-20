@@ -279,9 +279,12 @@ cd director-x
 node --version
 pnpm test
 pnpm check
+pnpm validate:plugin
 ```
 
-插件 Runtime 不包含生产 npm 依赖。测试覆盖 MCP 协议、持久化 Run、媒体画布、Provider 路由、剪辑、恢复和审片合同。
+插件 Runtime 不包含生产 npm 依赖。测试覆盖 MCP 协议、持久化 Run、媒体画布、Provider 路由、剪辑、恢复和审片合同。`pnpm validate:plugin` 与 GitHub Actions 会检查仓库 Marketplace、Manifest 路径、版本一致性和公开安装命令。
+
+版本记录见 [CHANGELOG.md](CHANGELOG.md)。不可变的优化前基线为 [Director X v0.1.0](https://github.com/LaplaceYoung/director-x/releases/tag/v0.1.0)。
 
 ## 参与贡献
 
@@ -292,6 +295,7 @@ pnpm check
 ```bash
 pnpm test
 pnpm check
+pnpm validate:plugin
 git diff --check
 ```
 
