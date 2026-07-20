@@ -65,6 +65,7 @@ test("gives every MCP operation a short human title and compact success text", (
   assert.equal(friendlyToolTitle("directorx_compile_shot_grounding_plan"), "规划逐镜头素材");
   assert.equal(friendlyToolTitle("directorx_finalize_shot_grounding"), "确认镜头素材依据");
   assert.equal(friendlyToolTitle("directorx_verify_final_media"), "全面检查成片");
+  assert.equal(friendlyToolTitle("directorx_update_canvas_review_note"), "处理画布审片反馈");
   assert.equal(conciseToolResult("directorx_record_event", { userFacingSummary: { headline: "正在打磨脚本。" } }), "正在打磨脚本。");
   assert.equal(DIRECTORX_CONVERSATION_POLICY.maxSentencesPerUpdate, 2);
 });

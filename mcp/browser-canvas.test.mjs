@@ -40,6 +40,10 @@ test("browser canvas ships local-only A/B playback and timecoded evidence naviga
   assert.doesNotMatch(html, /<h3>可追溯数据<\/h3>/);
   assert.doesNotMatch(html, /会话环境变量（由 Director X 锁定）/);
   assert.doesNotMatch(html, /批准候选|确认交付/);
+  assert.match(html, /添加时间码反馈/);
+  assert.match(html, /\/directorx\/api\/review-note/);
+  assert.match(html, /clientNoteId/);
+  assert.match(html, /这只是制作反馈，不是批准或交付确认/);
   const script = html.match(/<script>([\s\S]*)<\/script>/)?.[1];
   assert.ok(script);
   assert.doesNotThrow(() => new Function(script));

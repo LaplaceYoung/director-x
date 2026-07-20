@@ -68,6 +68,7 @@ test("serves MCP tools over newline-delimited stdio", async () => {
     assert.equal(message.id, 1);
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_open_canvas"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_upsert_canvas_object"));
+    assert.ok(message.result.tools.some((tool) => tool.name === "directorx_update_canvas_review_note"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_list_pipelines"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_list_subagent_roles"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_register_subagent"));
@@ -467,6 +468,49 @@ test("streams canvas video and audio with HTTP byte ranges", async () => {
     assert.equal(response.status, 206);
     assert.equal(response.headers.get("content-range"), "bytes 4-9/16");
     assert.equal(await response.text(), "456789");
+  } finally { child.kill("SIGTERM"); await rm(projectPath, { recursive: true, force: true }); }
+});
+
+test("records claimed side-canvas timecode feedback into the durable Run", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-canvas-review-note-"));
+  const mediaPath = join(projectPath, "candidate.mp4");
+  await writeFile(mediaPath, Buffer.from("candidate"));
+  const created = await createRun({ projectPath, outcome: "Review a candidate" });
+  await updateRun({ projectPath, runId: created.runId, mutate(run) {
+    run.artifacts["candidate.mp4"] = { artifactRef: "candidate.mp4", path: mediaPath, relativePath: "candidate.mp4", stage: "generation", mediaKind: "video", metadata: { durationSeconds: 10 } };
+    return run;
+  } });
+  const child = spawn(process.execPath, [new URL("./server.mjs", import.meta.url).pathname], { stdio: ["pipe", "pipe", "pipe"] });
+  let output = ""; child.stdout.setEncoding("utf8"); child.stdout.on("data", (chunk) => { output += chunk; });
+  child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 151, method: "tools/call", params: { name: "directorx_open_canvas", arguments: { projectPath, runId: created.runId } } })}\n`);
+  try {
+    await waitFor(() => messages(output).some((item) => item.id === 151), 1000);
+    const canvasUrl = new URL(messages(output).find((item) => item.id === 151).result.structuredContent.browserCanvasUrl);
+    await claimBrowserCanvas(canvasUrl);
+    const endpoint = surfaceApiUrl(canvasUrl, "/directorx/api/review-note");
+    const payload = {
+      session: canvasUrl.searchParams.get("session"),
+      note: { clientNoteId: "client-note-151", targetArtifactRef: "candidate.mp4", targetNodeId: "artifact:candidate.mp4", timeSeconds: 3.5, category: "timing", severity: "major", body: "这里需要更快进入下一镜。" }
+    };
+    const missingClaim = new URL(endpoint); missingClaim.searchParams.delete("claim");
+    assert.equal((await fetch(missingClaim, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })).status, 403);
+    const response = await fetch(endpoint, { method: "POST", headers: surfaceClaimHeaders(canvasUrl, { "Content-Type": "application/json" }), body: JSON.stringify(payload) });
+    assert.equal(response.status, 201);
+    const result = await response.json();
+    assert.equal(result.note.timeSeconds, 3.5);
+    assert.equal(result.isApproval, false);
+    const retry = await fetch(endpoint, { method: "POST", headers: surfaceClaimHeaders(canvasUrl, { "Content-Type": "application/json" }), body: JSON.stringify(payload) });
+    assert.equal(retry.status, 200);
+    assert.equal((await retry.json()).status, "unchanged");
+    child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 152, method: "tools/call", params: { name: "directorx_update_canvas_review_note", arguments: { projectPath, runId: created.runId, noteId: result.note.noteId, action: "acknowledge", owner: "DX-Editor" } } })}\n`);
+    await waitFor(() => messages(output).some((item) => item.id === 152), 1000);
+    assert.equal(messages(output).find((item) => item.id === 152).result.structuredContent.canvasReviewNotes[0].status, "acknowledged");
+    const state = await (await fetch(surfaceApiUrl(canvasUrl, "/directorx/api/state"))).json();
+    assert.equal(state.canvasReviewNotes.length, 1);
+    assert.equal(state.canvasReviewNotes[0].status, "acknowledged");
+    assert.equal(state.events.filter((item) => item.type === "canvas.review_note.created").length, 1);
+    assert.equal(state.productionCanvas.reviewNotes.openCount, 1);
+    assert.ok(state.productionCanvas.reviewTimeline.markers.some((marker) => marker.noteId === result.note.noteId));
   } finally { child.kill("SIGTERM"); await rm(projectPath, { recursive: true, force: true }); }
 });
 

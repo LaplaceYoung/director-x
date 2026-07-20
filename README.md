@@ -118,6 +118,7 @@ The canvas is designed around production assets rather than a decorative fixed w
 - trace relationships between references, scripts, keyframes, clips, and final renders
 - surface approvals, blockers, provider jobs, and recovery actions
 - inspect timelines, captions, waveforms, comparisons, and frame-level review evidence
+- leave durable, timecoded production notes on playable video assets and track them through evidence-backed resolution without confusing feedback with approval
 - read local or authorized reference videos through transcript cues, keyframes, scene summaries, focused ranges, or exhaustive full-frame evidence
 - resume from persisted state after the browser surface or MCP runtime restarts
 

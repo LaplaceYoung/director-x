@@ -61,6 +61,7 @@ import { writeDirectorXTimelineInterchange } from "./timeline-interchange.mjs";
 import { buildRunResumeActionPlan } from "./run-resume.mjs";
 import { executeOpenCutRender } from "./opencut-render.mjs";
 import { normalizeCanvasUiState } from "./canvas-ui-state.mjs";
+import { acknowledgeCanvasReviewNote, recordCanvasReviewNote, resolveCanvasReviewNote, writeCanvasReviewNotesArtifact } from "./canvas-review-notes.mjs";
 import { auditAssetQuality, registerAssetSearchPlan, requireWebAssetDownloadAuthorization, writeAssetQualityAudit, writeAssetSearchPlan } from "./asset-retrieval.mjs";
 import { compileCameraContinuityPlan, reviewCameraReferences, writeCameraContinuityArtifacts } from "./camera-continuity-graph.mjs";
 import { conciseToolResult, DIRECTORX_CONVERSATION_POLICY, friendlyToolTitle } from "./conversation-ux.mjs";
@@ -1838,6 +1839,20 @@ const rawTools = [
       }, ["id", "type", "label", "stage", "status"]),
       sourceIds: { type: "array", items: stringSchema() }
     }, ["projectPath", "runId", "object"]),
+    annotations: writeAnnotations()
+  },
+  {
+    name: "directorx_update_canvas_review_note",
+    description: "Acknowledge or resolve a user-authored canvas review note. Resolving requires registered repair or review evidence and never converts the note into an approval.",
+    inputSchema: objectSchema({
+      projectPath: stringSchema(),
+      runId: stringSchema(),
+      noteId: stringSchema(),
+      action: { enum: ["acknowledge", "resolve"], type: "string" },
+      owner: { type: "string" },
+      resolutionSummary: { type: "string" },
+      evidenceRefs: { type: "array", items: stringSchema() }
+    }, ["projectPath", "runId", "noteId", "action"]),
     annotations: writeAnnotations()
   },
   {
@@ -4553,6 +4568,18 @@ async function executeTool(name, args) {
       return run;
     } })), args);
   }
+  if (name === "directorx_update_canvas_review_note") {
+    return await withBrowserCanvas(publicSnapshot(await updateRun({ ...args, async mutate(run) {
+      const note = args.action === "acknowledge"
+        ? acknowledgeCanvasReviewNote(run, { noteId: args.noteId, owner: args.owner })
+        : resolveCanvasReviewNote(run, { noteId: args.noteId, resolutionSummary: args.resolutionSummary, evidenceRefs: args.evidenceRefs });
+      const written = await writeCanvasReviewNotesArtifact({ ...args, notes: run.canvasReviewNotes });
+      run.artifacts ??= {};
+      run.artifacts[written.artifactRef] = await inspectArtifact({ ...args, artifactRef: written.artifactRef, path: written.path, stage: "review", mediaKind: "document", metadata: { internal: true, userAuthored: true, noteCount: run.canvasReviewNotes.length } });
+      run.events.push(event(run, `canvas.review_note.${note.status}`, "review", `${note.noteId} · ${note.targetArtifactRef}${note.timeSeconds == null ? "" : ` · ${note.timeSeconds}s`}`));
+      return run;
+    } })), args);
+  }
   if (name === "directorx_open_canvas") return await withRunResumeActions(await readRun(args), args);
   if (name === "directorx_open_inline_canvas") {
     if (!args.runId) throw new Error("directorx_open_inline_canvas requires an existing durable runId; Director X preflight must use the side Browser canvas.");
@@ -5475,6 +5502,28 @@ async function handleCanvasRequest(request, response) {
       const uiState = normalizeCanvasUiState(body.uiState);
       await updateRun({ ...session.scope, mutate(run) { run.canvas ??= { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: .72 } }; run.canvas.uiState = uiState; return run; } });
       return json(response, 200, { status: "persisted", updatedAt: uiState.updatedAt });
+    }
+    if (request.method === "POST" && url.pathname === "/directorx/api/review-note") {
+      const body = await readJsonBody(request, 8 * 1024);
+      const session = requireSurfaceClaim(request, url, "canvas", body.session);
+      if (!session.scope.runId) return json(response, 404, { error: "Canvas review notes require a durable Director X Run." });
+      let created;
+      let isNew = false;
+      try {
+        await updateRun({ ...session.scope, async mutate(run) {
+          const previousCount = run.canvasReviewNotes?.length ?? 0;
+          created = recordCanvasReviewNote(run, body.note);
+          isNew = run.canvasReviewNotes.length > previousCount;
+          const written = await writeCanvasReviewNotesArtifact({ ...session.scope, notes: run.canvasReviewNotes });
+          run.artifacts ??= {};
+          run.artifacts[written.artifactRef] = await inspectArtifact({ ...session.scope, artifactRef: written.artifactRef, path: written.path, stage: "review", mediaKind: "document", metadata: { internal: true, userAuthored: true, noteCount: run.canvasReviewNotes.length } });
+          if (isNew) run.events.push(event(run, "canvas.review_note.created", "review", `${created.noteId} · ${created.targetArtifactRef}${created.timeSeconds == null ? "" : ` · ${created.timeSeconds}s`}`));
+          return run;
+        } });
+      } catch (error) {
+        throw new CanvasSurfaceHostError(400, error instanceof Error ? error.message : String(error));
+      }
+      return json(response, isNew ? 201 : 200, { note: created, status: isNew ? "recorded" : "unchanged", isApproval: false, canSatisfyGate: false });
     }
     if (request.method === "GET" && url.pathname === "/directorx/api/media") {
       const session = requireSurfaceClaim(request, url, "canvas", url.searchParams.get("session"));

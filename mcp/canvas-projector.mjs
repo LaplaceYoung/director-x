@@ -184,6 +184,41 @@ export function projectCanvas(snapshot) {
     const index = snapshot.mediaEvidenceIndexes?.[query.plan.indexId]; const byId = new Map(index?.levels.flatMap((level) => level.nodes.map((node) => [node.nodeId, node])) ?? []);
     return { queryId: query.plan.queryId, question: query.plan.question, status: query.status, stopReason: query.trace?.stopReason ?? null, coverage: query.evidenceBundle?.coverage ?? null, claim: query.evidenceBundle?.claim ?? null, conflicts: query.trace?.conflicts ?? [], hits: (query.trace?.selectedNodeIds ?? []).map((id) => ({ ...byId.get(id), nodeId: id })).filter((item) => item.range).map((item) => ({ ...item, targetNodeId: `asset:${index.source.assetId}`, targetArtifactRef: index.source.artifactRef ?? null, coordinateSpace: "source", startSeconds: evidenceSeconds(item.range.start), durationSeconds: evidenceSeconds(item.range.duration) })) };
   }) };
+  const canvasReviewNotes = (snapshot.canvasReviewNotes ?? []).map((note) => ({
+    noteId: note.noteId,
+    targetArtifactRef: note.targetArtifactRef,
+    targetNodeId: note.targetNodeId,
+    timeSeconds: note.timeSeconds,
+    category: note.category,
+    severity: note.severity,
+    body: note.body,
+    status: note.status,
+    owner: note.owner,
+    resolution: note.resolution,
+    createdAt: note.createdAt,
+    updatedAt: note.updatedAt,
+    isApproval: false,
+    canSatisfyGate: false
+  }));
+  const canvasReviewMarkers = canvasReviewNotes.filter((note) => note.timeSeconds != null).map((note) => ({
+    id: `canvas-review:${note.noteId}`,
+    markerId: `canvas-review:${note.noteId}`,
+    noteId: note.noteId,
+    label: note.body,
+    severity: note.severity,
+    category: note.category,
+    range: { start: { value: Math.round(note.timeSeconds * 1000), rate: 1000 }, duration: { value: 1, rate: 1000 } },
+    evidenceRefs: [note.targetArtifactRef],
+    targetArtifactRef: note.targetArtifactRef,
+    status: note.status,
+    source: "canvas_user_feedback"
+  }));
+  const projectedReviewTimeline = projectReviewTimeline(snapshot.avReviewTimeline, canvasReviewMarkers, snapshot.artifacts);
+  const reviewNotes = {
+    items: canvasReviewNotes,
+    openCount: canvasReviewNotes.filter((note) => note.status !== "resolved").length,
+    resolvedCount: canvasReviewNotes.filter((note) => note.status === "resolved").length
+  };
   const editGraphNodes = (snapshot.editSession?.graph?.nodes ?? []).map((node, index) => ({ id: `edit:${node.nodeId}`, type: "artifact", stage: "edit", label: `${node.operation} · ${node.nodeId}`, detail: `${node.status} · ${node.inputArtifactRefs.join(", ")} → ${node.outputArtifactRefs.join(", ")}`, status: node.status === "complete" ? "complete" : node.status === "failed" ? "failed" : node.status === "running" ? "active" : "pending", x: 180 + index * 260, y: 2020 + (index % 2) * 130, artifactRef: "edit_graph.json", metadata: node }));
   const editGraphEdges = (snapshot.editSession?.graph?.nodes ?? []).flatMap((node) => node.dependsOn.map((dependency) => ({ id: `edit-edge:${dependency}:${node.nodeId}`, source: `edit:${dependency}`, target: `edit:${node.nodeId}`, kind: "edit" })));
   const timelineRevisions = Object.values(snapshot.editSession?.revisions ?? {}).sort((a, b) => a.revision - b.revision);
@@ -332,15 +367,27 @@ export function projectCanvas(snapshot) {
     mediaGraph,
     sceneCoverage,
     cameraContinuity,
-    reviewTimeline: snapshot.avReviewTimeline ?? null,
+    reviewTimeline: projectedReviewTimeline,
     reviewSession: snapshot.reviewSession ?? null,
     hostCapabilities: snapshot.hostCapabilities ?? null,
     evidenceRail,
+    reviewNotes,
     editDiff,
     viewport: canvas.viewport ?? { x: 0, y: 0, zoom: 0.72 },
-    activity: { events: [...(snapshot.events ?? [])].reverse().slice(0, 80), pendingInteractions, missingEvidence, agentBatches, creativeProgressSla: snapshot.creativeProgressSla ?? null, recovery: snapshot.recoveryGate?.recovery ?? null },
-    summary: { nodeCount: nodes.length, workflowNodeCount: workflow.nodes.length, assetCount: assets.length, mediaGraphNodeCount: mediaGraph.nodes.length, mediaGraphEdgeCount: mediaGraph.edges.length, mediaCounts: mediaGraph.counts, creativeProgressSla: snapshot.creativeProgressSla ?? null, agentCount: subagents.length, agentBatchCount: agentBatches.length, activeAgentBatchCount: agentBatches.filter((batch) => batch.status === "running").length, lineageCount: lineageNodes.length, acceptedKnowledgeCount: snapshot.acceptedModelKnowledge?.entries.length ?? 0, benchmarkReportCount: benchmarkNodes.length, capabilityCount: capabilityNodes.length, capabilityRouteStatus: snapshot.capabilityRoute?.status ?? null, toolCount: toolNodes.length, toolRouteStatus: snapshot.capabilityExecutionPlan?.status ?? null, recommendedToolStrategy: snapshot.capabilityExecutionPlan?.recommendedStrategy ?? null, executionTelemetryCount: telemetryNodes.length, routeFeedbackStatus: snapshot.modelKnowledgePatch?.status ?? null, timelineRevisionCount: timelineRevisions.length, manualEditorStatus: snapshot.openCutEditor?.sessions?.[snapshot.openCutEditor?.activeSessionId]?.status ?? snapshot.openCutEditor?.decision?.status ?? null, roughCutProposalCount: Object.keys(snapshot.roughCutProposals ?? {}).length, executionGraph: snapshot.executionGraph ? { graphId: snapshot.executionGraph.graphId, revision: snapshot.executionGraph.revision, nodeCount: executionNodes.length, completedCount: executionNodes.filter((node) => node.status === "complete").length } : null, sceneCoveragePlan: sceneCoverage ? { planId: sceneCoverage.planId, status: sceneCoverage.status, sceneCount: sceneCoverage.scenes.length, shotCount: sceneCoverage.shots.length, setupCount: sceneCoverage.setupGroups.length } : null, cameraContinuityGraph: cameraGraph ? { graphId: cameraGraph.graphId, status: cameraGraph.status, shotCount: cameraContinuityNodes.length, cameraCount: cameraGraph.cameras.length, executionWaveCount: cameraGraph.executionWaves.length } : null, checkpointCount: snapshot.checkpoints?.length ?? 0, providerProbeCount: providerNodes.length, providerJobCount: generation?.providerJobs?.length ?? 0, repairBranchCount: snapshot.repairs?.length ?? 0, taskTransport: snapshot.taskTransport?.transport ?? null, reviewTimelineMarkerCount: snapshot.avReviewTimeline?.markers?.length ?? 0, runMode: snapshot.runMode?.mode ?? null, currentStage: snapshot.stage, pipelineId: snapshot.pipeline?.id ?? null, pipelineLabel: snapshot.pipeline?.label ?? null, pendingInteractionCount: pendingInteractions.length, missingEvidenceCount: missingEvidence.length, generationCost: generation ? { currency: generation.currency, estimated: generation.totalEstimatedCost, actual: generation.totalActualCost } : null }
+    activity: { events: [...(snapshot.events ?? [])].reverse().slice(0, 80), pendingInteractions, missingEvidence, agentBatches, userReviewNotes: canvasReviewNotes.filter((note) => note.status !== "resolved"), creativeProgressSla: snapshot.creativeProgressSla ?? null, recovery: snapshot.recoveryGate?.recovery ?? null },
+    summary: { nodeCount: nodes.length, workflowNodeCount: workflow.nodes.length, assetCount: assets.length, mediaGraphNodeCount: mediaGraph.nodes.length, mediaGraphEdgeCount: mediaGraph.edges.length, mediaCounts: mediaGraph.counts, creativeProgressSla: snapshot.creativeProgressSla ?? null, agentCount: subagents.length, agentBatchCount: agentBatches.length, activeAgentBatchCount: agentBatches.filter((batch) => batch.status === "running").length, lineageCount: lineageNodes.length, acceptedKnowledgeCount: snapshot.acceptedModelKnowledge?.entries.length ?? 0, benchmarkReportCount: benchmarkNodes.length, capabilityCount: capabilityNodes.length, capabilityRouteStatus: snapshot.capabilityRoute?.status ?? null, toolCount: toolNodes.length, toolRouteStatus: snapshot.capabilityExecutionPlan?.status ?? null, recommendedToolStrategy: snapshot.capabilityExecutionPlan?.recommendedStrategy ?? null, executionTelemetryCount: telemetryNodes.length, routeFeedbackStatus: snapshot.modelKnowledgePatch?.status ?? null, timelineRevisionCount: timelineRevisions.length, manualEditorStatus: snapshot.openCutEditor?.sessions?.[snapshot.openCutEditor?.activeSessionId]?.status ?? snapshot.openCutEditor?.decision?.status ?? null, roughCutProposalCount: Object.keys(snapshot.roughCutProposals ?? {}).length, executionGraph: snapshot.executionGraph ? { graphId: snapshot.executionGraph.graphId, revision: snapshot.executionGraph.revision, nodeCount: executionNodes.length, completedCount: executionNodes.filter((node) => node.status === "complete").length } : null, sceneCoveragePlan: sceneCoverage ? { planId: sceneCoverage.planId, status: sceneCoverage.status, sceneCount: sceneCoverage.scenes.length, shotCount: sceneCoverage.shots.length, setupCount: sceneCoverage.setupGroups.length } : null, cameraContinuityGraph: cameraGraph ? { graphId: cameraGraph.graphId, status: cameraGraph.status, shotCount: cameraContinuityNodes.length, cameraCount: cameraGraph.cameras.length, executionWaveCount: cameraGraph.executionWaves.length } : null, checkpointCount: snapshot.checkpoints?.length ?? 0, providerProbeCount: providerNodes.length, providerJobCount: generation?.providerJobs?.length ?? 0, repairBranchCount: snapshot.repairs?.length ?? 0, taskTransport: snapshot.taskTransport?.transport ?? null, reviewTimelineMarkerCount: projectedReviewTimeline?.markers?.length ?? 0, canvasReviewNoteCount: canvasReviewNotes.length, openCanvasReviewNoteCount: reviewNotes.openCount, runMode: snapshot.runMode?.mode ?? null, currentStage: snapshot.stage, pipelineId: snapshot.pipeline?.id ?? null, pipelineLabel: snapshot.pipeline?.label ?? null, pendingInteractionCount: pendingInteractions.length, missingEvidenceCount: missingEvidence.length, generationCost: generation ? { currency: generation.currency, estimated: generation.totalEstimatedCost, actual: generation.totalActualCost } : null }
   };
+}
+
+function projectReviewTimeline(timeline, reviewMarkers, artifacts = {}) {
+  if (!timeline && !reviewMarkers.length) return null;
+  if (timeline && !reviewMarkers.length) return timeline;
+  if (timeline) return { ...timeline, markers: [...(timeline.markers ?? []), ...reviewMarkers] };
+  const durationSeconds = Math.max(0, ...reviewMarkers.map((marker) => {
+    const artifact = artifacts[marker.targetArtifactRef];
+    return Number(artifact?.metadata?.durationSeconds ?? artifact?.metadata?.probe?.durationSeconds ?? marker.range.start.value / marker.range.start.rate);
+  }).filter(Number.isFinite));
+  return { timelineId: "canvas-review-feedback", durationSeconds, shots: [], subtitles: [], audioTracks: [], markers: reviewMarkers };
 }
 
 export const productionCanvasStages = STAGES;

@@ -8,7 +8,7 @@
     :root { color-scheme: dark; font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #111; color: #eee; --line: #2c2c2c; --muted: #8a8a8a; --panel: #171717; --raised: #202020; --accent: #ef6548; --good: #6fb68a; --warn: #d8a750; }
     * { box-sizing: border-box; }
     html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
-    button, input { font: inherit; }
+    button, input, select, textarea { font: inherit; }
     button { color: inherit; }
     .app { height: 100vh; display: grid; grid-template-rows: 52px minmax(0, 1fr); background: #111; }
     header { display: grid; grid-template-columns: 280px 1fr 280px; align-items: center; border-bottom: 1px solid var(--line); background: #151515; padding: 0 14px; }
@@ -166,6 +166,25 @@
     .timeline-block.subtitle { top: 6px; bottom: 6px; background: #24302d; border-color: #465d55; }
     .timeline-marker { position: absolute; top: 0; bottom: 0; width: 2px; border: 0; padding: 0; background: var(--warn); cursor: pointer; }
     .timeline-marker.critical, .timeline-marker.major { background: var(--accent); }
+    .review-feedback { margin: 0 0 14px; border: 1px solid #303030; background: #141414; padding: 13px; }
+    .review-feedback-head { display: flex; justify-content: space-between; gap: 12px; align-items: end; margin-bottom: 10px; }
+    .review-feedback-head h3 { margin: 0; font-size: 12px; }
+    .review-feedback-head p { margin: 4px 0 0; color: #7f7f7f; font-size: 9px; }
+    .review-note-list { display: grid; gap: 6px; margin-bottom: 10px; }
+    .review-note { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: start; padding: 8px; border: 1px solid #2f2f2f; background: #191919; }
+    .review-note.resolved { opacity: .58; }
+    .review-note time, .review-note small { color: #858585; font-size: 9px; }
+    .review-note strong { display: block; font-size: 10px; font-weight: 540; line-height: 1.45; }
+    .review-note-form { display: grid; grid-template-columns: minmax(150px, 1fr) 120px 110px; gap: 7px; }
+    .review-note-form textarea { grid-column: 1 / -1; min-height: 68px; resize: vertical; }
+    .review-note-form input, .review-note-form select, .review-note-form textarea { width: 100%; border: 1px solid #383838; background: #202020; color: #eee; padding: 8px; border-radius: 3px; font-size: 10px; }
+    .review-note-form button { width: auto; margin-top: 0; border: 0; background: var(--accent); color: #fff; padding: 8px 10px; cursor: pointer; }
+    .review-note-form .review-note-submit { grid-column: 3; }
+    .review-note-help, .review-note-status { grid-column: 1 / -1; color: #808080; font-size: 9px; line-height: 1.45; }
+    @media (max-width: 760px) {
+      .review-note-form { grid-template-columns: 1fr; }
+      .review-note-form textarea, .review-note-form .review-note-submit, .review-note-help, .review-note-status { grid-column: 1; }
+    }
     .evidence-rail { margin-bottom: 16px; border: 1px solid #303030; background: #141414; padding: 12px; }
     .evidence-rail h2 { margin: 0 0 10px; font-size: 12px; color: #d7d7d7; }
     .evidence-query { display: grid; grid-template-columns: minmax(180px, 1fr) 2fr; gap: 12px; padding: 10px 0; border-top: 1px solid #292929; }
@@ -406,13 +425,35 @@
     }
     function renderReview() {
       const canvas = state.data.productionCanvas, assets = canvas.assets;
-      const signature = JSON.stringify({ compareIds: state.compareIds, syncLocked: state.syncLocked, reviewTimeline: canvas.reviewTimeline, evidenceRail: canvas.evidenceRail, editDiff: canvas.editDiff, timelineViewport: state.timelineViewport, waveformLoading: state.waveformLoading, waveformError: state.waveformError, waveformWindow: state.waveformWindow && [state.waveformWindow.level, state.waveformWindow.startSeconds, state.waveformWindow.durationSeconds, state.waveformWindow.peaks?.length], videos: assets.filter((node) => node.type === "video").map((node) => [node.id, node.status, node.previewUri, node.updatedAt, node.metadata?.defects, node.metadata?.evidence]) });
+      const signature = JSON.stringify({ compareIds: state.compareIds, syncLocked: state.syncLocked, reviewTimeline: canvas.reviewTimeline, reviewNotes: canvas.reviewNotes, evidenceRail: canvas.evidenceRail, editDiff: canvas.editDiff, timelineViewport: state.timelineViewport, waveformLoading: state.waveformLoading, waveformError: state.waveformError, waveformWindow: state.waveformWindow && [state.waveformWindow.level, state.waveformWindow.startSeconds, state.waveformWindow.durationSeconds, state.waveformWindow.peaks?.length], videos: assets.filter((node) => node.type === "video").map((node) => [node.id, node.status, node.previewUri, node.updatedAt, node.metadata?.defects, node.metadata?.evidence]) });
       if (signature === state.reviewSignature) return;
       state.reviewSignature = signature;
       const videos = assets.filter((node) => node.type === "video");
       const picker = videos.length ? `<div class="review-picker">${videos.map((node) => `<button class="${state.compareIds.includes(node.id) ? "active" : ""}" data-compare-id="${escapeHtml(node.id)}"><strong>${escapeHtml(node.label)}</strong><br><small>${state.compareIds.includes(node.id) ? "已加入 A/B" : "加入 A/B"}</small></button>`).join("")}</div>` : '<div class="empty">注册视频资产后可进行 A/B 审片。</div>';
-      $("#review").innerHTML = renderEvidenceRail(canvas.evidenceRail) + renderEditDiff(canvas.editDiff) + picker + renderComparison(assets);
+      $("#review").innerHTML = renderEvidenceRail(canvas.evidenceRail) + renderEditDiff(canvas.editDiff) + renderReviewNotes(canvas.reviewNotes, videos) + picker + renderComparison(assets);
       bindComparePlayers();
+    }
+    function renderReviewNotes(reviewNotes = { items: [] }, videos = []) {
+      const items = reviewNotes.items ?? [];
+      const activeArtifactRef = state.reviewTransport.activeArtifactRef || videos.find((video) => state.compareIds.includes(video.id))?.artifactRef || videos[0]?.artifactRef || "";
+      const options = videos.map((video) => `<option value="${escapeHtml(video.artifactRef ?? "")}" ${video.artifactRef === activeArtifactRef ? "selected" : ""}>${escapeHtml(video.label)}</option>`).join("");
+      const list = items.length ? `<div class="review-note-list">${items.slice().reverse().map((note) => `<div class="review-note ${escapeHtml(note.status)}"><time>${note.timeSeconds == null ? "整体" : formatTime(note.timeSeconds)}</time><div><strong>${escapeHtml(note.body)}</strong><small>${escapeHtml(note.category)} · ${escapeHtml(note.status)}${note.owner ? ` · ${escapeHtml(note.owner)}` : ""}</small></div><span class="tag">${escapeHtml(note.severity)}</span></div>`).join("")}</div>` : '<div class="empty">还没有用户反馈。播放到具体位置后可以直接留下时间码备注。</div>';
+      const form = videos.length ? `<form id="review-note-form" class="review-note-form"><select id="review-note-target" aria-label="反馈目标" required>${options}</select><select id="review-note-category" aria-label="反馈类型"><option value="creative_direction">导演意图</option><option value="timing">节奏</option><option value="continuity">连续性</option><option value="subtitle">字幕</option><option value="audio">声音</option><option value="technical">技术问题</option></select><select id="review-note-severity" aria-label="严重程度"><option value="note">建议</option><option value="minor">轻微</option><option value="major" selected>重要</option><option value="critical">阻断</option></select><textarea id="review-note-body" maxlength="1200" required placeholder="描述希望修改的内容，例如：这里停留太久，请更早进入产品界面。"></textarea><input id="review-note-time" type="number" min="0" max="43200" step="0.001" value="${Number(state.reviewTransport.currentTime || 0).toFixed(3)}" aria-label="时间码（秒）"><button class="review-note-submit" type="submit">添加时间码反馈</button><div class="review-note-help">这只是制作反馈，不是批准或交付确认。Director X 会保留原始备注，并要求修复证据后才能标记为已解决。</div><div class="review-note-status" id="review-note-status"></div></form>` : '<div class="empty">有可播放的视频资产后即可添加反馈。</div>';
+      return `<section class="review-feedback"><div class="review-feedback-head"><div><h3>用户审片反馈 · ${Number(reviewNotes.openCount ?? 0)} 待处理</h3><p>反馈绑定真实媒体与时间码，并回流到当前 Run。</p></div></div>${list}${form}</section>`;
+    }
+    async function submitReviewNote(event) {
+      event.preventDefault();
+      const status = $("#review-note-status"), button = event.currentTarget.querySelector('button[type="submit"]');
+      const targetArtifactRef = $("#review-note-target")?.value, target = state.data?.productionCanvas?.assets?.find((item) => item.artifactRef === targetArtifactRef);
+      const timeSeconds = Number($("#review-note-time")?.value);
+      const clientNoteId = globalThis.crypto?.randomUUID?.() ?? `canvas-note-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      button.disabled = true; status.textContent = "正在记录反馈…";
+      try {
+        const response = await fetch("/directorx/api/review-note", { method: "POST", headers: claimHeaders({ "Content-Type": "application/json" }), body: JSON.stringify({ session, note: { clientNoteId, targetArtifactRef, targetNodeId: target?.id ?? null, timeSeconds, category: $("#review-note-category").value, severity: $("#review-note-severity").value, body: $("#review-note-body").value } }) });
+        const result = await response.json(); if (!response.ok) throw new Error(result.error ?? "反馈记录失败");
+        status.textContent = "反馈已记录，制作团队会在后续修改中处理。"; $("#review-note-body").value = ""; state.reviewSignature = null; await refresh();
+      } catch (error) { status.textContent = error.message ?? String(error); }
+      finally { button.disabled = false; }
     }
     function renderEvidenceRail(rail) {
       if (!rail?.queries?.length) return "";
@@ -528,13 +569,14 @@
       if (leader.requestVideoFrameCallback) leader.requestVideoFrameCallback(() => monitorComparisonDrift(leader, players)); else requestAnimationFrame(() => monitorComparisonDrift(leader, players));
     }
     function renderActivity() {
-      const activity = state.data.productionCanvas.activity ?? { events: [], pendingInteractions: [], missingEvidence: [], agentBatches: [] };
+      const activity = state.data.productionCanvas.activity ?? { events: [], pendingInteractions: [], missingEvidence: [], agentBatches: [], userReviewNotes: [] };
       const productionPulse = renderProductionPulse(activity.creativeProgressSla);
       const pending = activity.pendingInteractions.length ? activity.pendingInteractions.map((item) => `<div class="activity-item"><span class="tag">需要确认</span><span>${escapeHtml(item.label)}<br><span class="native-badge">请在 Codex 对话中选择，画布不会重复提问</span>${advancedDetails("制作详情", item)}</span></div>`).join("") : '<div class="empty">现在不需要你做选择。</div>';
       const evidence = activity.missingEvidence.length ? `<div class="activity-item"><span class="tag">准备中</span><span class="evidence-missing">还有 ${activity.missingEvidence.length} 项制作内容需要完成。</span>${advancedDetails("查看明细", activity.missingEvidence)}</div>` : '<div class="empty">当前阶段需要的内容已经准备好。</div>';
       const batches = activity.agentBatches?.length ? activity.agentBatches.map((batch) => `<div class="activity-item"><span class="tag">制作团队</span><span><strong>${escapeHtml(statusLabel(batch.status))}</strong><br>${batch.dispatchedCount}/${batch.taskIds.length} 项工作已开始${advancedDetails("制作详情", batch)}</span></div>`).join("") : '<div class="empty">制作团队会在需要时并行处理任务。</div>';
+      const reviewNotes = activity.userReviewNotes?.length ? activity.userReviewNotes.map((note) => `<div class="activity-item"><span class="tag">用户反馈</span><span><strong>${note.timeSeconds == null ? "整体" : formatTime(note.timeSeconds)} · ${escapeHtml(note.body)}</strong><br>${escapeHtml(note.status)}${note.owner ? ` · ${escapeHtml(note.owner)}` : ""}</span></div>`).join("") : '<div class="empty">当前没有待处理的用户审片反馈。</div>';
       const events = activity.events.length ? activity.events.map((item) => `<div class="activity-item"><span class="tag">${escapeHtml(stageLabel(item.stage))}</span><span>${escapeHtml(item.detail ?? "制作进度已更新")}${advancedDetails("制作详情", { sequence: item.sequence, type: item.type, stage: item.stage })}</span></div>`).join("") : '<div class="empty">制作开始后，关键进展会显示在这里。</div>';
-      $("#activity").innerHTML = `${productionPulse}<div class="native-callout"><strong>需要你决定的事项会出现在 Codex 对话中</strong><br>这里用于查看制作进度和结果，不会重复提问，也不会替你作决定。</div><div class="activity-grid"><div><section class="activity-panel"><h2>等待你的选择</h2>${pending}</section><section class="activity-panel"><h2>当前准备情况</h2>${evidence}</section><section class="activity-panel"><h2>制作团队</h2>${batches}</section></div><section class="activity-panel"><h2>制作记录</h2>${events}</section></div>`;
+      $("#activity").innerHTML = `${productionPulse}<div class="native-callout"><strong>需要你决定的事项会出现在 Codex 对话中</strong><br>这里用于查看制作进度和结果，不会重复提问，也不会替你作决定。</div><div class="activity-grid"><div><section class="activity-panel"><h2>等待你的选择</h2>${pending}</section><section class="activity-panel"><h2>用户审片反馈</h2>${reviewNotes}</section><section class="activity-panel"><h2>当前准备情况</h2>${evidence}</section><section class="activity-panel"><h2>制作团队</h2>${batches}</section></div><section class="activity-panel"><h2>制作记录</h2>${events}</section></div>`;
     }
     function shortType(type) { return ({ stage: "阶段", brief: "需求", approval: "确认", agent: "制作成员", image: "图片", video: "视频", audio: "音频", shot: "镜头", document: "文档", artifact: "制作记录", decision: "选择" })[type] ?? "制作内容"; }
     function relationLabel(kind) { return ({ derived_from: "来自", frame_handoff: "画面衔接", evidence: "参考依据", dependency: "先后关系", candidate: "备选", edit: "剪辑" })[kind] ?? "关联"; }
@@ -677,6 +719,9 @@
       const evidence = event.target.closest("[data-evidence-time]"); if (evidence) { seekEvidence(evidence.dataset.evidenceTargetNode, evidence.dataset.evidenceTargetArtifact, Number(evidence.dataset.evidenceTime)); return; }
       if (event.target.closest("#sync-toggle")) { state.syncLeader = null; state.syncLocked = !state.syncLocked; state.reviewSignature = null; persistUiState(); renderReview(); return; }
       const target = event.target.closest("[data-node-id]"); if (target) selectNode(target.dataset.nodeId);
+    });
+    document.addEventListener("submit", (event) => {
+      if (event.target.id === "review-note-form") void submitReviewNote(event);
     });
     document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => { state.view = button.dataset.view; state.filter = ["media", "storyboard", "review"].includes(state.view) ? "asset" : "all"; applyViewState(); persistUiState(); renderObjectList(); renderGraph(); renderMediaBoard(); }));
     document.querySelectorAll("[data-filter]").forEach((button) => button.addEventListener("click", () => { state.filter = button.dataset.filter; applyViewState(); persistUiState(); renderObjectList(); }));
