@@ -19,6 +19,7 @@
 </p>
 
 <p align="center">
+  <a href="https://laplaceyoung.github.io/director-x/">产品网站</a> ·
   <a href="#快速开始">快速开始</a> ·
   <a href="#为什么使用-director-x">产品特色</a> ·
   <a href="README.md">English</a> ·

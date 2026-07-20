@@ -19,6 +19,7 @@
 </p>
 
 <p align="center">
+  <a href="https://laplaceyoung.github.io/director-x/">Website</a> ·
   <a href="#quick-start">Quick Start</a> ·
   <a href="#why-director-x">Why Director X</a> ·
   <a href="README.zh-CN.md">中文</a> ·

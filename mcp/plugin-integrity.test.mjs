@@ -86,6 +86,22 @@ test("ships a standalone Chinese project README", async () => {
   assert.match(chineseReadme, /codex plugin marketplace add/);
 });
 
+test("ships the public landing page and deployment workflow", async () => {
+  const landing = await readFile(join(pluginRoot, "site", "index.html"), "utf8");
+  const motion = await readFile(join(pluginRoot, "site", "main.js"), "utf8");
+  const plugin = JSON.parse(await readFile(join(pluginRoot, ".codex-plugin", "plugin.json"), "utf8"));
+  const workflow = await readFile(join(pluginRoot, ".github", "workflows", "pages.yml"), "utf8");
+  await access(join(pluginRoot, "site", "assets", "directorx-logo.png"));
+  await access(join(pluginRoot, "site", "assets", "live-production-canvas.jpg"));
+  assert.match(landing, /Direct the Goal/);
+  assert.match(landing, /Dedicated crew/);
+  assert.match(landing, /Live canvas/);
+  assert.match(motion, /three@0\.185\.1/);
+  assert.match(motion, /resolveSceneTrack/);
+  assert.match(workflow, /actions\/deploy-pages@v4/);
+  assert.equal(plugin.homepage, "https://laplaceyoung.github.io/director-x/");
+});
+
 test("bundles an evidence-grounded directing knowledge seed", async () => {
   const seed = JSON.parse(await readFile(join(pluginRoot, "knowledge", "director-knowledge-seed.json"), "utf8"));
   const readme = await readFile(join(pluginRoot, "README.md"), "utf8");
