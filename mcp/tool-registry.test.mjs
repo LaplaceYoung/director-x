@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { createToolRegistry } from "./tool-registry.mjs";
 
 const definitions = [
-  { name: "directorx_read", description: "Read", inputSchema: { type: "object", properties: {} } },
-  { name: "directorx_write", description: "Write", inputSchema: { type: "object", properties: { value: { type: "string" } } } }
+  { name: "directorx_read", description: "Read", inputSchema: { type: "object", properties: {} }, outputSchema: { type: "object", properties: { ok: { type: "boolean" } }, required: ["ok"] } },
+  { name: "directorx_write", description: "Write", inputSchema: { type: "object", properties: { value: { type: "string" } } }, outputSchema: { type: "object", additionalProperties: true, properties: {} } }
 ];
 
 test("registers unique tools and isolates listed definitions from mutation", () => {
@@ -30,4 +30,10 @@ test("dispatches only registered tools", async () => {
 test("rejects duplicate or malformed registrations", () => {
   assert.throws(() => createToolRegistry({ definitions: [...definitions, definitions[0]], invoke: async () => null }), /Duplicate tool registration/);
   assert.throws(() => createToolRegistry({ definitions: [{ name: "directorx_bad" }], invoke: async () => null }), /missing inputSchema/);
+  assert.throws(() => createToolRegistry({ definitions: [{ name: "directorx_bad", inputSchema: {} }], invoke: async () => null }), /missing outputSchema/);
+});
+
+test("validates structured results against declared output schemas", async () => {
+  const registry = createToolRegistry({ definitions, invoke: async () => ({ nope: true }) });
+  await assert.rejects(() => registry.call("directorx_read"), /structuredContent\.ok is required/);
 });

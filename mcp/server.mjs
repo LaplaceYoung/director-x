@@ -74,6 +74,7 @@ import { bindShotSequenceReviewToShotlist, reviewShotSequence, SHOT_SEQUENCE_FUN
 import { AXIS_TYPES, bindSceneCoveragePlanToShotlist, CAMERA_HEIGHTS, CAMERA_SIDES, compileSceneCoveragePlan, FACING_DIRECTIONS, FOCUS_STRATEGIES, FRAME_REGIONS, LENS_INTENTS, LIGHT_DIRECTIONS, MEDIA_MODES, NEGATIVE_SPACE_PURPOSES, SCENE_COVERAGE_ROLES, writeSceneCoveragePlan } from "./scene-coverage-plan.mjs";
 import { attachSceneCoverageEvidence, compileSceneCoverageConformance, extractSceneCoverageEvidence, recordSceneCoverageConformanceReview, sceneCoverageEvidenceFrameIndices, sceneCoverageReviewDecisions, sceneCoverageReviewerId, sceneCoverageReviewStatuses, writeSceneCoverageConformance } from "./scene-coverage-conformance.mjs";
 import { createToolRegistry } from "./tool-registry.mjs";
+import { applyToolContracts } from "./tool-contracts.mjs";
 import { CanvasSurfaceHostError, createCanvasSurfaceHost } from "./canvas-surface-host.mjs";
 import { resolveWorkspaceMediaFile } from "./workspace-media-access.mjs";
 import { bindVisualPromptPackToGroundingReport, bindVisualPromptPackToShotSequence, compileClaimProofMap, compileVisualPromptPack, writeDirectorGenerationArtifact, writeVisualPromptPackSummary } from "./director-generation-contracts.mjs";
@@ -96,7 +97,7 @@ const ENV_NAME_PATTERN = /^[A-Z][A-Z0-9_]{2,80}$/;
 const INLINE_FALLBACK_REASONS = Object.freeze(["browser_runtime_unavailable", "browser_disconnected"]);
 const canvasSurfaceHost = createCanvasSurfaceHost({ handleRequest: handleCanvasRequest });
 
-const tools = [
+const rawTools = [
   {
     name: "directorx_capability_preflight",
     description: "MANDATORY FIRST TOOL for every Director X request. Start the local canvas service and return the side-Browser URL before any question, workspace scan, planning, research, or file creation. Pass spawn_agent agent_type enum values, or the sentinel collaboration_task when the host schema uses task_name/fork_turns/message without agent_type. Also pass exact current Codex host tool and skill names when available so Goal, request_user_input, side-Browser, and durable-loop routes can be negotiated. Host inventory is capability evidence only and must never be used as agent types.",
@@ -1834,6 +1835,8 @@ const tools = [
     _meta: { ui: { visibility: ["app"] } }
   }
 ];
+
+const tools = applyToolContracts(rawTools);
 
 for (const tool of tools) {
   const title = friendlyToolTitle(tool.name);
