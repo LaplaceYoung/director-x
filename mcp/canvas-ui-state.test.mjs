@@ -14,6 +14,10 @@ test("persists dedicated coverage and continuity views", () => {
   }
 });
 
+test("persists the media-first canvas view", () => {
+  assert.equal(normalizeCanvasUiState({ version: 1, transform: { x: 0, y: 0, zoom: .7 }, view: "media", filter: "asset" }).view, "media");
+});
+
 test("rejects unsafe or malformed durable canvas inspection state", () => {
   const base = { version: 1, transform: { x: 0, y: 0, zoom: .7 }, view: "workflow", filter: "all", compareIds: [], syncLocked: true, reviewCurrentTime: 0 };
   assert.throws(() => normalizeCanvasUiState({ ...base, view: "admin" }), /unsupported view/);

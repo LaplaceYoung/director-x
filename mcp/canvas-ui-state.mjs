@@ -1,4 +1,4 @@
-const VIEWS = new Set(["workflow", "coverage", "continuity", "storyboard", "review", "activity"]);
+const VIEWS = new Set(["media", "workflow", "coverage", "continuity", "storyboard", "review", "activity"]);
 const FILTERS = new Set(["all", "asset"]);
 
 export function normalizeCanvasUiState(value, now = new Date().toISOString()) {

@@ -14,7 +14,7 @@ test("projects run stages, approvals, and production objects into a graph", () =
       edges: [{ id: "shot-edge", source: "stage:storyboard", target: "shot:01" }]
     }
   });
-  assert.deepEqual(canvas.views, ["workflow", "coverage", "continuity", "storyboard", "review", "activity"]);
+  assert.deepEqual(canvas.views, ["media", "review", "activity", "workflow", "coverage", "continuity", "storyboard"]);
   assert.equal(canvas.nodes.find((node) => node.id === "stage:storyboard").status, "active");
   assert.equal(canvas.assets.length, 0);
   assert.ok(canvas.edges.some((edge) => edge.target === "shot:01"));
@@ -97,6 +97,24 @@ test("projects typed relations between research, Markdown, image, audio, and vid
   assert.ok(canvas.assetRelations.some((edge) => edge.sourceArtifactRef === "research.md" && edge.targetArtifactRef === "script.md"));
   assert.ok(canvas.assetRelations.some((edge) => edge.sourceArtifactRef === "hero.png" && edge.targetArtifactRef === "final.mp4"));
   assert.ok(canvas.assetRelations.every((edge) => edge.kind === "derived_from"));
+});
+
+test("projects a media-first graph with playable assets and only asset-to-asset relations", () => {
+  const canvas = projectCanvas({
+    stage: "generation", status: "production_in_progress", goal: { outcome: "media graph" }, approvals: [], events: [], canvas: { nodes: [], edges: [] },
+    artifacts: {
+      "logo.png": { mediaKind: "image", relativePath: "logo.png", stage: "research", metadata: { canvasEssential: true } },
+      "shot-01.mp4": { mediaKind: "video", relativePath: "shot-01.mp4", stage: "generation", metadata: { canvasEssential: true, sourceArtifactRefs: ["logo.png"] } },
+      "voice.wav": { mediaKind: "audio", relativePath: "voice.wav", stage: "edit", metadata: { canvasEssential: true, sourceArtifactRefs: ["shot-01.mp4"] } },
+      "internal.json": { mediaKind: "document", relativePath: "internal.json", stage: "review", metadata: { internal: true } }
+    }
+  });
+  assert.deepEqual(canvas.mediaGraph.counts, { image: 1, video: 1, audio: 1, document: 0 });
+  assert.equal(canvas.mediaGraph.nodes.length, 3);
+  assert.equal(canvas.mediaGraph.edges.length, 2);
+  assert.ok(canvas.mediaGraph.edges.every((edge) => edge.source.startsWith("artifact:") && edge.target.startsWith("artifact:")));
+  assert.equal(canvas.summary.mediaGraphNodeCount, 3);
+  assert.equal(canvas.summary.mediaGraphEdgeCount, 2);
 });
 
 test("projects per-shot grounding from acquired media through readable reports into prompt documents", () => {

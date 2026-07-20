@@ -285,6 +285,7 @@ export function projectCanvas(snapshot) {
   const assets = [...objectNodes, ...artifactNodes].filter(isStoryboardAsset);
   const assetIds = new Set(assets.map((node) => node.id));
   const assetRelations = edges.filter((edge) => assetIds.has(edge.source) && assetIds.has(edge.target)).map((edge) => ({ ...edge, sourceLabel: nodes.find((node) => node.id === edge.source)?.label, targetLabel: nodes.find((node) => node.id === edge.target)?.label }));
+  const mediaGraph = buildMediaGraph(assets, assetRelations);
   const workflow = buildWorkflowProjection({ goalNode, approvals, stageNodes, runModeNode, budgetNode, completionNode, subagents, executionNodes });
   const sceneCoverage = buildSceneCoverageProjection(snapshot.sceneCoveragePlan);
   const currentStageDefinition = snapshot.pipeline?.stages?.find((stage) => stage.id === snapshot.stage);
@@ -318,12 +319,13 @@ export function projectCanvas(snapshot) {
   }));
   return {
     schemaVersion: "1.0",
-    views: ["workflow", "coverage", "continuity", "storyboard", "review", "activity"],
+    views: ["media", "review", "activity", "workflow", "coverage", "continuity", "storyboard"],
     nodes,
     edges,
     workflow,
     assets,
     assetRelations,
+    mediaGraph,
     sceneCoverage,
     cameraContinuity,
     reviewTimeline: snapshot.avReviewTimeline ?? null,
@@ -333,7 +335,7 @@ export function projectCanvas(snapshot) {
     editDiff,
     viewport: canvas.viewport ?? { x: 0, y: 0, zoom: 0.72 },
     activity: { events: [...(snapshot.events ?? [])].reverse().slice(0, 80), pendingInteractions, missingEvidence, agentBatches },
-    summary: { nodeCount: nodes.length, workflowNodeCount: workflow.nodes.length, assetCount: assets.length, agentCount: subagents.length, agentBatchCount: agentBatches.length, activeAgentBatchCount: agentBatches.filter((batch) => batch.status === "running").length, lineageCount: lineageNodes.length, acceptedKnowledgeCount: snapshot.acceptedModelKnowledge?.entries.length ?? 0, benchmarkReportCount: benchmarkNodes.length, capabilityCount: capabilityNodes.length, capabilityRouteStatus: snapshot.capabilityRoute?.status ?? null, toolCount: toolNodes.length, toolRouteStatus: snapshot.capabilityExecutionPlan?.status ?? null, recommendedToolStrategy: snapshot.capabilityExecutionPlan?.recommendedStrategy ?? null, executionTelemetryCount: telemetryNodes.length, routeFeedbackStatus: snapshot.modelKnowledgePatch?.status ?? null, timelineRevisionCount: timelineRevisions.length, manualEditorStatus: snapshot.openCutEditor?.sessions?.[snapshot.openCutEditor?.activeSessionId]?.status ?? snapshot.openCutEditor?.decision?.status ?? null, roughCutProposalCount: Object.keys(snapshot.roughCutProposals ?? {}).length, executionGraph: snapshot.executionGraph ? { graphId: snapshot.executionGraph.graphId, revision: snapshot.executionGraph.revision, nodeCount: executionNodes.length, completedCount: executionNodes.filter((node) => node.status === "complete").length } : null, sceneCoveragePlan: sceneCoverage ? { planId: sceneCoverage.planId, status: sceneCoverage.status, sceneCount: sceneCoverage.scenes.length, shotCount: sceneCoverage.shots.length, setupCount: sceneCoverage.setupGroups.length } : null, cameraContinuityGraph: cameraGraph ? { graphId: cameraGraph.graphId, status: cameraGraph.status, shotCount: cameraContinuityNodes.length, cameraCount: cameraGraph.cameras.length, executionWaveCount: cameraGraph.executionWaves.length } : null, checkpointCount: snapshot.checkpoints?.length ?? 0, providerProbeCount: providerNodes.length, providerJobCount: generation?.providerJobs?.length ?? 0, repairBranchCount: snapshot.repairs?.length ?? 0, taskTransport: snapshot.taskTransport?.transport ?? null, reviewTimelineMarkerCount: snapshot.avReviewTimeline?.markers?.length ?? 0, runMode: snapshot.runMode?.mode ?? null, currentStage: snapshot.stage, pipelineId: snapshot.pipeline?.id ?? null, pipelineLabel: snapshot.pipeline?.label ?? null, pendingInteractionCount: pendingInteractions.length, missingEvidenceCount: missingEvidence.length, generationCost: generation ? { currency: generation.currency, estimated: generation.totalEstimatedCost, actual: generation.totalActualCost } : null }
+    summary: { nodeCount: nodes.length, workflowNodeCount: workflow.nodes.length, assetCount: assets.length, mediaGraphNodeCount: mediaGraph.nodes.length, mediaGraphEdgeCount: mediaGraph.edges.length, mediaCounts: mediaGraph.counts, agentCount: subagents.length, agentBatchCount: agentBatches.length, activeAgentBatchCount: agentBatches.filter((batch) => batch.status === "running").length, lineageCount: lineageNodes.length, acceptedKnowledgeCount: snapshot.acceptedModelKnowledge?.entries.length ?? 0, benchmarkReportCount: benchmarkNodes.length, capabilityCount: capabilityNodes.length, capabilityRouteStatus: snapshot.capabilityRoute?.status ?? null, toolCount: toolNodes.length, toolRouteStatus: snapshot.capabilityExecutionPlan?.status ?? null, recommendedToolStrategy: snapshot.capabilityExecutionPlan?.recommendedStrategy ?? null, executionTelemetryCount: telemetryNodes.length, routeFeedbackStatus: snapshot.modelKnowledgePatch?.status ?? null, timelineRevisionCount: timelineRevisions.length, manualEditorStatus: snapshot.openCutEditor?.sessions?.[snapshot.openCutEditor?.activeSessionId]?.status ?? snapshot.openCutEditor?.decision?.status ?? null, roughCutProposalCount: Object.keys(snapshot.roughCutProposals ?? {}).length, executionGraph: snapshot.executionGraph ? { graphId: snapshot.executionGraph.graphId, revision: snapshot.executionGraph.revision, nodeCount: executionNodes.length, completedCount: executionNodes.filter((node) => node.status === "complete").length } : null, sceneCoveragePlan: sceneCoverage ? { planId: sceneCoverage.planId, status: sceneCoverage.status, sceneCount: sceneCoverage.scenes.length, shotCount: sceneCoverage.shots.length, setupCount: sceneCoverage.setupGroups.length } : null, cameraContinuityGraph: cameraGraph ? { graphId: cameraGraph.graphId, status: cameraGraph.status, shotCount: cameraContinuityNodes.length, cameraCount: cameraGraph.cameras.length, executionWaveCount: cameraGraph.executionWaves.length } : null, checkpointCount: snapshot.checkpoints?.length ?? 0, providerProbeCount: providerNodes.length, providerJobCount: generation?.providerJobs?.length ?? 0, repairBranchCount: snapshot.repairs?.length ?? 0, taskTransport: snapshot.taskTransport?.transport ?? null, reviewTimelineMarkerCount: snapshot.avReviewTimeline?.markers?.length ?? 0, runMode: snapshot.runMode?.mode ?? null, currentStage: snapshot.stage, pipelineId: snapshot.pipeline?.id ?? null, pipelineLabel: snapshot.pipeline?.label ?? null, pendingInteractionCount: pendingInteractions.length, missingEvidenceCount: missingEvidence.length, generationCost: generation ? { currency: generation.currency, estimated: generation.totalEstimatedCost, actual: generation.totalActualCost } : null }
   };
 }
 
@@ -383,6 +385,22 @@ function isStoryboardAsset(node) {
   }
   if (node.type !== "document" || node.metadata?.internal === true || node.metadata?.canvasEssential === false) return false;
   return /\.md$/i.test(node.artifactRef ?? "") || /\.md$/i.test(node.metadata?.path ?? "");
+}
+
+function buildMediaGraph(assets, relations) {
+  const columns = ["image", "video", "audio", "document"];
+  const grouped = new Map(columns.map((type) => [type, []]));
+  for (const asset of assets) grouped.get(grouped.has(asset.type) ? asset.type : "document").push(asset);
+  const nodes = columns.flatMap((type, column) => grouped.get(type).map((asset, row) => ({
+    ...asset,
+    x: 40 + column * 290,
+    y: 80 + row * 150,
+    metadata: { ...asset.metadata, mediaGraphColumn: type, mediaGraphRow: row }
+  })));
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const edges = relations.filter((edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target)).map((edge) => ({ ...edge, kind: edge.kind ?? "derived_from" }));
+  const counts = Object.fromEntries(columns.map((type) => [type, grouped.get(type).length]));
+  return { nodes, edges, counts, empty: nodes.length === 0 };
 }
 
 function buildWorkflowProjection({ goalNode, approvals, stageNodes, runModeNode, budgetNode, completionNode, subagents, executionNodes }) {

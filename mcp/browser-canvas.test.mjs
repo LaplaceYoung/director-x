@@ -63,19 +63,20 @@ test("preserves a user-controlled viewport across live state refreshes", async (
   assert.match(html, /zoomAroundPoint/);
 });
 
-test("separates workflow, four-kind storyboard assets, review, and activity", async () => {
+test("opens on a media-first relation view and keeps specialist review views available", async () => {
   const html = await readFile(new URL("../app/browser-canvas.html", import.meta.url), "utf8");
-  assert.match(html, /data-view="coverage"/);
-  assert.match(html, /摄影覆盖状态/);
-  assert.match(html, /景别\/焦段/);
-  assert.match(html, /头尾余量/);
+  assert.match(html, /data-view="media"/);
+  assert.match(html, /媒体关系/);
+  assert.match(html, /mediaGraph/);
+  assert.match(html, /media-preview/);
+  assert.match(html, /media-edge/);
   assert.match(html, /data-view="review"/);
   assert.match(html, /\["文档", assets\.filter/);
   assert.match(html, /\["图片", assets\.filter/);
   assert.match(html, /\["视频", assets\.filter/);
   assert.match(html, /\["音频", assets\.filter/);
   assert.match(html, /当前没有\$\{label\}内容/);
-  assert.match(html, /\["storyboard", "review"\]\.includes\(state\.view\) \? "asset" : "all"/);
+  assert.match(html, /\["media", "storyboard", "review"\]\.includes\(state\.view\) \? "asset" : "all"/);
   assert.doesNotMatch(html, /\["视觉与镜头"/);
 });
 

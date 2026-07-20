@@ -81,6 +81,34 @@
     .storyboard, .review { position: absolute; inset: 0; overflow: auto; padding: 22px; display: none; }
     .storyboard.open { display: block; }
     .review.open { display: block; }
+    .media { position: absolute; inset: 0; overflow: auto; padding: 18px; display: none; }
+    .media.open { display: block; }
+    .media-head { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 14px; }
+    .media-head h2 { margin: 0; font-size: 15px; }
+    .media-head p { margin: 5px 0 0; color: #888; font-size: 10px; }
+    .media-stats { display: flex; gap: 6px; flex-wrap: wrap; }
+    .media-stat { border: 1px solid #343434; background: #181818; padding: 7px 9px; color: #aaa; font-size: 9px; }
+    .media-stat strong { color: #eee; margin-right: 4px; font-size: 12px; }
+    .media-preview { display: grid; grid-template-columns: minmax(260px, .9fr) minmax(300px, 1.1fr); gap: 14px; margin-bottom: 16px; }
+    .media-preview-panel, .media-relations-panel { border: 1px solid #303030; background: #141414; padding: 13px; }
+    .media-preview-panel h3, .media-relations-panel h3 { margin: 0 0 9px; font-size: 11px; color: #bbb; }
+    .media-preview-frame { min-height: 180px; display: grid; place-items: center; background: #090909; border: 1px solid #292929; }
+    .media-preview-frame video, .media-preview-frame img { max-width: 100%; max-height: 42vh; display: block; }
+    .media-preview-frame audio { width: 100%; }
+    .media-preview-copy { margin-top: 9px; color: #888; font-size: 10px; line-height: 1.5; }
+    .media-graph { position: relative; min-height: 470px; overflow: auto; border: 1px solid #303030; background: #101010; padding: 12px; }
+    .media-graph-plane { position: relative; width: 1220px; min-height: 410px; }
+    .media-graph .media-edge-layer { position: absolute; inset: 0; width: 1220px; height: 100%; pointer-events: none; overflow: visible; }
+    .media-edge { fill: none; stroke: #6f584a; stroke-width: 1.5; stroke-dasharray: 5 4; }
+    .media-node { position: absolute; width: 210px; min-height: 118px; border: 1px solid #353535; background: #1a1a1a; border-radius: 7px; padding: 9px; color: #eee; text-align: left; cursor: pointer; }
+    .media-node:hover, .media-node.selected { border-color: var(--accent); }
+    .media-node .node-preview { width: 100%; height: 78px; margin: 0 0 8px; border-radius: 4px; }
+    .media-node strong { display: block; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .media-node small { display: block; margin-top: 4px; color: #777; font-size: 9px; }
+    .media-relations { display: flex; flex-wrap: wrap; gap: 6px; max-height: 150px; overflow: auto; }
+    .media-relation { border: 1px solid #3c3430; background: #1b1816; color: #bbb; padding: 6px 8px; font-size: 9px; cursor: pointer; }
+    .media-relation em { color: var(--accent); font-style: normal; margin: 0 4px; }
+    @media (max-width: 760px) { .media-preview { grid-template-columns: 1fr; } .media-head { align-items: start; flex-direction: column; } }
     .story-group { border-top: 1px solid #303030; padding: 15px 0 24px; }
     .story-group h2 { margin: 0 0 13px; font-size: 12px; font-weight: 560; }
     .story-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
@@ -202,7 +230,7 @@
   <div class="app">
     <header>
       <button class="rail-toggle" id="rail-toggle">内容</button><div class="brand"><strong>Director X</strong><span class="run-label" id="run-label">正在打开制作空间…</span></div>
-      <nav class="view-switch" aria-label="画布视图"><button data-view="workflow" aria-pressed="true">工作流</button><button data-view="coverage" aria-pressed="false">摄影覆盖</button><button data-view="continuity" aria-pressed="false">镜头图</button><button data-view="storyboard" aria-pressed="false">故事板</button><button data-view="review" aria-pressed="false">审片</button><button data-view="activity" aria-pressed="false">活动</button></nav>
+      <nav class="view-switch" aria-label="画布视图"><button data-view="media" aria-pressed="true">媒体关系</button><button data-view="review" aria-pressed="false">审片</button><button data-view="activity" aria-pressed="false">活动</button></nav>
       <div class="header-status"><span id="mode">Director X Goal</span><span id="sync">同步中</span></div>
     </header>
     <div class="shell">
@@ -214,6 +242,7 @@
       </aside>
       <main class="workspace">
         <div class="canvas-viewport" id="viewport"><div class="canvas-plane" id="plane"><svg class="edge-layer" id="edges" aria-hidden="true"></svg><div id="nodes"></div></div></div>
+        <section class="media" id="media"></section>
         <section class="coverage" id="coverage"></section>
         <section class="storyboard" id="storyboard"></section>
         <section class="review" id="review"></section>
@@ -229,7 +258,7 @@
     const session = params.get("session");
     const claimToken = params.get("claim");
     const legacyViewportStorageKey = `directorx:viewport:${session ?? "preflight"}`;
-    const state = { data: null, selectedId: null, compareIds: [], syncLocked: true, syncLeader: null, reviewTransport: { currentTime: 0, playing: false, playbackRate: 1, direction: 1, loopRange: null, activeArtifactRef: null }, reviewSessionRevision: null, storySignature: null, reviewSignature: null, timelineRevision: null, timelineViewport: null, waveformWindow: null, waveformLoading: false, waveformError: null, waveformRequest: 0, view: "workflow", filter: "all", query: "", transform: { x: 0, y: 0, zoom: .72 }, uiStateInitialized: false, uiPersistTimer: null, pendingUiState: null, viewportInitialized: false, viewportRestored: false, dragging: false, pointer: null };
+    const state = { data: null, selectedId: null, compareIds: [], syncLocked: true, syncLeader: null, reviewTransport: { currentTime: 0, playing: false, playbackRate: 1, direction: 1, loopRange: null, activeArtifactRef: null }, reviewSessionRevision: null, storySignature: null, reviewSignature: null, mediaSignature: null, timelineRevision: null, timelineViewport: null, waveformWindow: null, waveformLoading: false, waveformError: null, waveformRequest: 0, view: "media", filter: "asset", query: "", transform: { x: 0, y: 0, zoom: .72 }, uiStateInitialized: false, uiPersistTimer: null, pendingUiState: null, viewportInitialized: false, viewportRestored: false, dragging: false, pointer: null };
     const $ = (selector) => document.querySelector(selector);
     const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[char]);
     const surfaceUrl = (path, values = {}) => { const query = new URLSearchParams({ session, claim: claimToken }); for (const [key, value] of Object.entries(values)) if (value !== undefined && value !== null) query.set(key, String(value)); return `${path}?${query}`; };
@@ -248,7 +277,7 @@
     };
     function visibleNodes() {
       const canvas = state.data?.productionCanvas;
-      const nodes = state.filter === "asset" ? canvas?.assets ?? [] : state.view === "coverage" ? canvas?.sceneCoverage?.shots ?? [] : state.view === "continuity" ? canvas?.cameraContinuity?.nodes ?? [] : canvas?.workflow?.nodes ?? canvas?.nodes ?? [];
+      const nodes = state.filter === "asset" || state.view === "media" ? canvas?.assets ?? [] : state.view === "coverage" ? canvas?.sceneCoverage?.shots ?? [] : state.view === "continuity" ? canvas?.cameraContinuity?.nodes ?? [] : canvas?.workflow?.nodes ?? canvas?.nodes ?? [];
       return nodes.filter((node) => {
         const text = `${node.label} ${node.detail ?? ""} ${node.stage ?? ""}`.toLowerCase();
         return text.includes(state.query.toLowerCase());
@@ -269,7 +298,7 @@
       $("#run-label").textContent = data.goal?.outcome ?? "制作空间";
       $("#asset-count").textContent = canvas.summary.assetCount;
       $("#rail-foot").textContent = friendly?.headline ?? `当前正在${stageLabel(data.stage)}`;
-      renderObjectList(); renderGraph(); renderCoverage(); renderStoryboard(); renderReview(); renderActivity(); updateTransform();
+      renderObjectList(); renderGraph(); renderMediaBoard(); renderCoverage(); renderStoryboard(); renderReview(); renderActivity(); updateTransform();
     }
     function renderObjectList() {
       const nodes = visibleNodes();
@@ -277,7 +306,7 @@
     }
     function renderGraph() {
       const canvas = state.data.productionCanvas;
-      const graph = state.view === "continuity" ? canvas.cameraContinuity ?? { nodes: [], edges: [] } : canvas.workflow ?? { nodes: canvas.nodes, edges: canvas.edges };
+      const graph = state.view === "media" ? canvas.mediaGraph ?? { nodes: [], edges: [] } : state.view === "continuity" ? canvas.cameraContinuity ?? { nodes: [], edges: [] } : canvas.workflow ?? { nodes: canvas.nodes, edges: [] };
       $("#nodes").innerHTML = graph.nodes.map((node) => `<button class="node ${escapeHtml(node.status)} ${state.selectedId === node.id ? "selected" : ""}" data-node-id="${escapeHtml(node.id)}" style="left:${Number(node.x)}px;top:${Number(node.y)}px">${mediaMarkup(node, "node-preview")}<span class="node-head"><span class="node-type">${escapeHtml(shortType(node.type))}</span><span class="node-state">${escapeHtml(statusLabel(node.status))}</span></span><strong>${escapeHtml(node.label)}</strong><p>${escapeHtml(node.detail ?? "等待制作")}</p></button>`).join("");
       const maxX = Math.max(2200, ...graph.nodes.map((node) => Number(node.x) + 260)), maxY = Math.max(900, ...graph.nodes.map((node) => Number(node.y) + 180));
       $("#plane").style.width = `${maxX}px`; $("#plane").style.height = `${maxY}px`;
@@ -289,6 +318,30 @@
         const x1 = source.x + 190, y1 = source.y + 46, x2 = target.x, y2 = target.y + 46, mid = (x1 + x2) / 2;
         return `<path class="edge ${escapeHtml(edge.kind)}" d="M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}" />`;
       }).join("");
+    }
+    function renderPlayablePreview(node) {
+      if (!node) return '<div class="empty">选择一个图片、视频或音频文件开始预览。</div>';
+      const uri = mediaUri(node);
+      if (node.type === "video") return `<video src="${uri}" controls playsinline preload="metadata"></video>`;
+      if (node.type === "image") return `<img src="${uri}" alt="${escapeHtml(node.label)}" />`;
+      if (node.type === "audio") return `<audio src="${uri}" controls preload="metadata"></audio>`;
+      return `<div class="status-copy">${escapeHtml(node.detail ?? node.label)}</div>`;
+    }
+    function renderMediaBoard() {
+      const canvas = state.data?.productionCanvas;
+      if (!canvas) return;
+      const graph = canvas.mediaGraph ?? { nodes: canvas.assets ?? [], edges: [] };
+      const signature = JSON.stringify({ nodes: graph.nodes.map((node) => [node.id, node.status, node.previewUri, node.updatedAt]), edges: graph.edges.map((edge) => [edge.id, edge.kind]), selectedId: state.selectedId });
+      if (signature === state.mediaSignature) return;
+      state.mediaSignature = signature;
+      const selected = graph.nodes.find((node) => node.id === state.selectedId) ?? graph.nodes.find((node) => ["video", "audio"].includes(node.type)) ?? graph.nodes[0];
+      const counts = graph.counts ?? {};
+      const stats = [["视频", counts.video ?? 0], ["音频", counts.audio ?? 0], ["图片", counts.image ?? 0], ["文档", counts.document ?? 0]].map(([label, count]) => `<span class="media-stat"><strong>${escapeHtml(count)}</strong>${label}</span>`).join("");
+      const relations = graph.edges.length ? graph.edges.map((edge) => `<button class="media-relation" data-node-id="${escapeHtml(edge.target)}"><span>${escapeHtml(edge.sourceLabel ?? edge.source)}</span><em>→ ${escapeHtml(relationLabel(edge.kind))} →</em><span>${escapeHtml(edge.targetLabel ?? edge.target)}</span></button>`).join("") : '<span class="empty">文件之间还没有已登记的来源、生成、配音或剪辑关系。</span>';
+      const nodes = graph.nodes.map((node) => `<button class="media-node ${state.selectedId === node.id ? "selected" : ""}" data-node-id="${escapeHtml(node.id)}" style="left:${Number(node.x)}px;top:${Number(node.y)}px">${mediaMarkup(node, "node-preview")}<strong>${escapeHtml(node.label)}</strong><small>${escapeHtml(shortType(node.type))} · ${escapeHtml(statusLabel(node.status))}</small></button>`).join("");
+      const byId = new Map(graph.nodes.map((node) => [node.id, node]));
+      const edges = graph.edges.map((edge) => { const source = byId.get(edge.source), target = byId.get(edge.target); if (!source || !target) return ""; const x1 = source.x + 210, y1 = source.y + 58, x2 = target.x, y2 = target.y + 58, mid = (x1 + x2) / 2; return `<path class="media-edge" d="M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}" />`; }).join("");
+      $("#media").innerHTML = `<div class="media-head"><div><h2>媒体关系</h2><p>只展示真实登记的图片、视频、音频和必要文档；点击节点可播放并查看来源关系。</p></div><div class="media-stats">${stats}</div></div><div class="media-preview"><section class="media-preview-panel"><h3>预览 · ${escapeHtml(selected?.label ?? "尚未选择")}</h3><div class="media-preview-frame">${renderPlayablePreview(selected)}</div><div class="media-preview-copy">${escapeHtml(selected?.detail ?? "生成或抓取到的媒体会出现在这里。")}</div></section><section class="media-relations-panel"><h3>文件关系 · ${graph.edges.length}</h3><div class="media-relations">${relations}</div></section></div><section class="media-graph"><div class="media-graph-plane"><svg class="media-edge-layer" aria-hidden="true">${edges}</svg>${nodes || '<div class="empty">还没有可预览的媒体文件。</div>'}</div></section>`;
     }
     function renderCoverage() {
       const coverage = state.data.productionCanvas.sceneCoverage;
@@ -457,7 +510,7 @@
     async function selectNode(id) {
       const canvas = state.data?.productionCanvas;
       const node = [...(canvas?.workflow?.nodes ?? []), ...(canvas?.sceneCoverage?.shots ?? []), ...(canvas?.cameraContinuity?.nodes ?? []), ...(canvas?.assets ?? []), ...(canvas?.nodes ?? [])].find((item) => item.id === id); if (!node) return;
-      state.selectedId = id; persistUiState(); renderObjectList(); renderGraph();
+      state.selectedId = id; state.mediaSignature = null; persistUiState(); renderObjectList(); renderGraph(); renderMediaBoard();
       $("#inspector-title").textContent = node.label;
       $("#inspector-body").innerHTML = `${mediaMarkup(node, "node-preview")}<div class="section"><h3>制作状态</h3><div class="kv"><span>类型</span><span>${escapeHtml(shortType(node.type))}</span><span>环节</span><span>${escapeHtml(stageLabel(node.stage))}</span><span>状态</span><span>${escapeHtml(statusLabel(node.status))}</span></div></div><div class="section"><h3>内容</h3><div class="status-copy">${escapeHtml(node.detail ?? "暂无补充说明")}</div><div id="document-preview"></div></div>${advancedDetails("制作详情", { artifactRef: node.artifactRef ?? null, stage: node.stage, status: node.status, metadata: node.metadata ?? {} })}`;
       $("#inspector").classList.add("open");
@@ -491,7 +544,7 @@
         const transform = saved?.transform ?? legacyViewport;
         if (transform && [transform.x, transform.y, transform.zoom].every(Number.isFinite) && transform.zoom >= .25 && transform.zoom <= 1.6) { state.transform = transform; state.viewportRestored = true; }
         else if (canvas.viewport) state.transform = { ...canvas.viewport };
-        if (["workflow", "coverage", "continuity", "storyboard", "review", "activity"].includes(saved?.view)) state.view = saved.view;
+        if (["media", "workflow", "coverage", "continuity", "storyboard", "review", "activity"].includes(saved?.view)) state.view = saved.view;
         if (["all", "asset"].includes(saved?.filter)) state.filter = saved.filter;
         if (typeof saved?.query === "string") state.query = saved.query.slice(0, 200);
         if (typeof saved?.syncLocked === "boolean") state.syncLocked = saved.syncLocked;
@@ -525,6 +578,7 @@
       $("#search").value = state.query;
       $("#viewport").style.display = ["workflow", "continuity"].includes(state.view) ? "block" : "none";
       $("#toolbar").style.display = ["workflow", "continuity"].includes(state.view) ? "flex" : "none";
+      $("#media").classList.toggle("open", state.view === "media");
       $("#coverage").classList.toggle("open", state.view === "coverage");
       $("#storyboard").classList.toggle("open", state.view === "storyboard");
       $("#review").classList.toggle("open", state.view === "review");
@@ -538,7 +592,7 @@
       updateTransform(); persistViewport();
     }
     function fitCanvas() {
-      const canvas = state.data?.productionCanvas, nodes = state.view === "continuity" ? canvas?.cameraContinuity?.nodes ?? [] : canvas?.workflow?.nodes ?? canvas?.nodes ?? []; if (!nodes.length) return;
+      const canvas = state.data?.productionCanvas, nodes = state.view === "media" ? canvas?.mediaGraph?.nodes ?? [] : state.view === "continuity" ? canvas?.cameraContinuity?.nodes ?? [] : canvas?.workflow?.nodes ?? canvas?.nodes ?? []; if (!nodes.length) return;
       const minX = Math.min(...nodes.map((n) => n.x)), minY = Math.min(...nodes.map((n) => n.y)), maxX = Math.max(...nodes.map((n) => n.x + 190)), maxY = Math.max(...nodes.map((n) => n.y + 140));
       const rect = $("#viewport").getBoundingClientRect(), zoom = Math.min(.95, Math.max(.28, Math.min((rect.width - 100) / (maxX - minX), (rect.height - 100) / (maxY - minY))));
       state.transform = { zoom, x: (rect.width - (maxX - minX) * zoom) / 2 - minX * zoom, y: (rect.height - (maxY - minY) * zoom) / 2 - minY * zoom }; updateTransform(); persistViewport();
@@ -566,7 +620,7 @@
       if (event.target.closest("#sync-toggle")) { state.syncLeader = null; state.syncLocked = !state.syncLocked; state.reviewSignature = null; persistUiState(); renderReview(); return; }
       const target = event.target.closest("[data-node-id]"); if (target) selectNode(target.dataset.nodeId);
     });
-    document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => { state.view = button.dataset.view; state.filter = ["storyboard", "review"].includes(state.view) ? "asset" : "all"; applyViewState(); persistUiState(); renderObjectList(); renderGraph(); }));
+    document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => { state.view = button.dataset.view; state.filter = ["media", "storyboard", "review"].includes(state.view) ? "asset" : "all"; applyViewState(); persistUiState(); renderObjectList(); renderGraph(); renderMediaBoard(); }));
     document.querySelectorAll("[data-filter]").forEach((button) => button.addEventListener("click", () => { state.filter = button.dataset.filter; applyViewState(); persistUiState(); renderObjectList(); }));
     $("#search").addEventListener("input", (event) => { state.query = event.target.value; persistUiState(); renderObjectList(); });
     $("#fit").addEventListener("click", fitCanvas); $("#zoom-in").addEventListener("click", () => { const rect = $("#viewport").getBoundingClientRect(); zoomAroundPoint(Math.min(1.6, state.transform.zoom + .1), rect.left + rect.width / 2, rect.top + rect.height / 2); }); $("#zoom-out").addEventListener("click", () => { const rect = $("#viewport").getBoundingClientRect(); zoomAroundPoint(Math.max(.25, state.transform.zoom - .1), rect.left + rect.width / 2, rect.top + rect.height / 2); });
