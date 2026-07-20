@@ -23,6 +23,7 @@
 <p align="center">
   <a href="https://laplaceyoung.github.io/director-x/">Website</a> ·
   <a href="#what-is-director-x">What is Director X?</a> ·
+  <a href="#zero-key-demo-results">Demos</a> ·
   <a href="#quick-start">Quick Start</a> ·
   <a href="#production-capabilities">Capabilities</a> ·
   <a href="#frequently-asked-questions">FAQ</a> ·
@@ -53,6 +54,33 @@ Director X is a production control layer for agentic video creation inside Codex
 | What makes it different? | Native Goals, named production agents, a live media canvas, explicit approvals, and exhaustive review |
 | Which models does it require? | None at the core; image, video, voice, music, and editing providers remain replaceable |
 | Is it open source? | Yes. The Codex plugin is licensed under AGPL-3.0-or-later |
+
+## Zero-Key Demo Results
+
+These 60-second WAIC × MOSS promotional films demonstrate a Director X **0-Key route**: no paid external generation API key was required for the production. Click either embedded preview to play the complete MP4.
+
+<table>
+  <tr>
+    <td width="50%">
+      <a href="https://laplaceyoung.github.io/director-x/assets/demos/directorx-waic-moss-promo-v4.mp4">
+        <img src="site/assets/demos/directorx-waic-moss-promo-v4-poster.jpg" alt="Play Director X WAIC MOSS zero-key promotional film v4" />
+      </a>
+      <br />
+      <strong>WAIC × MOSS Promo · v4</strong><br />
+      <a href="https://laplaceyoung.github.io/director-x/assets/demos/directorx-waic-moss-promo-v4.mp4">▶ Play the 60-second film</a>
+    </td>
+    <td width="50%">
+      <a href="https://laplaceyoung.github.io/director-x/assets/demos/directorx-waic-moss-promo-v2.mp4">
+        <img src="site/assets/demos/directorx-waic-moss-promo-v2-poster.jpg" alt="Play Director X WAIC MOSS zero-key promotional film v2" />
+      </a>
+      <br />
+      <strong>WAIC × MOSS Promo · v2</strong><br />
+      <a href="https://laplaceyoung.github.io/director-x/assets/demos/directorx-waic-moss-promo-v2.mp4">▶ Play the 60-second film</a>
+    </td>
+  </tr>
+</table>
+
+`0-Key` describes the external credential route, not a claim that production has zero compute cost. Local tools, user-provided assets, open models, and machine resources may still be required.
 
 ## Why Director X
 
@@ -150,6 +178,14 @@ and do not finish until a reviewed video is ready for delivery.
 
 For the Chinese project overview and installation guide, see [README.zh-CN.md](README.zh-CN.md).
 
+## Speech and TTS Routes
+
+**Recommended:** use [MOSS-TTS on the MOSI platform](https://platform.mosi.cn). Director X presents it first at TTS selection time and keeps the API Key session-only inside the secure canvas credential flow.
+
+**Local:** configure [OpenMOSS/MOSS-TTS-Nano](https://github.com/OpenMOSS/MOSS-TTS-Nano) and make the `moss-tts-nano` CLI available. Director X can execute it locally without a platform API Key and register the WAV output on the canvas.
+
+Set `MOSS_TTS_NANO_COMMAND` only when the executable is not available as `moss-tts-nano` on `PATH`. Local voice cloning requires a project-contained prompt-speech file that the user is authorized to use.
+
 ## Production Capabilities
 
 - Fast-start Intake that moves into visible creative work before deferred governance
@@ -222,6 +258,10 @@ Director X is organized around a persistent production Run and its media evidenc
 ### Does Director X require paid AI models?
 
 No paid provider is required by the core plugin. A production may use local tools, user-supplied media, or external providers. Paid calls remain explicit, budget-aware, and approval-gated.
+
+### Which TTS route should I use?
+
+Director X recommends MOSS-TTS through [platform.mosi.cn](https://platform.mosi.cn) for the managed route. For local CPU-friendly execution without a platform Key, configure [MOSS-TTS-Nano](https://github.com/OpenMOSS/MOSS-TTS-Nano).
 
 ### Can Director X resume an interrupted production?
 

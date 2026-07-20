@@ -3,7 +3,7 @@ import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { analyzeMediaWaveform, executeHyperframesRender, executeMosiTts, executeRemotionRender, executeWhisperTranscription, inspectAudioSource, inspectMediaDelivery } from "./media-execution.mjs";
+import { analyzeMediaWaveform, executeHyperframesRender, executeMosiTts, executeMossTtsNano, executeRemotionRender, executeWhisperTranscription, inspectAudioSource, inspectMediaDelivery } from "./media-execution.mjs";
 
 test("executes MOSI TTS without persisting its session key", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "directorx-tts-"));
@@ -24,6 +24,32 @@ test("executes MOSI TTS without persisting its session key", async () => {
 test("rejects execution output outside the workspace", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "directorx-path-"));
   await assert.rejects(() => executeMosiTts({ projectPath, text: "x", voiceId: "v", outputPath: "../voice.mp3" }, { apiKey: "session-secret" }), /inside the project workspace/);
+});
+
+test("executes a configured local MOSS-TTS-Nano CLI without an API key", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-moss-nano-"));
+  await writeFile(join(projectPath, "prompt.wav"), "prompt-audio");
+  const script = "const fs=require('fs');fs.mkdirSync('out',{recursive:true});fs.writeFileSync('out/voice.wav','local-audio')";
+  const result = await executeMossTtsNano({ projectPath, text: "本地配音", promptSpeechPath: "prompt.wav", promptSpeechRightsApproved: true, outputPath: "out/voice.wav", backend: "onnx" }, {
+    command: process.execPath,
+    args: ["-e", script]
+  });
+  assert.equal(result.providerId, "openmoss.moss-tts-nano.local");
+  assert.equal(result.modelId, "moss-tts-nano");
+  assert.equal(result.executionMode, "local_cli");
+  assert.equal((await readFile(result.outputPath)).toString(), "local-audio");
+});
+
+test("keeps local MOSS-TTS-Nano inputs and outputs inside the project", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-moss-nano-path-"));
+  await writeFile(join(projectPath, "prompt.wav"), "prompt-audio");
+  await assert.rejects(() => executeMossTtsNano({ projectPath, text: "x", promptSpeechPath: "prompt.wav", promptSpeechRightsApproved: true, outputPath: "../voice.wav" }), /inside the project workspace/);
+});
+
+test("requires prompt-speech rights before local MOSS-TTS-Nano voice cloning", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-moss-nano-rights-"));
+  await writeFile(join(projectPath, "prompt.wav"), "prompt-audio");
+  await assert.rejects(() => executeMossTtsNano({ projectPath, text: "x", promptSpeechPath: "prompt.wav", outputPath: "voice.wav" }), /approved rights/);
 });
 
 test("runs Remotion with argv and verifies a project-contained output", async () => {

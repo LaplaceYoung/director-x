@@ -127,6 +127,7 @@ test("serves MCP tools over newline-delimited stdio", async () => {
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_begin_generation_attempt"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_record_generation_candidate"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_generate_mosi_voiceover"));
+    assert.ok(message.result.tools.some((tool) => tool.name === "directorx_generate_local_moss_tts_nano_voiceover"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_verify_final_media"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_record_scene_coverage_review"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_record_final_review_evidence"));
@@ -582,7 +583,19 @@ test("returns official MOSI key creation guidance without requesting or exposing
     assert.deepEqual(setup.defaultSelection, { providerId: "mosi.tts", modelId: "moss-tts", recommended: true });
     assert.equal(setup.selectionQuestion.id, "voice_model");
     assert.equal(setup.selectionQuestion.options[0].label, "MOSS-TTS (Recommended)");
+    assert.equal(setup.selectionQuestion.options[1].label, "MOSS-TTS-Nano (Local)");
     assert.match(setup.selectionQuestion.options[0].description, /platform\.mosi\.cn/);
+    assert.deepEqual(setup.localSetup, {
+      providerId: "openmoss.moss-tts-nano.local",
+      modelId: "moss-tts-nano",
+      repositoryUrl: "https://github.com/OpenMOSS/MOSS-TTS-Nano",
+      command: "moss-tts-nano",
+      commandEnv: "MOSS_TTS_NANO_COMMAND",
+      generationTool: "directorx_generate_local_moss_tts_nano_voiceover",
+      credentialRequired: false,
+      requiredInputs: ["text", "promptSpeechPath", "promptSpeechRightsApproved", "outputPath"],
+      outputFormat: "wav"
+    });
     assert.equal(setup.keySetupInteraction.kind, "provider_input");
     assert.equal(setup.keySetupInteraction.gateKey, "mosi-tts-key-setup");
     assert.equal(setup.keySetupInteraction.questions[0].id, "mosi_key_setup");

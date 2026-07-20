@@ -67,11 +67,18 @@ test("presents the public plugin around native Goals, DX agents, and the live ca
   await access(join(pluginRoot, "assets", "screenshots", "live-production-canvas.jpg"));
   await access(join(pluginRoot, "assets", "screenshots", "native-goal-and-input.jpg"));
   await access(join(pluginRoot, "assets", "screenshots", "dx-specialist-agents.jpg"));
+  await access(join(pluginRoot, "site", "assets", "demos", "directorx-waic-moss-promo-v4.mp4"));
+  await access(join(pluginRoot, "site", "assets", "demos", "directorx-waic-moss-promo-v2.mp4"));
+  await access(join(pluginRoot, "site", "assets", "demos", "directorx-waic-moss-promo-v4-poster.jpg"));
+  await access(join(pluginRoot, "site", "assets", "demos", "directorx-waic-moss-promo-v2-poster.jpg"));
   assert.match(readme, /Native Codex Goals/);
   assert.match(readme, /Dedicated DX Agents/);
   assert.match(readme, /Live Production Canvas/);
   assert.match(readme, /Pi Agent Harness/);
   assert.match(readme, /Electron application/);
+  assert.match(readme, /Zero-Key Demo Results/);
+  assert.match(readme, /platform\.mosi\.cn/);
+  assert.match(readme, /OpenMOSS\/MOSS-TTS-Nano/);
 });
 
 test("ships a standalone Chinese project README", async () => {
@@ -84,6 +91,9 @@ test("ships a standalone Chinese project README", async () => {
   assert.match(chineseReadme, /Pi Agent Harness/);
   assert.match(chineseReadme, /Electron/);
   assert.match(chineseReadme, /codex plugin marketplace add/);
+  assert.match(chineseReadme, /0-Key Demo 成果/);
+  assert.match(chineseReadme, /platform\.mosi\.cn/);
+  assert.match(chineseReadme, /OpenMOSS\/MOSS-TTS-Nano/);
 });
 
 test("ships the public landing page and deployment workflow", async () => {

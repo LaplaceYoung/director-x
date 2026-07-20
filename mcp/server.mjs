@@ -15,7 +15,7 @@ import { inspectCodexAgentRoles, installCodexAgentRoles } from "./codex-agent-ro
 import { projectRecoveryAction, toolFailurePayload, withToolFailureGuard } from "./tool-failure-policy.mjs";
 import { evaluateRunCompletion } from "./completion-policy.mjs";
 import { assertIntakeReady, confirmIntake } from "./intake-gate.mjs";
-import { analyzeMediaWaveform, executeHyperframesRender, executeMosiTts, executeRemotionRender, executeWhisperTranscription, inspectAudioSource, inspectMediaDelivery, writeExecutionReceipt } from "./media-execution.mjs";
+import { analyzeMediaWaveform, executeHyperframesRender, executeMosiTts, executeMossTtsNano, executeRemotionRender, executeWhisperTranscription, inspectAudioSource, inspectMediaDelivery, writeExecutionReceipt } from "./media-execution.mjs";
 import { inspectMediaRuntime } from "../runtime/media-runtime.mjs";
 import { installDirectorXMediaRuntime } from "../runtime/install-media-runtime.mjs";
 import { writeLongformPlan, writeLongformStitchPlan } from "./longform-control.mjs";
@@ -1558,6 +1558,15 @@ const tools = [
     name: "directorx_generate_mosi_voiceover",
     description: "Generate a real voiceover with the session-only MOSI credential, persist playable audio and an auditable secret-free receipt, and show it on the canvas.",
     inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema(), text: stringSchema(), voiceId: stringSchema(), outputPath: stringSchema(), model: { type: "string" }, responseFormat: { enum: ["mp3", "wav", "aac", "flac", "opus"], type: "string" }, timeoutMs: { type: "integer", minimum: 1000, maximum: 300000 } }, ["projectPath", "runId", "text", "voiceId", "outputPath"]),
+    annotations: writeAnnotations()
+  },
+  {
+    name: "directorx_generate_local_moss_tts_nano_voiceover",
+    description: "Generate a real local voiceover through an already configured MOSS-TTS-Nano CLI, persist playable WAV audio and a secret-free receipt, and show it on the canvas without an API key.",
+    inputSchema: objectSchema({
+      projectPath: stringSchema(), runId: stringSchema(), text: stringSchema(), promptSpeechPath: stringSchema(), promptSpeechRightsApproved: { type: "boolean" }, outputPath: stringSchema(), voiceId: { type: "string" },
+      backend: { enum: ["onnx", "pytorch"], type: "string" }, executionProvider: { enum: ["cpu", "cuda"], type: "string" }, timeoutMs: { type: "integer", minimum: 1000, maximum: 1800000 }
+    }, ["projectPath", "runId", "text", "promptSpeechPath", "promptSpeechRightsApproved", "outputPath"]),
     annotations: writeAnnotations()
   },
   {
@@ -3327,6 +3336,27 @@ async function executeTool(name, args) {
       const isMock = result.providerId.endsWith(".mock");
       upsertExecutionCanvasNode(next, { id: "audio:voiceover", type: "audio", label: isMock ? "MOSS TTS 配音（协议 Mock）" : "MOSS TTS 配音", detail: `${result.providerId} · ${result.modelId} · ${result.voiceId} · ${pricingQuote.currency} ${pricingQuote.amount}`, stage: "generation", status: "complete", previewUri: audio.relativePath, artifactRef: audio.artifactRef, metadata: { providerId: result.providerId, modelId: result.modelId, executionMode: isMock ? "protocol_mock" : "provider", estimatedCost: pricingQuote.amount, actualCost: pricingQuote.amount, pricingQuoteId: pricingQuote.quoteId, pricingSourceUrl: pricingQuote.sourceUrl, sourceArtifactRefs: ["script_or_outline.json", "audio_cue_sheet.json", "audio_responsibility_plan.json"] } }, "stage:generation");
       next.events.push(event(next, "tts.generated", "generation", `${audio.relativePath} · ${pricingQuote.currency} ${pricingQuote.amount}`)); return next;
+    } })), args);
+  }
+  if (name === "directorx_generate_local_moss_tts_nano_voiceover") {
+    const run = await readRun(args);
+    const providerId = "openmoss.moss-tts-nano.local";
+    const modelId = "moss-tts-nano";
+    requireExecutionApproval(run, "local MOSS-TTS-Nano", ["budget", "voice_model"]);
+    requirePipelineStage(run, "generation", "local MOSS-TTS-Nano");
+    requireApprovedModelRoute(run, "voice_model", { providerId, modelId }, "local MOSS-TTS-Nano");
+    if (run.audioResponsibilityPlan?.voice?.owner !== "tts" || run.audioResponsibilityPlan.voice.providerId !== providerId || run.audioResponsibilityPlan.voice.modelId !== modelId) throw new Error("Local MOSS-TTS-Nano generation must match audio_responsibility_plan.json.");
+    const result = await executeMossTtsNano(args);
+    const receiptPath = await writeExecutionReceipt(args.projectPath, args.runId, "moss_tts_nano_execution_receipt.json", {
+      providerId, modelId, voiceId: result.voiceId, responseFormat: result.responseFormat, outputPath: result.outputPath,
+      byteLength: result.byteLength, estimatedCost: 0, actualCost: 0, costBasis: "local_runtime", command: result.command, argv: result.args, executionMode: result.executionMode
+    });
+    const audio = await inspectArtifact({ ...args, artifactRef: "voiceover.audio", path: result.outputPath, stage: "generation", mediaKind: "audio", metadata: { canvasEssential: true, sourceArtifactRefs: ["script_or_outline.json", "audio_cue_sheet.json"], providerId, modelId, voiceId: result.voiceId } });
+    const receipt = await inspectArtifact({ ...args, artifactRef: "moss_tts_nano_execution_receipt.json", path: receiptPath, stage: "generation", mediaKind: "document" });
+    return await withBrowserCanvas(publicSnapshot(await updateRun({ ...args, mutate(next) {
+      next.artifacts ??= {}; next.artifacts[audio.artifactRef] = audio; next.artifacts[receipt.artifactRef] = receipt;
+      upsertExecutionCanvasNode(next, { id: "audio:voiceover", type: "audio", label: "MOSS-TTS-Nano 本地配音", detail: `${providerId} · ${modelId} · local`, stage: "generation", status: "complete", previewUri: audio.relativePath, artifactRef: audio.artifactRef, metadata: { providerId, modelId, executionMode: "local_cli", estimatedCost: 0, actualCost: 0, sourceArtifactRefs: ["script_or_outline.json", "audio_cue_sheet.json", "audio_responsibility_plan.json"] } }, "stage:generation");
+      next.events.push(event(next, "tts.generated", "generation", `${audio.relativePath} · local MOSS-TTS-Nano`)); return next;
     } })), args);
   }
   if (name === "directorx_transcribe_media_with_whisper") {
@@ -5235,9 +5265,20 @@ function mosiVoiceSetup(args = {}) {
       question: "选择本项目的语音生成模型。",
       options: [
         { label: "MOSS-TTS (Recommended)", description: "Director X 默认语音路线；中文与多模态视频制作优先，Key 可在 platform.mosi.cn 创建。" },
-        { label: "其他 TTS", description: "改用其他供应商，并继续确认精确模型、音色、凭证与预算。" },
-        { label: "本项目不使用配音", description: "仅在已确认的制作路线不需要旁白或角色语音时选择。" }
+        { label: "MOSS-TTS-Nano (Local)", description: "使用已在本机配置好的 OpenMOSS MOSS-TTS-Nano CLI，不需要平台 API Key。" },
+        { label: "其他 TTS / 不使用配音", description: "继续确认其他精确模型，或明确本项目不需要旁白与角色语音。" }
       ]
+    },
+    localSetup: {
+      providerId: "openmoss.moss-tts-nano.local",
+      modelId: "moss-tts-nano",
+      repositoryUrl: "https://github.com/OpenMOSS/MOSS-TTS-Nano",
+      command: process.env.MOSS_TTS_NANO_COMMAND ?? "moss-tts-nano",
+      commandEnv: "MOSS_TTS_NANO_COMMAND",
+      generationTool: "directorx_generate_local_moss_tts_nano_voiceover",
+      credentialRequired: false,
+      requiredInputs: ["text", "promptSpeechPath", "promptSpeechRightsApproved", "outputPath"],
+      outputFormat: "wav"
     },
     keySetupRequired: !credentialConfigured,
     keySetupInteraction: {

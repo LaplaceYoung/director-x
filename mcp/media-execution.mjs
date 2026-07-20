@@ -32,6 +32,39 @@ export async function executeMosiTts(input, options = {}) {
   return { outputPath, byteLength: bytes.length, providerId: options.providerId ?? process.env.DIRECTORX_TTS_PROVIDER_ID ?? "mosi.tts", modelId: input.model ?? "moss-tts", voiceId: input.voiceId, responseFormat: format };
 }
 
+export async function executeMossTtsNano(input, options = {}) {
+  if (!input.text?.trim()) throw new Error("MOSS-TTS-Nano text is required.");
+  if (input.promptSpeechRightsApproved !== true) throw new Error("MOSS-TTS-Nano voice cloning requires approved rights for the prompt speech.");
+  const promptSpeechPath = containedPath(input.projectPath, input.promptSpeechPath);
+  const promptSpeech = await stat(promptSpeechPath);
+  if (!promptSpeech.isFile() || promptSpeech.size <= 0) throw new Error("MOSS-TTS-Nano prompt speech must be a non-empty project audio file.");
+  const outputPath = containedPath(input.projectPath, input.outputPath);
+  if (extname(outputPath).toLowerCase() !== ".wav") throw new Error("MOSS-TTS-Nano outputPath must end in .wav.");
+  await mkdir(dirname(outputPath), { recursive: true });
+  await rm(outputPath, { force: true });
+  const args = ["generate", "--prompt-speech", promptSpeechPath, "--text", input.text, "--output", outputPath];
+  if (input.backend) args.push("--backend", input.backend);
+  if (input.executionProvider && input.backend !== "onnx") throw new Error("MOSS-TTS-Nano executionProvider is only valid with the ONNX backend.");
+  if (input.executionProvider) args.push("--execution-provider", input.executionProvider);
+  const command = options.command ?? process.env.MOSS_TTS_NANO_COMMAND ?? "moss-tts-nano";
+  const execution = await runProcess(command, options.args ?? args, {
+    cwd: resolve(input.projectPath), timeoutMs: input.timeoutMs ?? 900000, maxOutputBytes: 1_000_000,
+    failureLabel: "MOSS-TTS-Nano generation"
+  });
+  const generated = await stat(outputPath);
+  if (!generated.isFile() || generated.size <= 0) throw new Error("MOSS-TTS-Nano did not produce the requested WAV output.");
+  return {
+    ...execution,
+    outputPath,
+    byteLength: generated.size,
+    providerId: "openmoss.moss-tts-nano.local",
+    modelId: "moss-tts-nano",
+    voiceId: input.voiceId ?? null,
+    responseFormat: "wav",
+    executionMode: "local_cli"
+  };
+}
+
 export async function executeRemotionRender(input, options = {}) {
   const entryPoint = containedPath(input.projectPath, input.entryPoint);
   const outputPath = containedPath(input.projectPath, input.outputPath);

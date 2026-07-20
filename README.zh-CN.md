@@ -23,6 +23,7 @@
 <p align="center">
   <a href="https://laplaceyoung.github.io/director-x/">产品网站</a> ·
   <a href="#director-x-是什么">Director X 是什么</a> ·
+  <a href="#0-key-demo-成果">Demo 成果</a> ·
   <a href="#快速开始">快速开始</a> ·
   <a href="#主要能力">主要能力</a> ·
   <a href="#常见问题">常见问题</a> ·
@@ -53,6 +54,33 @@ Director X 是运行在 Codex 内的智能体视频制片控制层。当前版�
 | 它有什么不同？ | 原生 Goal、实名制片智能体、实时媒体画布、明确审批和完整审片 |
 | 必须使用哪些模型？ | 核心不绑定模型；图片、视频、语音、音乐和剪辑 Provider 都可替换 |
 | 是否开源？ | 是。Codex 插件使用 AGPL-3.0-or-later 许可证 |
+
+## 0-Key Demo 成果
+
+下面两支 60 秒 WAIC × MOSS 宣传片展示了 Director X 的 **0-Key 制片路线**：制作过程不需要付费外部生成 API Key。点击任一内嵌封面即可播放完整 MP4。
+
+<table>
+  <tr>
+    <td width="50%">
+      <a href="https://laplaceyoung.github.io/director-x/assets/demos/directorx-waic-moss-promo-v4.mp4">
+        <img src="site/assets/demos/directorx-waic-moss-promo-v4-poster.jpg" alt="播放 Director X WAIC MOSS 0-Key 宣传片 v4" />
+      </a>
+      <br />
+      <strong>WAIC × MOSS 宣传片 · v4</strong><br />
+      <a href="https://laplaceyoung.github.io/director-x/assets/demos/directorx-waic-moss-promo-v4.mp4">▶ 播放 60 秒成片</a>
+    </td>
+    <td width="50%">
+      <a href="https://laplaceyoung.github.io/director-x/assets/demos/directorx-waic-moss-promo-v2.mp4">
+        <img src="site/assets/demos/directorx-waic-moss-promo-v2-poster.jpg" alt="播放 Director X WAIC MOSS 0-Key 宣传片 v2" />
+      </a>
+      <br />
+      <strong>WAIC × MOSS 宣传片 · v2</strong><br />
+      <a href="https://laplaceyoung.github.io/director-x/assets/demos/directorx-waic-moss-promo-v2.mp4">▶ 播放 60 秒成片</a>
+    </td>
+  </tr>
+</table>
+
+`0-Key` 指不依赖付费外部生成服务凭证，不代表制片没有计算成本。本地工具、用户素材、开放模型和机器资源仍可能是生产条件。
 
 ## 为什么使用 Director X
 
@@ -150,6 +178,14 @@ codex plugin list
 
 如果插件没有打开侧边栏画布、没有创建 Goal，或者只生成了策划文档就结束，请确认插件已启用并完整重启 Codex 后，在新任务中重新调用。
 
+## 语音与 TTS 路线
+
+**推荐路线：**使用 [MOSI 平台上的 MOSS-TTS](https://platform.mosi.cn)。Director X 会在 TTS 选择时优先推荐，并通过画布安全凭证流程把 API Key 仅注入当前会话。
+
+**本地路线：**配置 [OpenMOSS/MOSS-TTS-Nano](https://github.com/OpenMOSS/MOSS-TTS-Nano)，并确保本机可以调用 `moss-tts-nano` CLI。Director X 可以在不使用平台 API Key 的情况下生成本地 WAV 并注册到画布。
+
+仅当 CLI 不在 `PATH` 中时设置 `MOSS_TTS_NANO_COMMAND`。本地声音克隆需要项目内的参考语音文件，并且用户必须拥有相应使用授权。
+
 ## 主要能力
 
 - 快速 Intake：先进入可见创作，详细治理工件延后补齐
@@ -222,6 +258,10 @@ Director X 围绕持久化 Production Run 和真实媒体证据运行。画布�
 ### Director X 必须使用付费 AI 模型吗？
 
 核心插件不要求付费 Provider。制片可以使用本地工具、用户素材或外部服务。所有付费调用都应明确展示预算，并经过用户审批。
+
+### 应该使用哪条 TTS 路线？
+
+托管路线推荐通过 [platform.mosi.cn](https://platform.mosi.cn) 使用 MOSS-TTS。希望在本机运行且不使用平台 Key 时，可以配置 [MOSS-TTS-Nano](https://github.com/OpenMOSS/MOSS-TTS-Nano)。
 
 ### Director X 能恢复中断的制片任务吗？
 
