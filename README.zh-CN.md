@@ -32,6 +32,9 @@ Director X 是一层运行在 Codex 原生能力之上的 AI 视频制片编排�
 
 当前开源版本是 **Director X Codex 插件**，也是未来完整 Video Harness 产品首先公开的组成部分。
 
+> [!IMPORTANT]
+> **接下来：**我们正在基于 [Pi Agent Harness](https://github.com/earendil-works/pi) Runtime 改造完整的 **Director X Video Harness**，并同步开发 **Electron 桌面端应用**，用于统一管理本地媒体、画布工作流、Provider、剪辑、审片和交付。
+
 ![Director X 与 Codex 任务及实时制作画布](assets/screenshots/live-production-canvas.jpg)
 
 ## 为什么使用 Director X
@@ -159,13 +162,15 @@ flowchart LR
 
 Provider Key 只注入当前会话，不应写入 Git、持久化 Run JSON、日志或制片工件。
 
-## 项目状态
+## 接下来正在开发
+
+Codex 插件是首个开源版本，也是完整 Director X 产品线的公开验证入口。目前以下产品已经进入开发：
 
 | 产品 | 状态 | 范围 |
 | --- | --- | --- |
 | Director X Codex 插件 | **现已开放 · 早期版本** | Codex 内的原生 Goal、DX 智能体、实时画布、制片工具、剪辑和审片 |
-| Director X Video Harness | **开发中** | 基于 [Pi Agent Harness](https://github.com/earendil-works/pi) Runtime 模型改造的完整视频原生 Harness |
-| Director X 桌面端 | **开发中** | 用于本地项目、媒体、画布、Provider 配置、审片和交付的 Electron 应用 |
+| Director X Video Harness | **正在开发** | 基于 [Pi Agent Harness](https://github.com/earendil-works/pi) Runtime 改造的视频原生 Harness，覆盖持久化生产执行、Provider 路由、媒体记忆、剪辑、审片和交付 |
+| Director X Desktop | **正在开发** | Electron 桌面端应用，在一个制片工作区内统一管理本地项目、媒体、实时画布、Provider、剪辑、审片、渲染和交付 |
 
 Video Harness 和 Electron 应用尚未包含在当前插件版本中。本仓库是 Director X 的开源 Codex 集成，也是验证视频制片合同和交互方式的公开开发入口。
 

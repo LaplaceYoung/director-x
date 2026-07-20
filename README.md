@@ -32,6 +32,9 @@ Director X is a Codex-native orchestration layer for AI video production. It doe
 
 The current open-source release is the **Director X Codex plugin**. It is the first public part of a larger Video Harness product.
 
+> [!IMPORTANT]
+> **Coming next:** we are actively building the complete **Director X Video Harness** by adapting the [Pi Agent Harness](https://github.com/earendil-works/pi) runtime for video-native production, together with an **Electron desktop application** for local media, canvas workflows, providers, editing, review, and delivery.
+
 ![Director X running beside Codex with the live production canvas](assets/screenshots/live-production-canvas.jpg)
 
 ## Why Director X
@@ -159,13 +162,15 @@ The plugin contains three main surfaces:
 
 Provider credentials are session-only. Raw keys must not be written to Git, durable Run JSON, logs, or production artifacts.
 
-## Project Status
+## What Is Coming Next
+
+The Codex plugin is the open-source first release and proving ground. Work is already underway on the larger Director X product line:
 
 | Product | Status | Scope |
 | --- | --- | --- |
 | Director X Codex plugin | **Available now · early access** | Native Goals, DX agents, live canvas, production tools, editing, and review inside Codex |
-| Director X Video Harness | **In development** | A complete video-native harness being rebuilt by adapting the [Pi Agent Harness](https://github.com/earendil-works/pi) runtime model |
-| Director X desktop app | **In development** | An Electron application for local projects, media, canvas workflows, provider configuration, review, and delivery |
+| Director X Video Harness | **In active development** | A complete video-native harness adapting the [Pi Agent Harness](https://github.com/earendil-works/pi) runtime for persistent production execution, provider routing, media memory, editing, review, and delivery |
+| Director X Desktop | **In active development** | An Electron application that brings local projects, media, the live canvas, provider configuration, editing, review, rendering, and delivery into one production workspace |
 
 The future Video Harness and Electron application are not included in the current plugin release. This repository is the open-source Codex integration and the public proving ground for Director X production contracts.
 
