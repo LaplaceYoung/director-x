@@ -27,6 +27,9 @@ jobs:
         with:
           version: 10
 
+      - name: Install media test runtime
+        run: brew install ffmpeg
+
       - name: Validate manifest and marketplace
         run: pnpm validate:plugin
 

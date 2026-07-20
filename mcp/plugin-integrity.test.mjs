@@ -52,6 +52,7 @@ test("runs plugin validation in CI", async () => {
   assert.match(packageJson.scripts.ci, /validate:plugin/);
   assert.match(workflow, /pnpm validate:plugin/);
   assert.match(workflow, /pnpm test/);
+  assert.match(workflow, /brew install ffmpeg/);
 });
 
 test("fails closed when the Director X MCP runtime is unavailable", async () => {
