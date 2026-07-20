@@ -97,3 +97,17 @@ test("keeps the side-browser surface alive without treating a hidden tab as disc
   assert.match(html, /pagehide/);
   assert.match(html, /后台保持/);
 });
+
+test("keeps the last projection visible while a single-flight refresh recovers", async () => {
+  const html = await readFile(new URL("../app/browser-canvas.html", import.meta.url), "utf8");
+  assert.match(html, /class="connection-banner"/);
+  assert.match(html, /data-connection="stale"/);
+  assert.match(html, /当前内容已保留并正在自动恢复/);
+  assert.match(html, /refreshInFlight/);
+  assert.match(html, /if \(state\.refreshInFlight\) return false/);
+  assert.match(html, /new AbortController\(\)/);
+  assert.match(html, /setTimeout\(\(\) => controller\.abort\(\), 8000\)/);
+  assert.match(html, /signal: controller\.signal/);
+  assert.match(html, /state\.lastSuccessfulSyncAt = new Date\(\)\.toISOString\(\)/);
+  assert.doesNotMatch(html, /catch \{ \$\("#sync"\)\.textContent = "连接已中断/);
+});

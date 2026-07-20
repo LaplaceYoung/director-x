@@ -39,6 +39,9 @@
     .object-copy small { display: block; color: #777; margin-top: 3px; font-size: 9px; }
     .rail-foot { border-top: 1px solid var(--line); color: #777; font-size: 10px; padding: 10px 14px; }
     .workspace { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #101010; }
+    .connection-banner { position: absolute; z-index: 8; top: 10px; left: 50%; transform: translate(-50%, -12px); max-width: min(620px, calc(100% - 28px)); padding: 7px 11px; border: 1px solid #674336; background: #211713; color: #efb09d; font-size: 9px; line-height: 1.45; opacity: 0; pointer-events: none; transition: opacity .16s ease, transform .16s ease; }
+    .app[data-connection="stale"] .connection-banner { opacity: 1; transform: translate(-50%, 0); }
+    .app[data-connection="stale"] .workspace::after { content: ""; position: absolute; inset: 0; border: 1px solid rgba(239,101,72,.25); pointer-events: none; z-index: 7; }
     .canvas-viewport { position: absolute; inset: 0; overflow: hidden; cursor: grab; }
     .canvas-viewport.dragging { cursor: grabbing; }
     .canvas-plane { position: absolute; width: 2200px; height: 1000px; transform-origin: 0 0; }
@@ -250,6 +253,7 @@
         <div class="rail-foot" id="rail-foot">正在准备制作内容</div>
       </aside>
       <main class="workspace">
+        <div class="connection-banner" id="connection-banner" role="status" aria-live="polite">画布连接暂时中断，正在保留当前内容并自动恢复。</div>
         <div class="canvas-viewport" id="viewport"><div class="canvas-plane" id="plane"><svg class="edge-layer" id="edges" aria-hidden="true"></svg><div id="nodes"></div></div></div>
         <section class="media" id="media"></section>
         <section class="coverage" id="coverage"></section>
@@ -267,7 +271,7 @@
     const session = params.get("session");
     const claimToken = params.get("claim");
     const legacyViewportStorageKey = `directorx:viewport:${session ?? "preflight"}`;
-    const state = { data: null, selectedId: null, compareIds: [], syncLocked: true, syncLeader: null, reviewTransport: { currentTime: 0, playing: false, playbackRate: 1, direction: 1, loopRange: null, activeArtifactRef: null }, reviewSessionRevision: null, storySignature: null, reviewSignature: null, mediaSignature: null, timelineRevision: null, timelineViewport: null, waveformWindow: null, waveformLoading: false, waveformError: null, waveformRequest: 0, view: "media", filter: "asset", query: "", transform: { x: 0, y: 0, zoom: .72 }, uiStateInitialized: false, uiPersistTimer: null, pendingUiState: null, viewportInitialized: false, viewportRestored: false, dragging: false, pointer: null };
+    const state = { data: null, selectedId: null, compareIds: [], syncLocked: true, syncLeader: null, reviewTransport: { currentTime: 0, playing: false, playbackRate: 1, direction: 1, loopRange: null, activeArtifactRef: null }, reviewSessionRevision: null, storySignature: null, reviewSignature: null, mediaSignature: null, timelineRevision: null, timelineViewport: null, waveformWindow: null, waveformLoading: false, waveformError: null, waveformRequest: 0, view: "media", filter: "asset", query: "", transform: { x: 0, y: 0, zoom: .72 }, uiStateInitialized: false, uiPersistTimer: null, pendingUiState: null, viewportInitialized: false, viewportRestored: false, dragging: false, pointer: null, refreshInFlight: false, lastSuccessfulSyncAt: null };
     const $ = (selector) => document.querySelector(selector);
     const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[char]);
     const surfaceUrl = (path, values = {}) => { const query = new URLSearchParams({ session, claim: claimToken }); for (const [key, value] of Object.entries(values)) if (value !== undefined && value !== null) query.set(key, String(value)); return `${path}?${query}`; };
@@ -303,7 +307,7 @@
       const friendly = data.userFacingSummary;
       $("#mode").textContent = `${friendly?.stageLabel ?? stageLabel(data.stage)} · ${friendly?.statusLabel ?? statusLabel(data.status)}`;
       const surfaceStatus = data.canvasSurfaceHealth?.status ?? "connected";
-      $("#sync").textContent = surfaceStatus === "hidden" ? "后台保持" : surfaceStatus === "stale" ? "正在恢复" : "已同步";
+      updateConnectionState(surfaceStatus);
       $("#run-label").textContent = data.goal?.outcome ?? "制作空间";
       $("#asset-count").textContent = canvas.summary.assetCount;
       const creativeSla = canvas.summary.creativeProgressSla;
@@ -636,7 +640,34 @@
         });
       } catch {}
     }
-    async function refresh() { try { const response = await fetch(surfaceUrl("/directorx/api/state", { visibility: document.visibilityState }), { cache: "no-store" }); if (!response.ok) throw new Error("state unavailable"); render(await response.json()); } catch { $("#sync").textContent = "连接已中断 · 等待恢复"; } }
+    function updateConnectionState(status, error = null) {
+      const stale = status === "stale" || status === "disconnected";
+      $(".app").dataset.connection = stale ? "stale" : status;
+      $("#sync").textContent = status === "hidden" ? "后台保持" : stale ? "正在恢复" : "已同步";
+      if (!stale) return;
+      const lastSync = state.lastSuccessfulSyncAt ? `上次同步 ${new Date(state.lastSuccessfulSyncAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : "尚未完成首次同步";
+      $("#connection-banner").textContent = `画布连接暂时中断，当前内容已保留并正在自动恢复。${lastSync}${error ? "。" : ""}`;
+    }
+    async function refresh() {
+      if (state.refreshInFlight) return false;
+      state.refreshInFlight = true;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      try {
+        const response = await fetch(surfaceUrl("/directorx/api/state", { visibility: document.visibilityState }), { cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error("state unavailable");
+        const data = await response.json();
+        state.lastSuccessfulSyncAt = new Date().toISOString();
+        render(data);
+        return true;
+      } catch (error) {
+        updateConnectionState("disconnected", error);
+        return false;
+      } finally {
+        clearTimeout(timeout);
+        state.refreshInFlight = false;
+      }
+    }
     document.addEventListener("click", (event) => {
       const compare = event.target.closest("[data-compare-id]"); if (compare) { event.stopPropagation(); toggleCompare(compare.dataset.compareId); return; }
       const jump = event.target.closest("[data-jump-time]"); if (jump) { seekReviewTransport(Number(jump.dataset.jumpTime)); return; }
@@ -662,7 +693,7 @@
     window.addEventListener("pagehide", () => { void flushUiState(); void surfaceHeartbeat("pagehide"); });
     refresh().then(() => { if (!state.viewportRestored) setTimeout(fitCanvas, 60); bindComparePlayers(); });
     void surfaceHeartbeat("boot");
-    setInterval(refresh, 1200);
+    setInterval(() => void refresh(), 1200);
     setInterval(() => void surfaceHeartbeat("heartbeat"), 5000);
   </script>
 </body>
