@@ -19,8 +19,69 @@ export function registerVideoQueryPlan(run, plan) {
   validateQueryPlan(plan);
   run.videoEvidenceQueries ??= {};
   if (run.videoEvidenceQueries[plan.queryId]) throw new Error(`Video query ${plan.queryId} already exists.`);
-  run.videoEvidenceQueries[plan.queryId] = { plan: { schemaVersion: "1.0", ...plan }, trace: null, evidenceBundle: null, status: "planned", updatedAt: new Date().toISOString() };
+  run.videoEvidenceQueries[plan.queryId] = { plan: { schemaVersion: "1.0", ...plan }, searches: [], trace: null, evidenceBundle: null, status: "planned", updatedAt: new Date().toISOString() };
   return run.videoEvidenceQueries[plan.queryId];
+}
+
+/**
+ * Search a registered index without rescanning or mutating source media.
+ * This is intentionally deterministic and lexical: multimodal analyzers may add
+ * richer observations later, while the plugin still has a useful local-first
+ * retrieval path with an auditable score and explicit limitations.
+ */
+export function searchMediaEvidence(index, input = {}) {
+  validateMediaEvidenceIndex(index);
+  const query = String(input.query ?? input.question ?? "").trim();
+  if (!query) throw new Error("Video evidence search requires a non-empty query.");
+  const maxResults = boundedInteger(input.maxResults ?? 12, 1, 50, "Video evidence result bound");
+  const requestedLevel = input.level == null ? null : String(input.level);
+  if (requestedLevel && !LEVELS.includes(requestedLevel)) throw new Error(`Unsupported evidence search level: ${requestedLevel}`);
+  const startSeconds = input.startSeconds == null ? null : finiteNonNegative(input.startSeconds, "Evidence search start");
+  const endSeconds = input.endSeconds == null ? null : finiteNonNegative(input.endSeconds, "Evidence search end");
+  if (startSeconds != null && endSeconds != null && endSeconds <= startSeconds) throw new Error("Evidence search end must be after start.");
+  const queryTokens = tokenizeSearchText(query);
+  const constraints = input.constraints && typeof input.constraints === "object" ? input.constraints : {};
+  const constraintTokens = tokenizeSearchText(Object.values(constraints).flatMap((value) => Array.isArray(value) ? value : [value]).join(" "));
+  const allTerms = [...new Set([...queryTokens, ...constraintTokens])];
+  const nodes = index.levels.flatMap((level) => level.nodes.map((node) => ({ level: level.level, node })));
+  const candidates = nodes
+    .filter(({ level, node }) => requestedLevel == null || level === requestedLevel)
+    .filter(({ node }) => overlapsSearchRange(node, startSeconds, endSeconds))
+    .map(({ level, node }) => scoreEvidenceNode(level, node, allTerms, query))
+    .filter((candidate) => candidate.score > 0)
+    .sort((left, right) => right.score - left.score || left.startSeconds - right.startSeconds || left.nodeId.localeCompare(right.nodeId))
+    .slice(0, maxResults);
+  return {
+    searchKind: "deterministic_observation_lexical",
+    query,
+    indexId: index.indexId,
+    sourceAssetId: index.source.assetId,
+    maxResults,
+    examinedNodeCount: nodes.length,
+    totalMatchCount: candidates.length,
+    candidates,
+    limitations: ["Results match registered observations and metadata; they do not replace multimodal visual inspection.", "A candidate must be inspected and selected in a retrieval trace before supporting a production claim."]
+  };
+}
+
+export function recordVideoEvidenceSearch(run, search) {
+  const query = run.videoEvidenceQueries?.[search.queryId];
+  if (!query) throw new Error(`Register video query ${search.queryId} before searching.`);
+  const index = run.mediaEvidenceIndexes?.[query.plan.indexId];
+  if (!index) throw new Error(`Evidence index ${query.plan.indexId} is not registered.`);
+  if (!search.result || search.result.indexId !== index.indexId) throw new Error("Video evidence search result does not match the query index.");
+  const indexedNodeIds = new Set(index.levels.flatMap((level) => level.nodes.map((node) => node.nodeId)));
+  for (const candidate of search.result.candidates ?? []) if (!indexedNodeIds.has(candidate.nodeId) || !(candidate.score >= 0 && candidate.score <= 1) || !(candidate.startSeconds >= 0) || !(candidate.durationSeconds > 0)) throw new Error("Video evidence search contains an invalid or unindexed candidate.");
+  const searchId = safeToken(search.searchId);
+  if (query.searches?.some((item) => item.searchId === searchId)) throw new Error(`Video evidence search ${searchId} already exists.`);
+  const roundsUsed = query.searches?.length ?? 0;
+  if (roundsUsed >= query.plan.budget.maxRounds) throw new Error("Video evidence search exceeds the approved round budget.");
+  const record = { schemaVersion: "1.0", searchId, queryId: search.queryId, result: search.result, round: roundsUsed + 1, createdAt: new Date().toISOString() };
+  query.searches ??= [];
+  query.searches.push(record);
+  if (query.status === "planned") query.status = "searching";
+  query.updatedAt = record.createdAt;
+  return record;
 }
 
 export function recordVideoRetrievalTrace(run, trace) {
@@ -46,11 +107,13 @@ export function finalizeEvidenceBundle(run, bundle) {
   return query.evidenceBundle;
 }
 
-export async function writeMediaEvidenceArtifacts({ projectPath, runId, index, query }) {
+export async function writeMediaEvidenceArtifacts({ projectPath, runId, index, query, search }) {
   const directory = resolve(projectPath, ".directorx", "plugin-runs", runId, "artifacts");
   await mkdir(directory, { recursive: true });
-  const suffix = safeToken(index?.indexId ?? query?.plan.queryId);
-  const values = index ? { "media_evidence_index.json": index, [`media_evidence_index.${suffix}.json`]: index } : {
+  const suffix = safeToken(index?.indexId ?? query?.plan.queryId ?? search?.searchId);
+  const values = index ? { "media_evidence_index.json": index, [`media_evidence_index.${suffix}.json`]: index } : search ? {
+    [`video_search_results.${suffix}.json`]: search
+  } : {
     "video_query_plan.json": query.plan, [`video_query_plan.${suffix}.json`]: query.plan,
     ...(query.trace ? { "retrieval_trace.json": query.trace, [`retrieval_trace.${suffix}.json`]: query.trace } : {}),
     ...(query.evidenceBundle ? { "evidence_bundle.json": query.evidenceBundle, [`evidence_bundle.${suffix}.json`]: query.evidenceBundle } : {})
@@ -89,6 +152,53 @@ function validateQueryPlan(plan) {
   if (!Number.isInteger(budget.maxRounds) || budget.maxRounds < 1 || budget.maxRounds > 20 || !Number.isInteger(budget.maxFrames) || budget.maxFrames < 1 || budget.maxFrames > 500 || !(budget.maxDecodeSeconds > 0) || budget.maxDecodeSeconds > 3600 || !(budget.maxCost >= 0)) throw new Error("Video query plan requires bounded rounds, frames, decode time, and cost.");
   if (!(plan.acceptance?.minEvidenceCoverage >= 0 && plan.acceptance.minEvidenceCoverage <= 1) || !(plan.acceptance?.minTopScore >= 0 && plan.acceptance.minTopScore <= 1)) throw new Error("Video query acceptance thresholds must be between zero and one.");
 }
+
+function scoreEvidenceNode(level, node, terms, query) {
+  const observations = node.observations.map((observation) => ({ kind: String(observation.kind), value: String(observation.value) }));
+  const searchable = [node.nodeId, level, ...(node.modalities ?? []), ...observations.flatMap((item) => [item.kind, item.value])].join(" ");
+  const searchableTokens = new Set(tokenizeSearchText(searchable));
+  const matchedTerms = terms.filter((term) => searchableTokens.has(term));
+  const phraseBonus = normalizeSearchText(searchable).includes(normalizeSearchText(query)) ? 0.18 : 0;
+  const averageConfidence = observations.length ? observations.reduce((sum, item) => sum + Number(node.observations.find((candidate) => String(candidate.kind) === item.kind && String(candidate.value) === item.value)?.confidence ?? 0), 0) / observations.length : 0;
+  const lexical = terms.length ? matchedTerms.length / terms.length : 0;
+  const score = Math.min(1, 0.62 * lexical + 0.2 * averageConfidence + 0.18 * (matchedTerms.length ? 1 : 0) + phraseBonus);
+  return {
+    nodeId: node.nodeId,
+    parentId: node.parentId ?? null,
+    level,
+    score: round(score),
+    matchedTerms,
+    confidence: round(averageConfidence),
+    startSeconds: round(rationalSeconds(node.range.start)),
+    durationSeconds: round(rationalSeconds(node.range.duration)),
+    modalities: node.modalities,
+    observations,
+    evidenceRefs: node.evidenceRefs
+  };
+}
+
+function overlapsSearchRange(node, startSeconds, endSeconds) {
+  const start = rationalSeconds(node.range.start);
+  const end = start + rationalSeconds(node.range.duration);
+  return (startSeconds == null || end > startSeconds) && (endSeconds == null || start < endSeconds);
+}
+
+function tokenizeSearchText(value) {
+  const normalized = normalizeSearchText(value);
+  const tokens = [];
+  for (const part of normalized.match(/[a-z0-9]+|[\u4e00-\u9fff]+/g) ?? []) {
+    if (/^[\u4e00-\u9fff]+$/.test(part)) {
+      for (const character of part) tokens.push(character);
+      for (let index = 0; index < part.length - 1; index += 1) tokens.push(part.slice(index, index + 2));
+    } else tokens.push(part);
+  }
+  return [...new Set(tokens)];
+}
+
+function normalizeSearchText(value) { return String(value ?? "").toLowerCase().replace(/\s+/g, " ").trim(); }
+function finiteNonNegative(value, label) { const result = Number(value); if (!Number.isFinite(result) || result < 0) throw new Error(`${label} must be finite and non-negative.`); return result; }
+function boundedInteger(value, minimum, maximum, label) { const result = Number(value); if (!Number.isInteger(result) || result < minimum || result > maximum) throw new Error(`${label} must be an integer from ${minimum} to ${maximum}.`); return result; }
+function round(value) { return Math.round(value * 1000) / 1000; }
 
 function validateRetrievalTrace(trace, plan, index) {
   if (!Array.isArray(trace.rounds) || !trace.rounds.length || !STOP_REASONS.includes(trace.stopReason)) throw new Error("Retrieval trace requires rounds and a supported stop reason.");

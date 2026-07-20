@@ -36,7 +36,7 @@ import { registerAvReviewTimeline, writeAvReviewTimeline } from "./av-review-tim
 import { importCaptionTrack } from "./caption-import.mjs";
 import { buildWaveformPyramid, getWaveformWindow } from "./waveform-pyramid.mjs";
 import { normalizeExecutionGraph, registerExecutionGraph, transitionExecutionNode, writeExecutionGraph } from "./execution-graph.mjs";
-import { finalizeEvidenceBundle, recordVideoRetrievalTrace, registerMediaEvidenceIndex, registerVideoQueryPlan, writeMediaEvidenceArtifacts } from "./media-evidence.mjs";
+import { finalizeEvidenceBundle, recordVideoEvidenceSearch, recordVideoRetrievalTrace, registerMediaEvidenceIndex, registerVideoQueryPlan, searchMediaEvidence, writeMediaEvidenceArtifacts } from "./media-evidence.mjs";
 import { commitTimelinePatch, compileEditGraph, createPatchPreview, editOperations, materialEditChanges, registerEditIntent, registerTimelinePatch, registerTimelineRevision, writeEditArtifacts } from "./edit-graph.mjs";
 import { createReviewSession, reviewCompareModes, updateReviewTransport, writeReviewSession } from "./review-session.mjs";
 import { planCapabilityRoute, VIDEO_CAPABILITY_CATALOG, writeCapabilityRoute } from "./video-capabilities.mjs";
@@ -850,6 +850,12 @@ const rawTools = [
     description: "Register a bounded multimodal video evidence query with explicit information need, strategy, rights/shot constraints, budgets, and acceptance thresholds.",
     inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema(), plan: objectSchema({ queryId: stringSchema(), indexId: stringSchema(), question: stringSchema(), constraints: { type: "object" }, strategy: { type: "array", minItems: 1, items: stringSchema() }, budget: objectSchema({ maxRounds: { type: "integer", minimum: 1, maximum: 20 }, maxFrames: { type: "integer", minimum: 1, maximum: 500 }, maxDecodeSeconds: { type: "number", exclusiveMinimum: 0, maximum: 3600 }, maxCost: { type: "number", minimum: 0 } }, ["maxRounds", "maxFrames", "maxDecodeSeconds", "maxCost"]), acceptance: objectSchema({ minEvidenceCoverage: { type: "number", minimum: 0, maximum: 1 }, minTopScore: { type: "number", minimum: 0, maximum: 1 } }, ["minEvidenceCoverage", "minTopScore"]) }, ["queryId", "indexId", "question", "constraints", "strategy", "budget", "acceptance"]) }, ["projectPath", "runId", "plan"]),
     annotations: writeAnnotations()
+  },
+  {
+    name: "directorx_search_video_evidence",
+    description: "Run a bounded deterministic search over a registered video evidence index and persist ranked timestamped candidates for later multimodal inspection and retrieval-trace selection. This never turns a candidate into a production claim by itself.",
+    inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema(), queryId: stringSchema(), searchId: stringSchema(), query: stringSchema(), constraints: { type: "object" }, level: { enum: ["program", "sequence", "scene", "shot", "moment"], type: "string" }, startSeconds: { type: "number", minimum: 0 }, endSeconds: { type: "number", exclusiveMinimum: 0 }, maxResults: { type: "integer", minimum: 1, maximum: 50 } }, ["projectPath", "runId", "queryId", "searchId", "query"]),
+    annotations: { ...writeAnnotations(), readOnlyHint: false }
   },
   {
     name: "directorx_record_video_retrieval_trace",
@@ -2379,6 +2385,25 @@ async function executeTool(name, args) {
   if (name === "directorx_register_video_query_plan") {
     const current = await readRun(args); const query = registerVideoQueryPlan(current, args.plan); const written = await writeMediaEvidenceArtifacts({ ...args, query });
     return await withBrowserCanvas(publicSnapshot(await updateRun({ ...args, mutate(run) { registerVideoQueryPlan(run, args.plan); run.artifacts ??= {}; for (const record of Object.values(written)) run.artifacts[record.artifactRef] = artifactRecord({ ...record, stage: "research" }); run.events.push(event(run, "video.query.planned", "research", `${args.plan.queryId} · ${args.plan.question}`)); return run; } })), args);
+  }
+  if (name === "directorx_search_video_evidence") {
+    const current = await readRun(args);
+    const query = current.videoEvidenceQueries?.[args.queryId];
+    if (!query) throw new Error(`Register video query ${args.queryId} before searching.`);
+    const index = current.mediaEvidenceIndexes?.[query.plan.indexId];
+    if (!index) throw new Error(`Evidence index ${query.plan.indexId} is not registered.`);
+    const result = searchMediaEvidence(index, { ...args, constraints: { ...(query.plan.constraints ?? {}), ...(args.constraints ?? {}) } });
+    const searchRecord = { searchId: args.searchId, queryId: args.queryId, result };
+    const written = await writeMediaEvidenceArtifacts({ ...args, search: searchRecord });
+    const searchArtifact = Object.values(written)[0];
+    return await withBrowserCanvas(publicSnapshot(await updateRun({ ...args, mutate(run) {
+      const record = recordVideoEvidenceSearch(run, searchRecord);
+      run.artifacts ??= {};
+      run.artifacts[searchArtifact.artifactRef] = artifactRecord({ ...searchArtifact, stage: "research", metadata: { owner: "DX-Reference-Analyst", canvasEssential: true, queryId: args.queryId, indexId: query.plan.indexId } });
+      upsertExecutionCanvasNode(run, { id: `evidence-search:${args.searchId}`, type: "artifact", label: `检索候选 · ${args.query}`, detail: `${result.candidates.length} 个候选 · 第 ${record.round} 轮 · 仅索引匹配`, stage: "research", status: result.candidates.length ? "complete" : "blocked", artifactRef: searchArtifact.artifactRef, metadata: { owner: "DX-Reference-Analyst", queryId: args.queryId, indexId: query.plan.indexId, candidateCount: result.candidates.length, limitations: result.limitations } }, `evidence-query:${args.queryId}`);
+      run.events.push(event(run, "video.evidence.searched", "research", `${args.queryId} · ${result.candidates.length} candidate(s) · round ${record.round}`));
+      return run;
+    } })), args);
   }
   if (name === "directorx_record_video_retrieval_trace") {
     const current = await readRun(args); const query = recordVideoRetrievalTrace(current, args.trace); const written = await writeMediaEvidenceArtifacts({ ...args, query });

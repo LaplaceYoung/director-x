@@ -15,10 +15,11 @@ Use one shared evidence index instead of letting each Agent independently summar
 4. Call `directorx_register_media_evidence_index`. Do not overwrite an index ID with different source content.
 5. Turn each production information gap into a specific query: include shot function, subject/action, temporal behavior, composition, audio, rights, aspect ratio, quality, continuity, and cost constraints that materially affect selection.
 6. Set four hard budgets: rounds, frames, decoded seconds, and monetary cost. Define coverage and top-score acceptance thresholds, then call `directorx_register_video_query_plan`.
-7. Retrieve coarse candidates, rerank temporally and cross-modally, inspect only local ranges, and assess whether new evidence closes the declared gap. Record every round with `directorx_record_video_retrieval_trace`.
-8. Stop with exactly one reason: `evidence_sufficient`, `budget_exhausted`, `no_new_evidence`, or `user_decision_required`. Preserve rejected and conflicting evidence.
-9. Bind each downstream claim to selected moments through `directorx_finalize_evidence_bundle`. Include limitations, coverage and rights status.
-10. Use the canvas Evidence Rail to inspect query status and jump to selected source times. If the rail shows `user_decision_required`, ask through Codex `request_user_input`; the canvas does not decide.
+7. Start with `directorx_search_video_evidence` for a bounded local lexical pass over registered observations. Treat its results as candidates only; open the referenced frames or ranges and use a multimodal analyzer when the question depends on visual identity, motion, OCR, or spatial detail.
+8. Retrieve coarse candidates, rerank temporally and cross-modally, inspect only local ranges, and assess whether new evidence closes the declared gap. Record every round with `directorx_record_video_retrieval_trace`.
+9. Stop with exactly one reason: `evidence_sufficient`, `budget_exhausted`, `no_new_evidence`, or `user_decision_required`. Preserve rejected and conflicting evidence.
+10. Bind each downstream claim to selected moments through `directorx_finalize_evidence_bundle`. Include limitations, coverage and rights status.
+11. Use the canvas Evidence Rail to inspect query status and jump to candidate or selected source times. If the rail shows `user_decision_required`, ask through Codex `request_user_input`; the canvas does not decide.
 
 ## Quality Rules
 

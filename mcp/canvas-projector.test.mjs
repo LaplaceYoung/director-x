@@ -20,6 +20,17 @@ test("projects run stages, approvals, and production objects into a graph", () =
   assert.ok(canvas.edges.some((edge) => edge.target === "shot:01"));
 });
 
+test("projects local evidence-search candidates without confusing them with selected claims", () => {
+  const canvas = projectCanvas({
+    stage: "research", status: "production_in_progress", goal: { outcome: "find proof" }, approvals: [], events: [], canvas: { nodes: [], edges: [] },
+    mediaEvidenceIndexes: { "idx-1": { indexId: "idx-1", source: { assetId: "asset-1", duration: { value: 30, rate: 1 } }, analyzers: [{ name: "local", version: "1" }], levels: [{ level: "shot", nodes: [{ nodeId: "shot-1", range: { start: { value: 3, rate: 1 }, duration: { value: 4, rate: 1 } }, modalities: ["vision"], observations: [], evidenceRefs: ["frame://asset-1/1"] }] }] } },
+    videoEvidenceQueries: { "q-1": { plan: { queryId: "q-1", indexId: "idx-1", question: "Find product proof" }, searches: [{ searchId: "s-1", result: { candidates: [{ nodeId: "shot-1", startSeconds: 3, durationSeconds: 4, evidenceRefs: ["frame://asset-1/1"] }] } }], trace: null, evidenceBundle: null, status: "searching" } }
+  });
+  assert.equal(canvas.evidenceRail.queries[0].hits.length, 0);
+  assert.equal(canvas.evidenceRail.queries[0].candidateHits[0].nodeId, "shot-1");
+  assert.equal(canvas.nodes.find((node) => node.id === "evidence-query:q-1").metadata.searches.length, 1);
+});
+
 test("projects the negotiated Codex host contract without adding workflow clutter", () => {
   const hostCapabilities = {
     productionReadiness: { status: "ready", blockers: [], mayCreateRun: true },
