@@ -13,6 +13,7 @@ All notable public changes to Director X are recorded here.
 - Added adaptive video reading with transcript cues, keyframe and scene sampling, focused ranges, deduplication, exhaustive frame-count evidence, and live canvas artifacts, informed by `bradautomates/claude-video` and rewritten in Node ESM.
 - Completed `claude-video` compatibility details with bounded explicit FPS sampling, long-video sparse-coverage guidance, and a 1998-pixel evidence-frame height clamp.
 - Added a deterministic local video-evidence search tool that ranks registered observations, persists candidate results, and projects them to the Evidence Rail without treating candidates as approved claims.
+- Added bounded review-only evidence clip materialization with source-hash verification, playable MP4 output, human-review receipts, retrieval lineage, and canvas media projection; derivatives remain ineligible for delivery.
 - Added durable, timecoded side-canvas review notes with idempotent capture, explicit non-approval semantics, Run projection, ownership acknowledgement, and evidence-required resolution.
 - Added bounded MCP Resource Templates for SHA-verified, Run-scoped document and media previews without exposing mutable filesystem access.
 

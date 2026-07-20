@@ -37,6 +37,7 @@ import { importCaptionTrack } from "./caption-import.mjs";
 import { buildWaveformPyramid, getWaveformWindow } from "./waveform-pyramid.mjs";
 import { normalizeExecutionGraph, registerExecutionGraph, transitionExecutionNode, writeExecutionGraph } from "./execution-graph.mjs";
 import { finalizeEvidenceBundle, recordVideoEvidenceSearch, recordVideoRetrievalTrace, registerMediaEvidenceIndex, registerVideoQueryPlan, searchMediaEvidence, writeMediaEvidenceArtifacts } from "./media-evidence.mjs";
+import { materializeEvidenceClip } from "./evidence-clips.mjs";
 import { commitTimelinePatch, compileEditGraph, createPatchPreview, editOperations, materialEditChanges, registerEditIntent, registerTimelinePatch, registerTimelineRevision, writeEditArtifacts } from "./edit-graph.mjs";
 import { createReviewSession, reviewCompareModes, updateReviewTransport, writeReviewSession } from "./review-session.mjs";
 import { planCapabilityRoute, VIDEO_CAPABILITY_CATALOG, writeCapabilityRoute } from "./video-capabilities.mjs";
@@ -856,6 +857,12 @@ const rawTools = [
     description: "Run a bounded deterministic search over a registered video evidence index and persist ranked timestamped candidates for later multimodal inspection and retrieval-trace selection. This never turns a candidate into a production claim by itself.",
     inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema(), queryId: stringSchema(), searchId: stringSchema(), query: stringSchema(), constraints: { type: "object" }, level: { enum: ["program", "sequence", "scene", "shot", "moment"], type: "string" }, startSeconds: { type: "number", minimum: 0 }, endSeconds: { type: "number", exclusiveMinimum: 0 }, maxResults: { type: "integer", minimum: 1, maximum: 50 } }, ["projectPath", "runId", "queryId", "searchId", "query"]),
     annotations: { ...writeAnnotations(), readOnlyHint: false }
+  },
+  {
+    name: "directorx_materialize_evidence_clip",
+    description: "Materialize one selected retrieval-trace moment as a bounded, playable review-only clip. The source hash, selected node, rights state, time range, and receipt are preserved; the derivative is never delivery-eligible.",
+    inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema(), sourceArtifactRef: stringSchema(), queryId: stringSchema(), nodeId: stringSchema(), clipId: stringSchema(), paddingSeconds: { type: "number", minimum: 0, maximum: 5 }, timeoutMs: { type: "integer", minimum: 1000, maximum: 600000 } }, ["projectPath", "runId", "sourceArtifactRef", "queryId", "nodeId", "clipId"]),
+    annotations: writeAnnotations()
   },
   {
     name: "directorx_record_video_retrieval_trace",
@@ -2404,6 +2411,55 @@ async function executeTool(name, args) {
       run.events.push(event(run, "video.evidence.searched", "research", `${args.queryId} · ${result.candidates.length} candidate(s) · round ${record.round}`));
       return run;
     } })), args);
+  }
+  if (name === "directorx_materialize_evidence_clip") {
+    const current = await readRun(args);
+    const query = current.videoEvidenceQueries?.[args.queryId];
+    if (!query?.trace) throw new Error(`Record a retrieval trace for ${args.queryId} before materializing an evidence clip.`);
+    if (!(query.trace.selectedNodeIds ?? []).includes(args.nodeId)) throw new Error(`Evidence node ${args.nodeId} must be selected in the retrieval trace before materializing a clip.`);
+    const index = current.mediaEvidenceIndexes?.[query.plan.indexId];
+    if (!index) throw new Error(`Evidence index ${query.plan.indexId} is not registered.`);
+    const sourceRecord = current.artifacts?.[args.sourceArtifactRef];
+    if (!sourceRecord?.path || sourceRecord.mediaKind !== "video") throw new Error(`Evidence source artifact must be a registered video: ${args.sourceArtifactRef}`);
+    if (sourceRecord.sha256 !== index.source.sha256) throw new Error("Evidence source artifact does not match the registered index hash.");
+    const node = index.levels.flatMap((level) => level.nodes.map((item) => ({ ...item, level: level.level }))).find((item) => item.nodeId === args.nodeId);
+    if (!node) throw new Error(`Evidence node is not registered: ${args.nodeId}`);
+    const clipArtifactRef = `video-evidence-clip:${args.clipId}`;
+    const receiptArtifactRef = `${clipArtifactRef}:receipt`;
+    if (current.evidenceClips?.some((clip) => clip.clipId === args.clipId)) throw new Error(`Evidence clip already exists: ${args.clipId}`);
+    const sourceDurationSeconds = Number(index.source.duration.value) / Number(index.source.duration.rate);
+    const paddingSeconds = Number(args.paddingSeconds ?? 0);
+    const startSeconds = Math.max(0, Number(node.range.start.value) / Number(node.range.start.rate) - paddingSeconds);
+    const nodeEndSeconds = Number(node.range.start.value) / Number(node.range.start.rate) + Number(node.range.duration.value) / Number(node.range.duration.rate);
+    const endSeconds = Math.min(sourceDurationSeconds, nodeEndSeconds + paddingSeconds);
+    const rightsStatus = sourceRecord.metadata?.rightsStatus ?? (sourceRecord.metadata?.referenceOnly ? "reference_only" : "unknown");
+    const result = await materializeEvidenceClip({
+      ...args,
+      sourcePath: sourceRecord.path,
+      sourceSha256: sourceRecord.sha256,
+      sourceDurationSeconds,
+      indexId: query.plan.indexId,
+      startSeconds,
+      endSeconds,
+      sourceArtifactRef: args.sourceArtifactRef,
+      outputArtifactRef: clipArtifactRef,
+      evidenceRefs: node.evidenceRefs,
+      rightsStatus,
+      retrievalTraceRef: `video-retrieval-trace:${args.queryId}`
+    });
+    const clipRecord = await inspectArtifact({ ...args, artifactRef: clipArtifactRef, path: result.outputPath, stage: "research", mediaKind: "video", metadata: { canvasEssential: true, referenceOnly: true, reviewOnly: true, deliveryEligible: false, rightsStatus, queryId: args.queryId, nodeId: args.nodeId, startSeconds, endSeconds, durationSeconds: result.durationSeconds, sourceArtifactRefs: [args.sourceArtifactRef], receiptArtifactRef } });
+    const receiptRecord = await inspectArtifact({ ...args, artifactRef: receiptArtifactRef, path: result.receiptPath, stage: "research", mediaKind: "document", metadata: { internal: true, referenceOnly: true, reviewOnly: true, sourceArtifactRefs: [args.sourceArtifactRef, clipArtifactRef], queryId: args.queryId, nodeId: args.nodeId } });
+    const response = await withBrowserCanvas(publicSnapshot(await updateRun({ ...args, mutate(run) {
+      run.evidenceClips ??= [];
+      run.evidenceClips.push({ clipId: args.clipId, artifactRef: clipArtifactRef, receiptArtifactRef, queryId: args.queryId, nodeId: args.nodeId, startSeconds, endSeconds, durationSeconds: result.durationSeconds, rightsStatus, deliveryEligible: false, status: "ready_for_human_review" });
+      run.artifacts ??= {};
+      run.artifacts[clipArtifactRef] = clipRecord;
+      run.artifacts[receiptArtifactRef] = receiptRecord;
+      upsertExecutionCanvasNode(run, { id: `evidence-clip:${args.clipId}`, type: "artifact", label: `证据片段 · ${args.nodeId}`, detail: `${startSeconds.toFixed(2)}–${endSeconds.toFixed(2)}s · 仅供审看 · 不进入交付`, stage: "research", status: "complete", artifactRef: clipArtifactRef, metadata: { canvasEssential: true, referenceOnly: true, reviewOnly: true, deliveryEligible: false, rightsStatus, queryId: args.queryId, nodeId: args.nodeId, sourceArtifactRefs: [args.sourceArtifactRef], receiptArtifactRef } }, `evidence-query:${args.queryId}`);
+      run.events.push(event(run, "video.evidence.clip_materialized", "research", `${args.queryId} · ${args.nodeId} · ${result.durationSeconds}s review-only clip`));
+      return run;
+    } })), args);
+    return { ...response, evidenceClip: { clipId: args.clipId, artifactRef: clipArtifactRef, receiptArtifactRef, outputPath: result.outputPath, receiptPath: result.receiptPath, durationSeconds: result.durationSeconds, deliveryEligible: false } };
   }
   if (name === "directorx_record_video_retrieval_trace") {
     const current = await readRun(args); const query = recordVideoRetrievalTrace(current, args.trace); const written = await writeMediaEvidenceArtifacts({ ...args, query });

@@ -31,6 +31,19 @@ test("projects local evidence-search candidates without confusing them with sele
   assert.equal(canvas.nodes.find((node) => node.id === "evidence-query:q-1").metadata.searches.length, 1);
 });
 
+test("projects selected evidence clips as review-only media lineage", () => {
+  const canvas = projectCanvas({
+    stage: "research", status: "production_in_progress", goal: { outcome: "review" }, approvals: [], events: [], canvas: { nodes: [], edges: [] },
+    mediaEvidenceIndexes: { "idx-1": { indexId: "idx-1", source: { assetId: "asset-1", artifactRef: "source.video", duration: { value: 30, rate: 1 } }, analyzers: [{ name: "local", version: "1" }], levels: [{ level: "shot", nodes: [{ nodeId: "shot-1", range: { start: { value: 3, rate: 1 }, duration: { value: 4, rate: 1 } }, modalities: ["vision"], observations: [], evidenceRefs: ["frame://asset-1/1"] }] }] } },
+    videoEvidenceQueries: { "q-1": { plan: { queryId: "q-1", indexId: "idx-1", question: "Find product proof" }, searches: [], trace: { selectedNodeIds: ["shot-1"], stopReason: "evidence_sufficient" }, evidenceBundle: null, status: "stopped" } },
+    evidenceClips: [{ clipId: "clip-1", artifactRef: "video-evidence-clip:clip-1", receiptArtifactRef: "video-evidence-clip:clip-1:receipt", queryId: "q-1", nodeId: "shot-1", deliveryEligible: false, status: "ready_for_human_review" }],
+    artifacts: { "video-evidence-clip:clip-1": { mediaKind: "video", relativePath: ".directorx/plugin-runs/run/evidence-clips/clip-1.mp4", stage: "research", metadata: { canvasEssential: true, referenceOnly: true, reviewOnly: true, deliveryEligible: false, sourceArtifactRefs: ["source.video"] } } }
+  });
+  assert.equal(canvas.evidenceRail.queries[0].hits[0].clipArtifactRef, "video-evidence-clip:clip-1");
+  assert.equal(canvas.mediaGraph.nodes.find((node) => node.artifactRef === "video-evidence-clip:clip-1").metadata.reviewOnly, true);
+  assert.equal(canvas.mediaGraph.nodes.find((node) => node.artifactRef === "video-evidence-clip:clip-1").metadata.deliveryEligible, false);
+});
+
 test("projects the negotiated Codex host contract without adding workflow clutter", () => {
   const hostCapabilities = {
     productionReadiness: { status: "ready", blockers: [], mayCreateRun: true },
