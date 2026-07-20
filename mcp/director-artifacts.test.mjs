@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { writeDirectorDocument, writeIntakeConfirmation, writeIntentResolution } from "./director-artifacts.mjs";
+import { compileDeliveryPromise, compileProjectBrief, writeDeliveryPromise, writeDirectorDocument, writeIntakeConfirmation, writeIntentResolution, writeProjectBrief } from "./director-artifacts.mjs";
 import { assertReferenceDownloadAuthorized, ingestReferenceVideo } from "./reference-ingest.mjs";
 
 test("writes resolved intent and project Director.md artifacts", async () => {
@@ -26,6 +26,22 @@ test("writes resolved intent and project Director.md artifacts", async () => {
     const contract = JSON.parse(await readFile(director.contractPath, "utf8"));
     assert.match(contract.fingerprint, /^sha256:[a-f0-9]{64}$/);
     assert.ok(contract.directives.some((item) => item.id === "DIR-CAMERA"));
+  } finally { await rm(projectPath, { recursive: true, force: true }); }
+});
+
+test("compiles the missing fast-start brief and delivery promise artifacts", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-fast-start-artifacts-"));
+  const runId = "dx-fast-start";
+  try {
+    const brief = compileProjectBrief(runId, { videoType: "brand_film", targetPlatform: "官网", budgetCap: { currency: "CNY", amount: 10 }, durationSeconds: 30, qualityTarget: "professional", runMode: "guided_autonomy" });
+    assert.equal(brief.target_platform, "官网");
+    assert.equal(brief.run_mode, "guided_autonomy");
+    const delivery = compileDeliveryPromise(runId, brief, { promise: "一支可播放的品牌短片", primaryViewerOutcome: "理解产品价值", minimumFinalScore: 0.8, minimumShotScore: 0.72, requiredArtifacts: ["script_or_outline.json", "final_review.json"], requiredTracks: ["visual", "voiceover_or_dialogue"], primaryProductionPath: "ai_generation_plus_web_assets" });
+    assert.equal(delivery.delivery_promise.duration_seconds, 30);
+    assert.equal(delivery.approved_production_paths[0].path, "ai_generation_plus_web_assets");
+    const writtenBrief = await writeProjectBrief({ projectPath, runId, brief: { videoType: "brand_film", targetPlatform: "官网", budgetCap: { currency: "CNY", amount: 10 }, durationSeconds: 30, qualityTarget: "professional", runMode: "guided_autonomy" } });
+    const writtenDelivery = await writeDeliveryPromise({ projectPath, runId, brief: writtenBrief.artifact, delivery: { promise: "一支可播放的品牌短片", primaryViewerOutcome: "理解产品价值", minimumFinalScore: 0.8, minimumShotScore: 0.72, requiredArtifacts: ["script_or_outline.json", "final_review.json"], requiredTracks: ["visual", "voiceover_or_dialogue"], primaryProductionPath: "ai_generation_plus_web_assets" } });
+    assert.equal(JSON.parse(await readFile(writtenDelivery.path, "utf8")).quality_floor.minimum_final_score, 0.8);
   } finally { await rm(projectPath, { recursive: true, force: true }); }
 });
 

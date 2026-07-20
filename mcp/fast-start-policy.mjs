@@ -7,9 +7,11 @@ const CREATIVE_DOCUMENTS = new Set([
 export function evaluateFastStartReadiness(run) {
   const blockers = [];
   if (!run.goal?.boundAt) blockers.push("goal_not_bound");
+  if (!run.runMode?.mode) blockers.push("run_mode_not_confirmed");
   if (!run.intakeGate?.ready) blockers.push("minimum_intake_not_confirmed");
   if (!run.pipeline) blockers.push("pipeline_not_selected");
   if (!run.productionComplexityPlan) blockers.push("complexity_not_planned");
+  if (run.runMode?.mode === "stage_approval" && run.stageApprovals?.research?.status !== "approved") blockers.push("stage_approval:research");
   for (const kind of ESSENTIAL_APPROVALS) if (!approved(run, kind)) blockers.push(`approval:${kind}`);
   const intake = run.pipeline?.stages?.find((stage) => stage.id === "intake");
   for (const artifactRef of intake?.requiredOutputs ?? []) if (!run.artifacts?.[artifactRef]) blockers.push(`artifact:${artifactRef}`);
@@ -90,10 +92,12 @@ function creativeArtifactTimestamp(artifact = {}) {
 
 function nextTool(blocker) {
   if (blocker === "goal_not_bound") return "directorx_bind_goal";
+  if (blocker === "run_mode_not_confirmed") return "directorx_create_and_ask_native_question";
   if (blocker === "minimum_intake_not_confirmed") return "directorx_confirm_intake";
   if (blocker === "pipeline_not_selected") return "directorx_select_pipeline";
   if (blocker === "complexity_not_planned") return "directorx_plan_production_complexity";
   if (blocker === "reference_download_consent") return "directorx_create_and_ask_native_question";
+  if (blocker.startsWith("stage_approval:")) return "directorx_create_and_ask_native_question";
   if (blocker.startsWith("approval:")) return "directorx_create_and_ask_native_question";
   return "directorx_register_stage_package";
 }

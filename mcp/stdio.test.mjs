@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DX_SUBAGENT_CATALOG } from "./subagent-registry.mjs";
@@ -134,6 +134,7 @@ test("serves MCP tools over newline-delimited stdio", async () => {
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_get_builtin_media_runtime"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_install_builtin_media_runtime"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_plan_production_complexity"));
+    assert.ok(message.result.tools.some((tool) => tool.name === "directorx_prepare_fast_start_intake"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_get_fast_start_status"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_begin_creative_work"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_get_recovery_action"));
@@ -199,6 +200,7 @@ test("advertises the mandatory side-Browser startup contract during MCP initiali
     assert.match(initialized.instructions, /directorx_create_and_ask_native_question/);
     assert.match(initialized.instructions, /afterAnswer/);
     assert.match(initialized.instructions, /directorx_begin_creative_work/);
+    assert.match(initialized.instructions, /directorx_prepare_fast_start_intake/);
     assert.match(initialized.instructions, /five-minute creative-output SLA/);
     assert.match(initialized.instructions, /music_strategy/);
     assert.match(initialized.instructions, /music_asset_selection/);
@@ -210,6 +212,60 @@ test("advertises the mandatory side-Browser startup contract during MCP initiali
     assert.match(initialized.instructions, /never narrate tool calls/);
     assert.match(initialized.instructions, /at most two short sentences/);
   } finally { child.kill("SIGTERM"); }
+});
+
+test("prepares the complete minimum Intake contract through one MCP tool call", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-fast-start-intake-"));
+  const run = await createRun({ projectPath, outcome: "制作 30 秒官网品牌片" });
+  await updateRun({ projectPath, runId: run.runId, mutate(current) {
+    current.goal = { ...current.goal, codexGoalId: "goal-fast-start", boundAt: "2026-07-20T00:00:00.000Z" };
+    current.runMode = { mode: "guided_autonomy", confirmedAt: "2026-07-20T00:00:00.000Z", confirmedBy: "request_user_input", lowRiskAutoAdvance: true, stageApprovalRequired: false, hardGates: [] };
+    return current;
+  } });
+  const child = spawn(process.execPath, [new URL("./server.mjs", import.meta.url).pathname], { stdio: ["pipe", "pipe", "pipe"] });
+  let output = ""; child.stdout.setEncoding("utf8"); child.stdout.on("data", (chunk) => { output += chunk; });
+  const send = async (id, name, arguments_) => {
+    child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id, method: "tools/call", params: { name, arguments: arguments_ } })}\n`);
+    await waitFor(() => messages(output).some((item) => item.id === id), 2000);
+    return messages(output).find((item) => item.id === id);
+  };
+  const decisions = [
+    ["objective", "建立产品认知", "brief"], ["audience", "企业客户", "brief"], ["platform", "官网", "user"],
+    ["duration", "30 秒", "brief"], ["production_route", "ai_generation_plus_web_assets", "user"], ["asset_readiness", "需要联网获取公开素材", "user"]
+  ].map(([field, value, source]) => ({ field, value, source, rationale: "已在最小 Intake 中确认" }));
+  const director = {
+    title: "科技品牌片", logline: "让复杂智能变得可感知", audience: "企业客户", platform: "官网", duration: "30s", aspectRatio: "16:9", objective: "建立产品认知",
+    directorInterpretation: "从真实需求推进到可验证结果", hook: "界面与城市同时被点亮", beatProgression: "问题—能力—证据—行动", visualLanguage: "克制的未来现实主义", cameraGrammar: "稳定推进与功能性特写", composition: "秩序化构图", lightingColor: "中性灰与品牌强调色", performanceDirection: "自然可信", audioDirection: "清晰旁白与轻量空间声", musicDirection: "渐进电子乐", editRhythm: "前紧后稳", promptStrategy: "明确主体、动作、机位与光线变化", researchPlan: "优先官方资料和可授权资产", continuityAnchors: ["品牌色", "产品界面"], negativeRules: ["不使用空泛科技粒子"], reviewCriteria: ["信息准确", "字幕清晰"], approvalBoundaries: ["预算与模型需确认"]
+  };
+  try {
+    const prepared = (await send(501, "directorx_prepare_fast_start_intake", {
+      projectPath, runId: run.runId, pipelineId: "brand-film",
+      intake: { decisions, questionsAsked: [], userAnswers: [] },
+      resolution: { clarity: "clear", rawIntent: "制作 30 秒官网品牌片", resolvedIntent: "面向企业客户的 30 秒官网品牌片", directorPrompt: "以可验证产品证据建立信任", questionsAsked: [], userAnswers: [], safeInferences: ["使用 16:9"], unresolvedRisks: [] },
+      director,
+      production: { videoType: "brand_film", budgetCap: { currency: "CNY", amount: 10 }, durationSeconds: 30, qualityTarget: "professional", shotCount: 6, segmentCount: 1, referenceVideoCount: 0, modalities: ["image", "video", "voice", "music"], characterContinuity: false, deliveryTier: "publish" },
+      delivery: { promise: "一支可播放、可审查的品牌短片", primaryViewerOutcome: "理解产品价值并产生下一步兴趣", minimumFinalScore: 0.8, minimumShotScore: 0.72, requiredArtifacts: ["script_or_outline.json", "semantic_timeline.json", "final_review.json"], requiredTracks: ["visual", "voiceover_or_dialogue", "music_or_ambience", "captions"] }
+    })).result.structuredContent;
+    assert.equal(prepared.pipeline.id, "brand-film");
+    assert.equal(prepared.productionComplexityPlan.profile, "standard");
+    assert.ok(prepared.readiness.blockers.includes("approval:budget"));
+    assert.ok(!prepared.readiness.blockers.some((blocker) => blocker.startsWith("artifact:")));
+    const brief = JSON.parse(await readFile(join(projectPath, ".directorx", "plugin-runs", run.runId, "artifacts", "project_brief.json"), "utf8"));
+    const promise = JSON.parse(await readFile(join(projectPath, ".directorx", "plugin-runs", run.runId, "artifacts", "delivery_promise.json"), "utf8"));
+    assert.equal(brief.run_mode, "guided_autonomy");
+    assert.equal(promise.approved_production_paths[0].path, "ai_generation_plus_web_assets");
+    await updateRun({ projectPath, runId: run.runId, mutate(current) {
+      for (const approval of current.approvals) if (["budget", "image_model", "video_model", "voice_model"].includes(approval.kind)) approval.status = "approved";
+      return current;
+    } });
+    const started = (await send(502, "directorx_begin_creative_work", { projectPath, runId: run.runId })).result.structuredContent;
+    assert.equal(started.stage, "research");
+    assert.equal(started.pipeline.stageStates.intake.status, "complete");
+    assert.equal(started.pipeline.stageStates.research.status, "active");
+  } finally {
+    child.kill("SIGTERM");
+    await rm(projectPath, { recursive: true, force: true });
+  }
 });
 
 test("routes the first preflight to a standalone browser canvas", async () => {

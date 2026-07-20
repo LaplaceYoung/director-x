@@ -6,12 +6,30 @@ function readyRun() {
   const requiredOutputs = ["intake_confirmation.json", "intent_resolution.json", "Director.md", "director_contract.json", "project_brief.json", "delivery_promise.json", "production_complexity_plan.json"];
   return {
     goal: { boundAt: "2026-07-20T00:00:00.000Z" }, intakeGate: { ready: true },
+    runMode: { mode: "guided_autonomy" },
     pipeline: { id: "reference-remix", stages: [{ id: "intake", requiredOutputs, deferredOutputs: ["execution_graph.json"] }] },
     productionComplexityPlan: { settings: { firstKeyframeTargetMinutes: 10, targetFirstPreviewMinutes: 15 } },
     approvals: ["budget", "image_model", "video_model", "voice_model"].map((kind) => ({ kind, status: "approved" })),
     artifacts: Object.fromEntries(requiredOutputs.map((ref) => [ref, { artifactRef: ref }])), references: []
   };
 }
+
+test("requires a user-confirmed run mode before creative work", () => {
+  const run = readyRun();
+  run.runMode = null;
+  const readiness = evaluateFastStartReadiness(run);
+  assert.equal(readiness.ready, false);
+  assert.equal(readiness.blockers[0], "run_mode_not_confirmed");
+  assert.equal(readiness.nextTool, "directorx_create_and_ask_native_question");
+});
+
+test("preserves explicit research approval in stage-approval mode", () => {
+  const run = readyRun();
+  run.runMode = { mode: "stage_approval" };
+  assert.ok(evaluateFastStartReadiness(run).blockers.includes("stage_approval:research"));
+  run.stageApprovals = { research: { status: "approved" } };
+  assert.equal(evaluateFastStartReadiness(run).ready, true);
+});
 
 test("allows creative work before deferred governance artifacts exist", () => {
   const run = readyRun();

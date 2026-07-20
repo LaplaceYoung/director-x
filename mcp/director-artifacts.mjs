@@ -20,6 +20,24 @@ export async function writeIntakeConfirmation({ projectPath, runId, intake }) {
   return { path, artifactRef: "intake_confirmation.json" };
 }
 
+export async function writeProjectBrief({ projectPath, runId, brief }) {
+  const dir = runArtifactDir(projectPath, runId);
+  await mkdir(dir, { recursive: true });
+  const path = join(dir, "project_brief.json");
+  const artifact = compileProjectBrief(runId, brief);
+  await writeFile(path, `${JSON.stringify(artifact, null, 2)}\n`, { mode: 0o600 });
+  return { path, artifactRef: "project_brief.json", artifact };
+}
+
+export async function writeDeliveryPromise({ projectPath, runId, brief, delivery }) {
+  const dir = runArtifactDir(projectPath, runId);
+  await mkdir(dir, { recursive: true });
+  const path = join(dir, "delivery_promise.json");
+  const artifact = compileDeliveryPromise(runId, brief, delivery);
+  await writeFile(path, `${JSON.stringify(artifact, null, 2)}\n`, { mode: 0o600 });
+  return { path, artifactRef: "delivery_promise.json", artifact };
+}
+
 export async function writeDirectorDocument({ projectPath, runId, director }) {
   const dir = runArtifactDir(projectPath, runId);
   await mkdir(dir, { recursive: true });
@@ -114,6 +132,67 @@ export function compileDirectorContract(runId, director) {
   return { ...canonical, fingerprint: `sha256:${createHash("sha256").update(JSON.stringify(canonical)).digest("hex")}` };
 }
 
+export function compileProjectBrief(runId, brief) {
+  const durationSeconds = Number(brief.durationSeconds);
+  const amount = Number(brief.budgetCap?.amount);
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) throw new Error("Project brief durationSeconds must be positive.");
+  if (!Number.isFinite(amount) || amount < 0) throw new Error("Project brief budget amount cannot be negative.");
+  if (!brief.runMode) throw new Error("Project brief requires a user-confirmed run mode.");
+  return {
+    schemaVersion: "1.0",
+    project_brief_id: `PB-${runId}`,
+    source_artifact_run_id: runId,
+    video_type: text(brief.videoType),
+    target_platform: text(brief.targetPlatform),
+    budget_cap: { currency: text(brief.budgetCap.currency), amount },
+    duration_seconds: durationSeconds,
+    quality_target: text(brief.qualityTarget),
+    run_mode: text(brief.runMode),
+    created_at: new Date().toISOString()
+  };
+}
+
+export function compileDeliveryPromise(runId, brief, delivery) {
+  const minimumFinalScore = score(delivery.minimumFinalScore, "minimumFinalScore");
+  const minimumShotScore = score(delivery.minimumShotScore, "minimumShotScore");
+  const requiredArtifacts = nonEmptyList(delivery.requiredArtifacts, "requiredArtifacts");
+  const requiredTracks = nonEmptyList(delivery.requiredTracks, "requiredTracks");
+  const primaryProductionPath = text(delivery.primaryProductionPath);
+  return {
+    schemaVersion: "1.0",
+    delivery_promise_id: `DP-${runId}`,
+    source_artifact_run_id: runId,
+    delivery_promise: {
+      target_platform: brief.target_platform,
+      duration_seconds: brief.duration_seconds,
+      quality_target: brief.quality_target,
+      promise: text(delivery.promise),
+      primary_viewer_outcome: text(delivery.primaryViewerOutcome)
+    },
+    quality_floor: {
+      minimum_final_score: minimumFinalScore,
+      minimum_shot_score: minimumShotScore,
+      required_artifacts: requiredArtifacts,
+      required_tracks: requiredTracks
+    },
+    approved_production_paths: [
+      { path: primaryProductionPath, scope: "primary", approval_state: "approved", evidence_ref: "intake_confirmation.json" },
+      { path: "remotion_composite_repair", scope: "repair_and_packaging", approval_state: "approved", evidence_ref: "semantic_timeline.json" }
+    ],
+    forbidden_fallbacks: [
+      { fallback: "static_slide_only", reason: "Motion and audio cannot fall below the approved quality floor.", approval_required_to_override: true },
+      { fallback: "unlicensed_reference_reuse", reason: "Reference media cannot become delivery media without reuse rights.", approval_required_to_override: true }
+    ],
+    requires_user_approval_before: [
+      { change: "duration_seconds", reason: "Duration changes pacing, cost, and platform fit.", gate: "delivery_promise_change" },
+      { change: "target_platform", reason: "Platform changes framing, safe areas, rhythm, and packaging.", gate: "delivery_promise_change" },
+      { change: "quality_floor", reason: "A quality downgrade changes the accepted delivery promise.", gate: "delivery_promise_change" },
+      { change: "production_path", reason: "A provider or render path change can alter cost and reliability.", gate: "provider_reroute" }
+    ],
+    created_at: new Date().toISOString()
+  };
+}
+
 function directive(id, domain, instruction) { return { id, domain, instruction: text(instruction) }; }
 function listDirectives(prefix, domain, values) { return (values ?? []).map((value, index) => directive(`${prefix}-${index + 1}`, domain, value)); }
 
@@ -125,3 +204,5 @@ function runArtifactDir(projectPath, runId) {
 function field(label, value) { return `- **${label}:** ${text(value)}`; }
 function text(value) { return String(value ?? "Not specified").replace(/\r/g, "").trim(); }
 function bullets(values) { return Array.isArray(values) && values.length ? values.map((value) => `- ${text(value)}`).join("\n") : "- Not specified"; }
+function score(value, field) { const number = Number(value); if (!Number.isFinite(number) || number < 0 || number > 1) throw new Error(`${field} must be between 0 and 1.`); return number; }
+function nonEmptyList(values, field) { if (!Array.isArray(values) || !values.length || values.some((value) => !String(value ?? "").trim())) throw new Error(`${field} must contain at least one non-empty value.`); return values.map(text); }

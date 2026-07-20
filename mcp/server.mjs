@@ -5,7 +5,7 @@ import { extname } from "node:path";
 import { createRun, publicSnapshot, readRun, updateRun, assertSecretFree } from "./run-store.mjs";
 import { projectCanvas } from "./canvas-projector.mjs";
 import { createPipelineRunState, missingRegisteredArtifacts, PIPELINE_CATALOG, transitionPipelineStage } from "./pipeline-catalog.mjs";
-import { writeDirectorDocument, writeIntakeConfirmation, writeIntentResolution } from "./director-artifacts.mjs";
+import { writeDeliveryPromise, writeDirectorDocument, writeIntakeConfirmation, writeIntentResolution, writeProjectBrief } from "./director-artifacts.mjs";
 import { assertReferenceDownloadAuthorized, ingestReferenceVideo } from "./reference-ingest.mjs";
 import { artifactRecord, inspectArtifact } from "./artifact-registry.mjs";
 import { buildResearchPackageTemplate, validateResearchPackage, writeReferenceDownloadConsent, writeReferenceVideoAssessment, writeResearchPackage, writeWebResearch } from "./research-artifacts.mjs";
@@ -88,7 +88,7 @@ import { detectCodexHostCapabilities } from "./codex-host-capabilities.mjs";
 const CANVAS_URI = "ui://directorx/production-canvas-v1.html";
 const SCENE_CONFORMANCE_INSTRUCTIONS = "After directorx_verify_final_media, require scene_coverage_conformance_report.json to pass all non-waivable shot identity, order, duration, source-handle, full-frame, and PTS checks. Dispatch DX-Quality-Reviewer to inspect every planned shot's first/middle/last identity-bound frame, then call directorx_record_scene_coverage_review before final frame-finding acceptance. Metadata cannot prove camera, blocking, composition, lighting, movement, proof, reaction, or narrative fulfillment.";
 const SERVER_INSTRUCTIONS = "Use a concise consumer-facing Director X voice. In the Codex conversation, never narrate tool calls, file registration, JSON artifacts, schemas, MCP/runtime details, IDs, paths, test counts, or subagent plumbing unless the user asks for technical details or a failure requires diagnosis. Do not use Current Problem / Plan / Risks / Changed / Verified templates during production. Send one short start message, then only tangible stage milestones, blockers, native questions, preview availability, and final delivery. A normal update is at most two short sentences and should reuse userFacingSummary.suggestedUpdate. Do not duplicate a request_user_input question in chat. A returned native interaction may batch up to three independent image, video, voice, or music route questions; execute it once, then execute every afterAnswer resolution action with the same answer map before continuing. Never batch Goal, budget, credential, rights, stage, edit, or delivery approvals. Keep technical execution in collapsed tool results and the canvas Activity details. A delegated DX child must never call directorx_plan_production_team or create another background delegation plan. " +
-  "For every Director X trigger, call directorx_capability_preflight before all other work. Use directorx_create_and_ask_native_question as the single model-visible native interaction entry. After Goal, minimum Intake, budget, essential image/video/voice routes, complexity, and any required reference-download consent are ready, call directorx_begin_creative_work immediately. Research, reference analysis, asset search, and scripting must begin before execution_graph.json, tool_inventory.json, audio_responsibility_plan.json, or parallel_subagent_plan.json are complete; these governance artifacts are required before Generation. The canvas is a projection of the durable Run and must prioritize growing real image, video, audio, research, script, storyboard, keyframe, and preview assets. If the five-minute creative-output SLA breaches, stop adding configuration work and dispatch the creative tracks immediately. Record music_strategy before research, then music_asset_selection only after search, local acquisition, rights proof, and quality audit. Never start an auxiliary Director X MCP runtime; one active runtime owns each Run. Preserve all existing provider, rights, pricing, continuity, render, exhaustive review, and delivery gates.";
+  "For every Director X trigger, call directorx_capability_preflight before all other work. Use directorx_create_and_ask_native_question as the single model-visible native interaction entry. After Goal, run mode, and any required Intake question are resolved, prefer directorx_prepare_fast_start_intake to compile the complete minimum Intake contract in one durable Run transaction. After budget, essential image/video/voice routes, and any required reference-download consent are ready, call directorx_begin_creative_work immediately. Research, reference analysis, asset search, and scripting must begin before execution_graph.json, tool_inventory.json, audio_responsibility_plan.json, or parallel_subagent_plan.json are complete; these governance artifacts are required before Generation. The canvas is a projection of the durable Run and must prioritize growing real image, video, audio, research, script, storyboard, keyframe, and preview assets. If the five-minute creative-output SLA breaches, stop adding configuration work and dispatch the creative tracks immediately. Record music_strategy before research, then music_asset_selection only after search, local acquisition, rights proof, and quality audit. Never start an auxiliary Director X MCP runtime; one active runtime owns each Run. Preserve all existing provider, rights, pricing, continuity, render, exhaustive review, and delivery gates.";
 const FAILURE_POLICY_INSTRUCTIONS = "When a tool fails, inspect retryable, attempts, stop, recovery, and nextRequiredAction. Retry a transient semantic operation at most once. Use directorx_get_recovery_action for the minimal blocked operation, root cause, corrected example, and unique resume action; completed artifacts remain available. For deterministic failures, call directorx_recover_run and retry only corrected arguments. Use directorx_create_and_ask_native_question for native gates; a chat message such as ‘继续’ cannot satisfy them. Never create a replacement Run or auxiliary MCP runtime.";
 const credentialStatus = new Map();
 const preflightSessions = new Map();
@@ -503,6 +503,37 @@ const tools = [
       referenceVideoCount: { type: "integer", minimum: 0, maximum: 100 }, modalities: { type: "array", minItems: 1, items: { enum: ["image", "video", "voice", "music", "screen", "avatar", "live_action"], type: "string" } },
       characterContinuity: { type: "boolean" }, deliveryTier: { enum: ["preview", "review", "publish"], type: "string" }
     }, ["projectPath", "runId", "durationSeconds", "shotCount", "modalities", "characterContinuity", "deliveryTier"]),
+    annotations: writeAnnotations()
+  },
+  {
+    name: "directorx_prepare_fast_start_intake",
+    description: "Preferred atomic minimum-Intake compiler. After Goal, run-mode confirmation, and any required native Intake answer, select the pipeline and durably write/register intake confirmation, intent resolution, Director.md, its contract, project brief, delivery promise, and complexity plan in one Run update. Budget and provider approvals remain separate hard gates.",
+    inputSchema: objectSchema({
+      projectPath: stringSchema(), runId: stringSchema(), pipelineId: stringSchema(), interactionRequestId: { type: "string" },
+      intake: objectSchema({
+        decisions: { type: "array", minItems: 6, items: objectSchema({ field: { enum: ["objective", "audience", "platform", "duration", "production_route", "asset_readiness"], type: "string" }, value: stringSchema(), source: { enum: ["brief", "user", "safe_inference"], type: "string" }, rationale: stringSchema() }, ["field", "value", "source", "rationale"]) },
+        questionsAsked: { type: "array", items: stringSchema() }, userAnswers: { type: "array", items: stringSchema() }
+      }, ["decisions", "questionsAsked", "userAnswers"]),
+      resolution: objectSchema({
+        clarity: { enum: ["clear", "clarified"], type: "string" }, rawIntent: stringSchema(), resolvedIntent: stringSchema(), directorPrompt: stringSchema(),
+        questionsAsked: { type: "array", items: stringSchema() }, userAnswers: { type: "array", items: stringSchema() }, safeInferences: { type: "array", items: stringSchema() }, unresolvedRisks: { type: "array", items: stringSchema() }
+      }, ["clarity", "rawIntent", "resolvedIntent", "directorPrompt", "questionsAsked", "userAnswers", "safeInferences", "unresolvedRisks"]),
+      director: objectSchema({
+        title: stringSchema(), logline: stringSchema(), audience: stringSchema(), platform: stringSchema(), duration: stringSchema(), aspectRatio: stringSchema(), objective: stringSchema(),
+        directorInterpretation: stringSchema(), hook: stringSchema(), beatProgression: stringSchema(), visualLanguage: stringSchema(), cameraGrammar: stringSchema(), composition: stringSchema(), lightingColor: stringSchema(), performanceDirection: stringSchema(), audioDirection: stringSchema(), musicDirection: stringSchema(), editRhythm: stringSchema(), promptStrategy: stringSchema(), researchPlan: stringSchema(),
+        styleThesis: { type: "string" }, worldBehavior: { type: "string" }, textureMaterial: { type: "string" }, typographyGraphics: { type: "string" }, temporalGrammar: { type: "string" },
+        continuityAnchors: { type: "array", items: stringSchema() }, negativeRules: { type: "array", items: stringSchema() }, reviewCriteria: { type: "array", items: stringSchema() }, approvalBoundaries: { type: "array", items: stringSchema() }
+      }, ["title", "logline", "audience", "platform", "duration", "aspectRatio", "objective", "directorInterpretation", "hook", "beatProgression", "visualLanguage", "cameraGrammar", "composition", "lightingColor", "performanceDirection", "audioDirection", "musicDirection", "editRhythm", "promptStrategy", "researchPlan", "continuityAnchors", "negativeRules", "reviewCriteria", "approvalBoundaries"]),
+      production: objectSchema({
+        videoType: stringSchema(), budgetCap: objectSchema({ currency: stringSchema(), amount: { type: "number", minimum: 0 } }, ["currency", "amount"]), durationSeconds: { type: "number", exclusiveMinimum: 0 }, qualityTarget: stringSchema(),
+        shotCount: { type: "integer", minimum: 1, maximum: 500 }, segmentCount: { type: "integer", minimum: 1, maximum: 500 }, referenceVideoCount: { type: "integer", minimum: 0, maximum: 100 },
+        modalities: { type: "array", minItems: 1, items: { enum: ["image", "video", "voice", "music", "screen", "avatar", "live_action"], type: "string" } }, characterContinuity: { type: "boolean" }, deliveryTier: { enum: ["preview", "review", "publish"], type: "string" }
+      }, ["videoType", "budgetCap", "durationSeconds", "qualityTarget", "shotCount", "modalities", "characterContinuity", "deliveryTier"]),
+      delivery: objectSchema({
+        promise: stringSchema(), primaryViewerOutcome: stringSchema(), minimumFinalScore: { type: "number", minimum: 0, maximum: 1 }, minimumShotScore: { type: "number", minimum: 0, maximum: 1 },
+        requiredArtifacts: { type: "array", minItems: 1, items: stringSchema() }, requiredTracks: { type: "array", minItems: 1, items: stringSchema() }
+      }, ["promise", "primaryViewerOutcome", "minimumFinalScore", "minimumShotScore", "requiredArtifacts", "requiredTracks"])
+    }, ["projectPath", "runId", "pipelineId", "intake", "resolution", "director", "production", "delivery"]),
     annotations: writeAnnotations()
   },
   {
@@ -3895,6 +3926,64 @@ async function executeTool(name, args) {
       return run;
     } })), args);
   }
+  if (name === "directorx_prepare_fast_start_intake") {
+    const snapshot = await updateRun({ ...args, mutate: async (run) => {
+      if (!run.goal?.boundAt) throw new Error("Bind the native Codex Goal before preparing fast-start Intake.");
+      if (!run.runMode?.mode) throw new Error("Confirm the Director X run mode through Codex request_user_input before preparing fast-start Intake.");
+      if (run.stage !== "intake") throw new Error("Fast-start Intake can only be prepared while the Run is in Intake.");
+      const selected = createPipelineRunState(args.pipelineId);
+      if (run.pipeline && run.pipeline.id !== selected.id) throw new Error("The Run already has a different pipeline. Record user approval before replacing it.");
+      const existingIntakeArtifacts = selected.stages.find((stage) => stage.id === "intake").requiredOutputs.filter((artifactRef) => run.artifacts?.[artifactRef]);
+      if (existingIntakeArtifacts.length) throw new Error(`Fast-start Intake will not overwrite existing production promises: ${existingIntakeArtifacts.join(", ")}`);
+      const needsIntakeInteraction = args.intake.questionsAsked.length || args.intake.userAnswers.length || args.resolution.clarity === "clarified" || args.resolution.questionsAsked.length || args.resolution.userAnswers.length;
+      if (needsIntakeInteraction) requireResolvedInteraction(run, args.interactionRequestId, "intake");
+      confirmIntake(run, args.intake);
+      const platform = run.intakeGate.decisions.find((decision) => decision.field === "platform")?.value?.trim();
+      const productionRoute = run.intakeGate.decisions.find((decision) => decision.field === "production_route")?.value?.trim();
+      if (args.director.platform.trim() !== platform) throw new Error("Director platform must match the confirmed Intake platform.");
+
+      const intakeWritten = await writeIntakeConfirmation(args);
+      const intentWritten = await writeIntentResolution(args);
+      const directorWritten = await writeDirectorDocument(args);
+      const briefWritten = await writeProjectBrief({ ...args, brief: {
+        videoType: args.production.videoType,
+        targetPlatform: platform,
+        budgetCap: args.production.budgetCap,
+        durationSeconds: args.production.durationSeconds,
+        qualityTarget: args.production.qualityTarget,
+        runMode: run.runMode.mode
+      } });
+      const deliveryWritten = await writeDeliveryPromise({ ...args, brief: briefWritten.artifact, delivery: { ...args.delivery, primaryProductionPath: productionRoute } });
+      const complexity = planProductionComplexity(args.production);
+      const complexityPath = await writeExecutionReceipt(args.projectPath, args.runId, "production_complexity_plan.json", complexity);
+      const records = await Promise.all([
+        inspectArtifact({ ...args, artifactRef: intakeWritten.artifactRef, path: intakeWritten.path, stage: "intake", mediaKind: "document" }),
+        inspectArtifact({ ...args, artifactRef: intentWritten.artifactRef, path: intentWritten.path, stage: "intake", mediaKind: "document" }),
+        inspectArtifact({ ...args, artifactRef: directorWritten.artifactRef, path: directorWritten.path, stage: "intake", mediaKind: "document", metadata: { canvasEssential: true, contractRef: directorWritten.contractArtifactRef, fingerprint: directorWritten.fingerprint } }),
+        inspectArtifact({ ...args, artifactRef: directorWritten.contractArtifactRef, path: directorWritten.contractPath, stage: "intake", mediaKind: "document", metadata: { fingerprint: directorWritten.fingerprint } }),
+        inspectArtifact({ ...args, artifactRef: briefWritten.artifactRef, path: briefWritten.path, stage: "intake", mediaKind: "document" }),
+        inspectArtifact({ ...args, artifactRef: deliveryWritten.artifactRef, path: deliveryWritten.path, stage: "intake", mediaKind: "document" }),
+        inspectArtifact({ ...args, artifactRef: "production_complexity_plan.json", path: complexityPath, stage: "intake", mediaKind: "document", metadata: { internal: true, profile: complexity.profile } })
+      ]);
+
+      run.pipeline = run.pipeline ?? selected;
+      run.intentResolution = { ...args.resolution, artifactRef: intentWritten.artifactRef, path: intentWritten.path };
+      run.directorDocument = directorWritten;
+      run.projectBrief = briefWritten.artifact;
+      run.deliveryPromise = deliveryWritten.artifact;
+      run.productionComplexityPlan = complexity;
+      run.artifacts ??= {};
+      for (const record of records) run.artifacts[record.artifactRef] = record;
+      run.canvas ??= { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 0.72 } };
+      const node = { id: "document:director", type: "document", label: "Director.md", detail: args.director.logline, stage: "intake", status: "complete", artifactRef: "Director.md", metadata: { path: directorWritten.path, contractRef: directorWritten.contractArtifactRef, fingerprint: directorWritten.fingerprint }, updatedAt: new Date().toISOString() };
+      const nodeIndex = run.canvas.nodes.findIndex((item) => item.id === node.id);
+      if (nodeIndex >= 0) run.canvas.nodes[nodeIndex] = node; else run.canvas.nodes.push(node);
+      run.events.push(event(run, "fast_start.intake.prepared", "intake", `${selected.id} · ${complexity.profile} · 7 required artifacts`));
+      return run;
+    } });
+    const response = await withBrowserCanvas(publicSnapshot(snapshot), args);
+    return { ...response, readiness: evaluateFastStartReadiness(snapshot) };
+  }
   if (name === "directorx_select_pipeline") {
     const selected = createPipelineRunState(args.pipelineId);
     return await withBrowserCanvas(publicSnapshot(await updateRun({ ...args, mutate(run) {
@@ -3927,6 +4016,7 @@ async function executeTool(name, args) {
   if (name === "directorx_begin_creative_work") {
     return await withRunResumeActions(await updateRun({ ...args, mutate(run) {
       const fastStart = beginCreativeWork(run);
+      assertRunModeAllowsStage(run, "research", "begin");
       const intake = run.pipeline.stages.find((stage) => stage.id === "intake");
       const evidenceRefs = intake.requiredOutputs;
       run.pipeline = transitionPipelineStage(run.pipeline, run.approvals, { stageId: "intake", action: "complete", detail: "Minimum Intake complete; deferred governance moved to Generation.", evidenceRefs });
