@@ -84,6 +84,7 @@ import { compileReferenceLearningCandidate, promoteReferenceLearningCandidate, r
 import { compileDirectorXGoalBootProtocol, compilePendingInteractionBatch } from "./host-action-protocol.mjs";
 import { persistPreflightTransaction, projectPreflightBootTransaction, readPreflightTransaction } from "./preflight-transaction.mjs";
 import { detectCodexHostCapabilities } from "./codex-host-capabilities.mjs";
+import { assertDirectorXToolSafetyPolicy } from "./tool-safety-policy.mjs";
 
 const CANVAS_URI = "ui://directorx/production-canvas-v1.html";
 const SCENE_CONFORMANCE_INSTRUCTIONS = "After directorx_verify_final_media, require scene_coverage_conformance_report.json to pass all non-waivable shot identity, order, duration, source-handle, full-frame, and PTS checks. Dispatch DX-Quality-Reviewer to inspect every planned shot's first/middle/last identity-bound frame, then call directorx_record_scene_coverage_review before final frame-finding acceptance. Metadata cannot prove camera, blocking, composition, lighting, movement, proof, reaction, or narrative fulfillment.";
@@ -1835,7 +1836,9 @@ const tools = [
   }
 ];
 
-for (const tool of tools) {
+const safetyAnnotatedTools = assertDirectorXToolSafetyPolicy(tools);
+
+for (const tool of safetyAnnotatedTools) {
   const title = friendlyToolTitle(tool.name);
   tool.annotations = { ...(tool.annotations ?? {}), title };
   tool._meta = {
@@ -1845,7 +1848,7 @@ for (const tool of tools) {
   };
 }
 
-const toolRegistry = createToolRegistry({ definitions: tools, invoke: callTool });
+const toolRegistry = createToolRegistry({ definitions: safetyAnnotatedTools, invoke: callTool });
 
 async function callTool(name, args) {
   return await withToolFailureGuard(name, args, () => executeTool(name, args));

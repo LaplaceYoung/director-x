@@ -7,6 +7,7 @@ All notable public changes to Director X are recorded here.
 ### Changed
 
 - Started plugin productization work around marketplace installation, validation, CI, public tool contracts, and progressive disclosure.
+- Centralized MCP safety annotations so Codex can distinguish read-only queries, runtime mutations, external provider calls, idempotent submissions, and destructive cancellation or revocation actions.
 
 ## [0.1.0] - 2026-07-21
 
