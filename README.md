@@ -120,6 +120,7 @@ The canvas is designed around production assets rather than a decorative fixed w
 - inspect timelines, captions, waveforms, comparisons, and frame-level review evidence
 - leave durable, timecoded production notes on playable video assets and track them through evidence-backed resolution without confusing feedback with approval
 - read local or authorized reference videos through transcript cues, keyframes, scene summaries, focused ranges, or exhaustive full-frame evidence
+- expose SHA-verified, size-bounded Run artifacts through standard MCP Resource Templates for compatible inline hosts, while keeping large media on the side canvas
 - resume from persisted state after the browser surface or MCP runtime restarts
 
 ## How It Works

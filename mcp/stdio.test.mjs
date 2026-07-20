@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -1187,6 +1188,59 @@ test("serves the production canvas as an MCP App resource", async () => {
     assert.match(message.result.contents[0].text, /Director X/);
   } finally {
     child.kill("SIGTERM");
+  }
+});
+
+test("lists and reads SHA-bound Director X Run artifact resource templates", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-mcp-artifact-resource-"));
+  const content = "# Review notes\n\nUse the real product interface.\n";
+  const path = join(projectPath, "review-notes.md");
+  await writeFile(path, content);
+  const run = await createRun({ projectPath, outcome: "Read one registered artifact" });
+  const artifactRef = "review-notes.md";
+  await updateRun({ projectPath, runId: run.runId, mutate(current) {
+    current.artifacts[artifactRef] = {
+      artifactRef,
+      runId: run.runId,
+      path,
+      relativePath: artifactRef,
+      stage: "review",
+      mediaKind: "document",
+      sizeBytes: Buffer.byteLength(content),
+      sha256: createHash("sha256").update(content).digest("hex")
+    };
+    return current;
+  } });
+  const uri = new URL("directorx://artifact");
+  uri.searchParams.set("projectPath", projectPath);
+  uri.searchParams.set("runId", run.runId);
+  uri.searchParams.set("artifactRef", artifactRef);
+  const child = spawn(process.execPath, [new URL("./server.mjs", import.meta.url).pathname], { stdio: ["pipe", "pipe", "pipe"] });
+  let output = "";
+  child.stdout.setEncoding("utf8");
+  child.stdout.on("data", (chunk) => { output += chunk; });
+  try {
+    child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 601, method: "resources/templates/list", params: {} })}\n`);
+    await waitFor(() => messages(output).some((item) => item.id === 601), 1000);
+    const templates = messages(output).find((item) => item.id === 601).result.resourceTemplates;
+    assert.equal(templates[0].uriTemplate, "directorx://artifact{?projectPath,runId,artifactRef}");
+
+    child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 602, method: "resources/read", params: { uri: uri.toString() } })}\n`);
+    await waitFor(() => messages(output).some((item) => item.id === 602), 1000);
+    const resource = messages(output).find((item) => item.id === 602).result.contents[0];
+    assert.equal(resource.mimeType, "text/markdown; charset=utf-8");
+    assert.equal(resource.text, content);
+    assert.equal(resource._meta.artifactRef, artifactRef);
+
+    await writeFile(path, "tampered");
+    child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 603, method: "resources/read", params: { uri: uri.toString() } })}\n`);
+    await waitFor(() => messages(output).some((item) => item.id === 603), 1000);
+    const rejected = messages(output).find((item) => item.id === 603);
+    assert.equal(rejected.error.code, -32002);
+    assert.match(rejected.error.message, /registered (?:byte size|SHA-256 identity)/);
+  } finally {
+    child.kill("SIGTERM");
+    await rm(projectPath, { recursive: true, force: true });
   }
 });
 

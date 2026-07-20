@@ -12,6 +12,7 @@ All notable public changes to Director X are recorded here.
 - Added a profile-aware first-run setup doctor, approval-gated repairs, and a verified two-second zero-Key local media smoke test that can appear on the setup canvas.
 - Added adaptive video reading with transcript cues, keyframe and scene sampling, focused ranges, deduplication, exhaustive frame-count evidence, and live canvas artifacts, informed by `bradautomates/claude-video` and rewritten in Node ESM.
 - Added durable, timecoded side-canvas review notes with idempotent capture, explicit non-approval semantics, Run projection, ownership acknowledgement, and evidence-required resolution.
+- Added bounded MCP Resource Templates for SHA-verified, Run-scoped document and media previews without exposing mutable filesystem access.
 
 ## [0.1.0] - 2026-07-21
 

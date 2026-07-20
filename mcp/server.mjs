@@ -82,6 +82,7 @@ import { createToolRegistry } from "./tool-registry.mjs";
 import { applyToolContracts } from "./tool-contracts.mjs";
 import { CanvasSurfaceHostError, createCanvasSurfaceHost } from "./canvas-surface-host.mjs";
 import { resolveWorkspaceMediaFile } from "./workspace-media-access.mjs";
+import { ARTIFACT_RESOURCE_URI_TEMPLATE, readArtifactResource } from "./artifact-resources.mjs";
 import { bindVisualPromptPackToGroundingReport, bindVisualPromptPackToShotSequence, compileClaimProofMap, compileVisualPromptPack, writeDirectorGenerationArtifact, writeVisualPromptPackSummary } from "./director-generation-contracts.mjs";
 import { bindShotGroundingPlanToShotlist, compileShotGroundingPlan, finalizeShotGrounding, writeShotGroundingArtifacts } from "./shot-grounding.mjs";
 import { loadBundledDirectorKnowledge, mergeDirectorKnowledgeLibraries, queryDirectorKnowledge } from "./director-knowledge-library.mjs";
@@ -5830,9 +5831,22 @@ async function handle(message) {
     }
   }
   if (message.method === "resources/list") return respond(id, { resources: [{ uri: CANVAS_URI, name: "Director X Production Canvas", mimeType: "text/html;profile=mcp-app" }] });
-  if (message.method === "resources/read" && message.params?.uri === CANVAS_URI) {
-    const html = await readFile(new URL("../app/canvas.html", import.meta.url), "utf8");
-    return respond(id, { contents: [{ uri: CANVAS_URI, mimeType: "text/html;profile=mcp-app", text: html, _meta: { ui: { prefersBorder: false } } }] });
+  if (message.method === "resources/templates/list") return respond(id, { resourceTemplates: [{
+    uriTemplate: ARTIFACT_RESOURCE_URI_TEMPLATE,
+    name: "Director X Run Artifact",
+    description: "Read one SHA-verified artifact registered in a specific Director X Run. Text is limited to 2 MiB and binary previews to 16 MiB; larger media remains on the side Browser canvas."
+  }] });
+  if (message.method === "resources/read") {
+    try {
+      if (message.params?.uri === CANVAS_URI) {
+        const html = await readFile(new URL("../app/canvas.html", import.meta.url), "utf8");
+        return respond(id, { contents: [{ uri: CANVAS_URI, mimeType: "text/html;profile=mcp-app", text: html, _meta: { ui: { prefersBorder: false } } }] });
+      }
+      const content = await readArtifactResource({ uri: message.params?.uri, readRun });
+      return respond(id, { contents: [content] });
+    } catch (resourceError) {
+      return error(id, -32002, resourceError instanceof Error ? resourceError.message : "Director X resource read failed.");
+    }
   }
   return error(id, -32601, `Unsupported method: ${message.method}`);
 }
