@@ -6,6 +6,7 @@ import { assertGenerationPlanUsesBoundaryFrames } from "./segment-continuity.mjs
 import { assertGenerationAnchorsAudited } from "./asset-retrieval.mjs";
 import { assertGenerationPlanUsesCameraContinuity } from "./camera-continuity-graph.mjs";
 import { assertQuoteApprovedByBudget, quoteModelCost } from "./pricing-catalog.mjs";
+import { assertInitialPromptBinding, hydrateInitialPromptBinding } from "./prompt-bound-generation-plan.mjs";
 
 const REVIEW_DECISIONS = new Set(["accept", "retry", "reroute", "add_reference", "split", "simplify", "request_approval", "terminate"]);
 
@@ -44,6 +45,8 @@ export function registerGenerationPlan(run, plan) {
     providerId: plan.providerId,
     modelId: plan.modelId,
     credentialRef: plan.credentialRef ?? null,
+    sourcePromptPackBinding: plan.sourcePromptPackBinding ?? null,
+    bindingSha256: plan.bindingSha256 ?? null,
     requests: plan.requests.map((request) => ({ ...request, status: "planned", spent: 0, attemptCount: 0, selectedCandidateId: null })),
     attempts: [],
     candidates: [],
@@ -63,16 +66,20 @@ function requireActivePipelineStage(run, stageId) {
 export function beginGenerationAttempt(run, input) {
   const generation = requireGeneration(run);
   const request = findRequest(generation, input.requestId);
+  const resolvedInput = hydrateInitialPromptBinding(request, input);
+  if (!resolvedInput.prompt?.trim()) throw new Error("Generation attempts require a prompt.");
+  if (!resolvedInput.providerOptions || typeof resolvedInput.providerOptions !== "object" || Array.isArray(resolvedInput.providerOptions)) throw new Error("Generation attempts require providerOptions.");
+  assertInitialPromptBinding(request, resolvedInput);
   if (request.selectedCandidateId) throw new Error(`${input.requestId} already has a selected candidate.`);
   if (request.attemptCount >= request.maxAttempts) throw new Error(`${input.requestId} reached its maximum attempt count.`);
   const mediaType = request.mode === "image" ? "image" : "video";
   const pricingUsage = {
-    ...(input.pricingUsage ?? {}),
-    durationSeconds: input.pricingUsage?.durationSeconds ?? request.durationSeconds,
-    outputCount: input.pricingUsage?.outputCount ?? input.providerOptions?.outputCount ?? 1,
-    quality: input.pricingUsage?.quality ?? input.providerOptions?.quality,
-    resolution: input.pricingUsage?.resolution ?? input.providerOptions?.resolution ?? input.providerOptions?.size,
-    generateAudio: input.pricingUsage?.generateAudio ?? input.providerOptions?.generateAudio ?? false
+    ...(resolvedInput.pricingUsage ?? {}),
+    durationSeconds: resolvedInput.pricingUsage?.durationSeconds ?? request.durationSeconds,
+    outputCount: resolvedInput.pricingUsage?.outputCount ?? resolvedInput.providerOptions?.outputCount ?? resolvedInput.providerOptions?.n ?? 1,
+    quality: resolvedInput.pricingUsage?.quality ?? resolvedInput.providerOptions?.quality,
+    resolution: resolvedInput.pricingUsage?.resolution ?? resolvedInput.providerOptions?.resolution ?? resolvedInput.providerOptions?.size,
+    generateAudio: resolvedInput.pricingUsage?.generateAudio ?? resolvedInput.providerOptions?.generateAudio ?? resolvedInput.providerOptions?.generate_audio ?? false
   };
   const pricingQuote = quoteModelCost({
     providerId: generation.providerId,
@@ -101,8 +108,8 @@ export function beginGenerationAttempt(run, input) {
     attemptId: input.attemptId,
     estimatedCost,
     pricingQuote,
-    prompt: input.prompt,
-    providerOptions: input.providerOptions,
+    prompt: resolvedInput.prompt,
+    providerOptions: resolvedInput.providerOptions,
     attemptNo: request.attemptCount,
     status: "running",
     actualCost: null,
@@ -232,8 +239,11 @@ export function generationArtifactValues(runId, generation) {
       provider_agnostic_requests: generation.requests.map((request) => ({
         request_id: request.requestId, shot_id: request.shotId, mode: request.mode, duration_seconds: request.durationSeconds,
         prompt_layers: request.promptLayers, negative_constraints: request.negativeConstraints, provider_parameters: request.providerParameters,
+        provider_mode: request.providerMode ?? null, prompt_binding: request.promptBinding ?? null,
         camera_graph_node_id: request.cameraGraphNodeId ?? null, reference_target_ids: request.referenceTargetIds ?? []
       })),
+      source_prompt_pack_binding: generation.sourcePromptPackBinding ?? null,
+      binding_sha256: generation.bindingSha256 ?? null,
       sequence_continuity: generation.requests.map((request) => ({ shot_id: request.shotId, input_anchor_assets: request.inputAnchorAssets, output_anchor_assets: request.outputAnchorAssets, carry_forward_rules: request.carryForwardRules })),
       prompt_pack: generation.requests.map((request) => ({ request_id: request.requestId, review_criteria: request.reviewCriteria, repair_prompts: request.repairPrompts })),
       review_rubric: { score_range: [0, 1], dimensions: ["prompt_match", "visual_quality", "continuity", "motion", "edit_fit", "world_consistency", "action_completeness", "audio_visual_sync"], acceptance: "mean threshold plus every critical dimension >= 0.5", evidence_required_for_video: true }

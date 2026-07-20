@@ -7,6 +7,7 @@ All notable public changes to Director X are recorded here.
 ### Changed
 
 - Started plugin productization work around marketplace installation, validation, CI, public tool contracts, and progressive disclosure.
+- Bound reviewed visual prompt packs to generation requests with SHA-256 lineage and first-attempt drift protection for prompts, provider modes, parameters, and pricing usage.
 
 ## [0.1.0] - 2026-07-21
 

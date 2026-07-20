@@ -138,6 +138,8 @@ The transition prompt describes the path, not two unrelated states. Insert a bri
 
 Keep provider-specific syntax and hard parameters in adapter metadata. The durable artifact expresses capability needs, references, boundary state, and constraints in Director X terms.
 
+Before paid generation, verify the on-disk `visual_prompt_pack.json` SHA-256 and call `directorx_register_prompt_bound_generation_plan`. The resulting `generation_request.json` stores the source hash plus per-request prompt, negative-prompt, mode, and provider-parameter hashes; the initial attempt and provider submission reject drift from those values.
+
 The compiled artifact records `generationStrategy.promptDialect` separately from capability evidence. A model can support image-to-video while still requiring a different prompt dialect, reference-role limit, or negative-policy adapter than another image-to-video model.
 
 Official baselines used for these transfer rules:

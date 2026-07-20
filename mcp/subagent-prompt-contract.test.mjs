@@ -14,7 +14,9 @@ test("gives visual production roles distinct executable system protocols", () =>
   assert.match(shotPlanner, /Choose the generation mode before writing prompt prose/);
   assert.match(shotPlanner, /identity, product_geometry, layout, pose, style, palette, or lighting/);
   assert.match(router, /exact provider, model version, endpoint, and mode/);
+  assert.match(router, /directorx_register_prompt_bound_generation_plan/);
   assert.match(operator, /Do not rewrite creative intent during submission/);
+  assert.match(operator, /promptBinding and bindingSha256 as immutable/);
   assert.match(drawLoop, /Change one causal variable per repair/);
   assert.match(reviewer, /first, middle, and last states/);
   assert.ok(new Set([shotPlanner, router, operator, drawLoop, reviewer]).size === 5);

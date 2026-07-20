@@ -115,7 +115,7 @@ test("gives generation roles the tools needed for prompt compilation, provider e
   const byRole = new Map(tasks.map((item) => [item.roleId, item]));
   assert.ok(byRole.get("shot_planner").allowedTools.includes("directorx_compile_visual_prompt_pack"));
   assert.ok(byRole.get("model_router").allowedTools.includes("directorx_probe_provider_capability"));
-  assert.ok(byRole.get("model_router").allowedTools.includes("directorx_register_generation_plan"));
+  assert.ok(byRole.get("model_router").allowedTools.includes("directorx_register_prompt_bound_generation_plan"));
   assert.ok(byRole.get("provider_operator").allowedTools.includes("directorx_submit_media_generation"));
   assert.ok(byRole.get("provider_operator").allowedTools.includes("directorx_poll_media_generation"));
   assert.ok(byRole.get("draw_loop_controller").allowedTools.includes("directorx_review_generation_candidate"));

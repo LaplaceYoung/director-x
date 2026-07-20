@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { beginGenerationAttempt, generationArtifactValues, recordGenerationCandidate, registerGenerationPlan, reviewGenerationCandidate, selectGenerationCandidate } from "./generation-control.mjs";
 import { quoteModelCost } from "./pricing-catalog.mjs";
+import { hashValue } from "./prompt-bound-generation-plan.mjs";
 
 function run() {
   const pricingQuote = quoteModelCost({ providerId: "openai", modelId: "gpt-image-1.5", mediaType: "image", usage: { outputCount: 1, quality: "high", resolution: "1024x1024" } });
@@ -29,6 +30,39 @@ test("blocks attempts that exceed shot caps", () => {
   const state = registerGenerationPlan(run(), plan());
   state.generation.requests[0].attemptCostCap = .1;
   assert.throws(() => beginGenerationAttempt(state, { requestId: "REQ-1", attemptId: "ATT-1", pricingUsage: { outputCount: 1, quality: "high", resolution: "1024x1024" }, prompt: "x", providerOptions: {} }), /per-attempt cap/);
+});
+
+test("preserves prompt-pack lineage and blocks initial prompt drift", () => {
+  const bound = plan();
+  bound.sourcePromptPackBinding = { artifactRef: "visual_prompt_pack.json", sha256: "a".repeat(64), packId: "pack-1", routeId: "route-1" };
+  bound.bindingSha256 = "b".repeat(64);
+  bound.requests[0].promptBinding = {
+    positivePromptSha256: hashValue("hero product"), negativePromptSha256: hashValue("text artifacts"),
+    providerParametersSha256: hashValue({}), immutableInitialAttempt: true
+  };
+  const state = registerGenerationPlan(run(), bound);
+  assert.equal(state.generation.sourcePromptPackBinding.packId, "pack-1");
+  assert.throws(() => beginGenerationAttempt(state, { requestId: "REQ-1", attemptId: "ATT-1", pricingUsage: { outputCount: 1, quality: "high", resolution: "1024x1024" }, prompt: "rewritten prompt", providerOptions: {} }), /exactly match/);
+  assert.doesNotThrow(() => beginGenerationAttempt(state, { requestId: "REQ-1", attemptId: "ATT-1", pricingUsage: { outputCount: 1, quality: "high", resolution: "1024x1024" }, prompt: "hero product", providerOptions: {} }));
+  assert.equal(generationArtifactValues("dx-test", state.generation)["generation_request.json"].binding_sha256, "b".repeat(64));
+});
+
+test("hydrates the initial bound attempt from the verified generation request", () => {
+  const bound = plan();
+  const prompt = "bound prompt";
+  bound.sourcePromptPackBinding = { artifactRef: "visual_prompt_pack.json", sha256: "a".repeat(64) };
+  bound.bindingSha256 = "b".repeat(64);
+  bound.requests[0].promptLayers = { positivePrompt: prompt };
+  bound.requests[0].promptBinding = {
+    immutableInitialAttempt: true,
+    positivePromptSha256: hashValue(prompt),
+    providerParametersSha256: hashValue({}),
+    negativePromptSha256: hashValue("")
+  };
+  const state = registerGenerationPlan(run(), bound);
+  beginGenerationAttempt(state, { requestId: "REQ-1", attemptId: "ATT-bound" });
+  assert.equal(state.generation.attempts[0].prompt, prompt);
+  assert.deepEqual(state.generation.attempts[0].providerOptions, {});
 });
 
 test("enforces the complexity draw-loop cap instead of treating it as advisory", () => {

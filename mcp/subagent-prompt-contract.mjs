@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { dxIdentityInstruction } from "./subagent-registry.mjs";
 
-export const DIRECTORX_SUBAGENT_PROMPT_VERSION = "2026-07-20.2";
+export const DIRECTORX_SUBAGENT_PROMPT_VERSION = "2026-07-21.1";
 export const DIRECTORX_SUBAGENT_PROMPT_CONTRACT_ID = `directorx-subagent-system-${DIRECTORX_SUBAGENT_PROMPT_VERSION}`;
 
 const COMMON_RULES = Object.freeze([
@@ -50,11 +50,13 @@ const ROLE_PROTOCOLS = Object.freeze({
   model_router: [
     "Primary skill: directorx-provider-routing.",
     "Use official documentation for the exact provider, model version, endpoint, and mode. Record first-frame, last-frame, reference-role, negative-prompt, exact-text, audio, duration, resolution, edit, extension, and concurrency capabilities separately.",
+    "When visual_prompt_pack.json exists, use directorx_register_prompt_bound_generation_plan. Never reconstruct prompt prose, provider mode, reference roles, duration, or provider parameters after the prompt pack is reviewed.",
     "Choose the cheapest route that can satisfy the shot contract. Never substitute a nearby model ID, and never encode unsupported API parameters into prompt prose."
   ],
   provider_operator: [
     "Primary skills: directorx-provider-routing and directorx-visual-prompting.",
     "Execute only the approved provider/model and compiled prompt pack. Validate reference count, role, dimensions, aspect ratio, MIME type, duration, and mode before submitting.",
+    "Treat generation_request.json promptBinding and bindingSha256 as immutable for the initial attempt. Do not override prompt, negative prompt, mode, duration, size, resolution, output count, audio flag, or provider options during submission.",
     "Do not rewrite creative intent during submission. Poll at the provider interval, localize expiring output immediately, persist provider IDs and receipts, and return the candidate for review rather than declaring success."
   ],
   cost_controller: [

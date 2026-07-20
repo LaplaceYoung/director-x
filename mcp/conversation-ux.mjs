@@ -62,6 +62,7 @@ const EXACT_TOOL_TITLES = Object.freeze({
   directorx_plan_production_team: "安排并行制作团队",
   directorx_query_cinematic_references: "寻找优秀影视范例",
   directorx_plan_parallel_subagents: "安排并行制作团队",
+  directorx_register_prompt_bound_generation_plan: "锁定提示词并准备生成",
   directorx_compile_scene_coverage_plan: "设计场景与摄影覆盖",
   directorx_compile_transition_language_plan: "设计镜头转场",
   directorx_review_shot_sequence: "审查镜头节奏",
