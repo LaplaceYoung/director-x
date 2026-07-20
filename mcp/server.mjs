@@ -427,7 +427,7 @@ const tools = [
           routeId: stringSchema(),
           providerId: stringSchema(),
           modelId: stringSchema(),
-          mode: { enum: ["text_to_image", "image_edit", "text_to_video", "image_to_video", "first_last_frame_video"], type: "string" },
+          mode: { enum: ["text_to_image", "image_edit", "text_to_video", "image_to_video", "first_last_frame_video", "video_extension"], type: "string" },
           officialDocUrl: stringSchema(),
           researchedAt: { type: "string" },
           modelVersion: { type: "string" },
@@ -436,7 +436,8 @@ const tools = [
           supportsLastFrame: { type: "boolean" },
           supportsNegativePrompt: { type: "boolean" },
           supportsExactText: { type: "boolean" },
-          supportsAudio: { type: "boolean" }
+          supportsAudio: { type: "boolean" },
+          allowMultiRoleReferences: { type: "boolean" }
         }, ["routeId", "providerId", "modelId", "mode", "officialDocUrl", "negativePromptPolicy"])
       },
       shots: {
@@ -474,6 +475,10 @@ const tools = [
           firstFrameRef: { type: "string" },
           lastFrameRef: { type: "string" },
           referenceAssetRefs: { type: "array", items: stringSchema() },
+          referenceBindings: { type: "array", items: objectSchema({
+            assetRef: stringSchema(), role: { enum: ["identity", "product_geometry", "layout", "pose", "style", "palette", "lighting"], type: "string" },
+            preserve: { type: "array", items: stringSchema() }, mutable: { type: "array", items: stringSchema() }
+          }, ["assetRef", "role"]) },
           continuityKeys: { type: "array", items: stringSchema() },
           negativeConstraints: { type: "array", items: stringSchema() },
           exactText: { type: "array", items: stringSchema() },

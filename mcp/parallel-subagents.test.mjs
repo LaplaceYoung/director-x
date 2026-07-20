@@ -97,6 +97,32 @@ test("compiles a bounded DX production team directly from the execution graph", 
   ]);
 });
 
+test("gives generation roles the tools needed for prompt compilation, provider execution, and evidence review", () => {
+  const run = {
+    runId: "dx-generation-team",
+    productionComplexityPlan: { profile: "standard", settings: { maxConcurrency: 4, maxSubagentTasksPerStage: 4 } },
+    executionGraph: {
+      intentSummary: "Generate reviewed image and video shots",
+      nodes: [
+        { nodeId: "prompts", kind: "agent", owner: "DX-Shot-Planner", stage: "storyboard", label: "Compile visual prompts", dependsOn: [], inputArtifactRefs: ["shotlist.json"], outputArtifactRefs: ["visual_prompt_pack.json"] },
+        { nodeId: "route", kind: "agent", owner: "DX-Model-Router", stage: "generation", label: "Bind exact model route", dependsOn: ["prompts"], inputArtifactRefs: ["visual_prompt_pack.json"], outputArtifactRefs: ["generation_request.json"] },
+        { nodeId: "execute", kind: "agent", owner: "DX-Provider-Operator", stage: "generation", label: "Generate and localize candidates", dependsOn: ["route"], inputArtifactRefs: ["generation_request.json"], outputArtifactRefs: ["attempt_log.json"] },
+        { nodeId: "review", kind: "agent", owner: "DX-Draw-Loop", stage: "generation", label: "Review and select candidates", dependsOn: ["execute"], inputArtifactRefs: ["attempt_log.json"], outputArtifactRefs: ["selected_clips.json"] }
+      ]
+    }
+  };
+  const tasks = compileExecutionGraphSubagentTasks(run);
+  const byRole = new Map(tasks.map((item) => [item.roleId, item]));
+  assert.ok(byRole.get("shot_planner").allowedTools.includes("directorx_compile_visual_prompt_pack"));
+  assert.ok(byRole.get("model_router").allowedTools.includes("directorx_probe_provider_capability"));
+  assert.ok(byRole.get("model_router").allowedTools.includes("directorx_register_generation_plan"));
+  assert.ok(byRole.get("provider_operator").allowedTools.includes("directorx_submit_media_generation"));
+  assert.ok(byRole.get("provider_operator").allowedTools.includes("directorx_poll_media_generation"));
+  assert.ok(byRole.get("draw_loop_controller").allowedTools.includes("directorx_review_generation_candidate"));
+  assert.deepEqual(byRole.get("provider_operator").dependsOnTaskIds, ["dx-generation-model_router"]);
+  assert.deepEqual(byRole.get("draw_loop_controller").dependsOnTaskIds, ["dx-generation-provider_operator"]);
+});
+
 test("rejects an execution graph that overstaffs the selected complexity profile", () => {
   const run = {
     productionComplexityPlan: { profile: "quick", settings: { maxConcurrency: 2, maxSubagentTasksPerStage: 2 } },

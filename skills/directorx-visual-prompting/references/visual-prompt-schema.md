@@ -40,6 +40,27 @@ lighting
 
 Every reference must have a rights/quality-audited local asset and one declared role. A reference may have two roles only when the model supports that combination and the review can score them separately.
 
+Represent the control contract explicitly:
+
+```json
+{
+  "referenceBindings": [
+    {
+      "assetRef": "asset://product-front",
+      "role": "product_geometry",
+      "preserve": ["silhouette", "button positions", "material finish"],
+      "mutable": ["background", "camera distance"]
+    },
+    {
+      "assetRef": "asset://campaign-style",
+      "role": "style",
+      "preserve": ["graphic treatment", "contrast rhythm"],
+      "mutable": ["subject", "layout"]
+    }
+  ]
+}
+```
+
 ## Video Prompt Layers
 
 ```json
@@ -88,12 +109,13 @@ The transition prompt describes the path, not two unrelated states. Insert a bri
 
 ## Provider Policies
 
-- OpenAI Image: compile explicit sections and one mutation per edit; high input fidelity is not a pixel lock.
-- FLUX.2: place required subject/action first; use structured JSON only for complex scenes; it does not support a negative prompt.
+- OpenAI Image: compile explicit sections and one mutation per edit; high input fidelity is not a pixel lock. Treat recurring identity, exact text, and precise layout as review risks, and move deterministic typography/UI to composition.
+- OpenAI Sora: describe shot type, subject, action, setting, and lighting. `input_reference` establishes the first frame; reusable character assets are a separate control. Extensions inherit the source clip, and focused edits should change one thing.
+- FLUX.2: place required subject/action first, use medium-length prose by default, assign explicit roles to multiple references, and express exclusions as positive desired states because it has no negative prompt.
 - Midjourney: Style Reference controls visual treatment, Omni Reference controls a person/object, and both are version/weight dependent.
 - Stable Diffusion / ComfyUI: checkpoint, seed, steps, CFG, sampler, denoise, ControlNet, and LoRA are workflow parameters and evidence.
-- Runway Gen-4.5: prefer positive, observable motion; I2V text focuses on motion.
-- Veo: keep API parameters such as last frame, seed, sample count, and negative prompt outside prose.
+- Runway Gen-4.5: prefer positive, observable motion; I2V text focuses on motion already absent from the input frame.
+- Veo: combine subject, action, style, camera, composition, lens, ambiance, and pacing. Keep API parameters such as last frame, seed, sample count, and negative prompt outside prose; list unwanted elements rather than writing negative instructions.
 - Luma keyframes: boundary frames define states; prompt defines the intermediate path.
 
 ## Repair Patterns
@@ -115,6 +137,16 @@ The transition prompt describes the path, not two unrelated states. Insert a bri
 ## Provider Notes
 
 Keep provider-specific syntax and hard parameters in adapter metadata. The durable artifact expresses capability needs, references, boundary state, and constraints in Director X terms.
+
+The compiled artifact records `generationStrategy.promptDialect` separately from capability evidence. A model can support image-to-video while still requiring a different prompt dialect, reference-role limit, or negative-policy adapter than another image-to-video model.
+
+Official baselines used for these transfer rules:
+
+- OpenAI Image generation guide: `https://developers.openai.com/api/docs/guides/image-generation`
+- OpenAI Video generation guide: `https://developers.openai.com/api/docs/guides/video-generation`
+- Black Forest Labs FLUX.2 prompting guide: `https://docs.bfl.ai/guides/prompting_guide_flux2`
+- Google Veo video generation guide: `https://ai.google.dev/gemini-api/docs/video`
+- Google video prompt guide: `https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/video/video-gen-prompt-guide`
 
 ## Candidate Review
 

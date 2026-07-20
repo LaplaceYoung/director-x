@@ -22,6 +22,42 @@ Use this skill as the subagent control surface for DirectorX production runs.
 11. Keep prompts artifact-facing: every output must be a structured artifact, memory patch, provider request, review decision, approval gate, or export instruction.
 12. Validate the handoff: downstream consumer exists, tool access is scoped, cost/attempt caps are explicit, approval gates are recorded, and every declared output is registered before marking the DX task complete.
 
+## Image And Video Generation Team Contract
+
+Generation is a dependency chain with bounded parallel research, not a group of agents independently rewriting the same prompt:
+
+```text
+DX-Director
+  -> DX-Shot-Planner
+  -> DX-Model-Router
+  -> DX-Provider-Operator
+  -> DX-Draw-Loop
+  -> DX-Memory-Manager
+  -> DX-Quality-Reviewer
+```
+
+- `DX-Director` owns creative intent, story function, and approved visual language.
+- `DX-Shot-Planner` converts that intent into one generation mode, observable state or motion, typed reference roles, boundary states, and reviewable success criteria per shot.
+- `DX-Model-Router` selects an exact provider/model/version/endpoint/mode, proves required capabilities, declares the provider prompt dialect, and records fallback routes. It does not silently change the shot.
+- `DX-Provider-Operator` submits the compiled request exactly, persists request/result evidence, downloads the local candidate, and reports provider rejection separately from visual failure. It does not rewrite creative intent during execution.
+- `DX-Draw-Loop` applies hard gates first, identifies one causal failure class, changes one controllable variable, and chooses edit, extend, bridge, reroute, or regenerate under the attempt/cost cap.
+- `DX-Memory-Manager` records accepted identity, geometry, palette, camera, action phase, provider behavior, and failed repair deltas for reuse.
+- `DX-Quality-Reviewer` inspects first/middle/last and relevant timecoded evidence, scores the declared criteria, and returns an executable accept/repair/reroute/reject decision.
+
+Do not fake-parallelize `DX-Model-Router` with `DX-Provider-Operator` for the same attempt, or `DX-Provider-Operator` with the reviewer that consumes its candidate. Parallelism belongs across independent shots, provider research, asset acquisition, and candidate reviews after their inputs exist.
+
+Preserve this per-shot evidence chain:
+
+```text
+prompt contract
+  -> route and capability probe
+  -> quote and attempt reservation
+  -> provider request/result
+  -> verified local candidate
+  -> candidate review
+  -> repair delta or selected asset
+```
+
 ## Codex Naming Contract
 
 - Before the first delegation in a project, call `directorx_get_subagent_naming_status` with the detected host contract. Treat `diskReady`, `customSessionReady`, `compatibilitySessionReady`, and `collaborationTaskSessionReady` separately. `sessionReady=true` is sufficient for production: native `dx_*`, built-in typed, and collaboration-task hosts all preserve canonical DX identity through the delegated prompt, registry, artifacts, and canvas. Install custom roles only as an optional naming enhancement or when no compatible host exists.

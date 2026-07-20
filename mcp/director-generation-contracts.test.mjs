@@ -37,6 +37,9 @@ test("compiles modality-specific prompts instead of one universal template", () 
     ]
   }, "2026-07-16T03:00:00.000Z");
   assert.equal(pack.modalityIsolation, true);
+  assert.equal(pack.routes[0].promptDialect, "openai_gpt_image_edit_fidelity");
+  assert.equal(pack.routes[1].promptDialect, "runway_positive_motion");
+  assert.equal(pack.routes[2].promptDialect, "google_veo_cinematic_components");
   assert.match(pack.prompts[0].positivePrompt, /Required result/);
   assert.equal(pack.prompts[0].renderOverlayRequired, true);
   assert.match(pack.prompts[1].positivePrompt, /^The input frame already defines appearance/);
@@ -46,6 +49,35 @@ test("compiles modality-specific prompts instead of one universal template", () 
   assert.match(pack.prompts[2].positivePrompt, /Path: Continue the turn/);
   assert.equal(pack.prompts[2].executionContract.pathFeasibility, "pass");
   assert.ok(pack.prompts[2].repairTargets.includes("last_frame_match"));
+  assert.equal(pack.prompts[1].generationStrategy.referenceSemantics, "first_frame_defines_appearance_prompt_defines_motion");
+});
+
+test("compiles subject-first FLUX prompts with positive constraints and typed reference roles", () => {
+  const pack = compileVisualPromptPack({
+    packId: "flux-product",
+    routes: [{ routeId: "flux", providerId: "bfl", modelId: "flux-2-pro", mode: "text_to_image", officialDocUrl: "https://docs.bfl.ai/guides/prompting_guide_flux2", negativePromptPolicy: "positive_constraints", supportsExactText: false }],
+    shots: [shot({
+      shotId: "flux-1", routeId: "flux", negativeConstraints: ["no generated text", "no blur"],
+      referenceBindings: [{ assetRef: "product-front.png", role: "product_geometry", preserve: ["silhouette", "port positions"], mutable: ["background", "lighting"] }]
+    })]
+  });
+  const prompt = pack.prompts[0];
+  assert.match(prompt.positivePrompt, /^A silver desktop device wakes from sleep/);
+  assert.match(prompt.positivePrompt, /product-front\.png controls product_geometry/);
+  assert.match(prompt.positivePrompt, /typography reserved for the deterministic overlay layer/);
+  assert.match(prompt.positivePrompt, /sharp focus with clearly resolved edges/);
+  assert.doesNotMatch(prompt.positivePrompt, /keep the result free of/);
+  assert.equal(prompt.referenceInputs.roleStatus, "typed");
+  assert.deepEqual(prompt.referenceInputs.referenceAssetRefs, ["product-front.png"]);
+  assert.equal(prompt.generationStrategy.promptDialect, "flux2_subject_first_positive_constraints");
+});
+
+test("rejects conflicting reference control roles without provider evidence", () => {
+  assert.throws(() => compileVisualPromptPack({
+    packId: "conflicting-refs",
+    routes: [{ routeId: "image", providerId: "openai", modelId: "gpt-image", mode: "text_to_image", officialDocUrl: "https://example.com/image", negativePromptPolicy: "positive_constraints" }],
+    shots: [shot({ referenceBindings: [{ assetRef: "person.png", role: "identity" }, { assetRef: "person.png", role: "style" }] })]
+  }), /multiple control roles/);
 });
 
 test("rejects video modes without their required frame and motion inputs", () => {

@@ -21,14 +21,14 @@ const ROLE_TOOL_DEFAULTS = Object.freeze({
   task_planner: ["directorx_get_stage_requirements", "directorx_query_director_knowledge"],
   director_runtime: ["directorx_query_director_knowledge", "directorx_query_cinematic_references"],
   reference_analyst: ["web_search", "web_open", "directorx_query_cinematic_references"],
-  shot_planner: ["directorx_query_director_knowledge", "directorx_query_cinematic_references"],
+  shot_planner: ["directorx_query_director_knowledge", "directorx_query_cinematic_references", "directorx_compile_scene_coverage_plan", "directorx_review_shot_sequence", "directorx_compile_shot_grounding_plan", "directorx_finalize_shot_grounding", "directorx_compile_visual_prompt_pack"],
   asset_manager: ["web_search", "web_open", "directorx_audit_asset_quality"],
-  provider_operator: ["directorx_list_media_providers", "directorx_get_media_provider_setup"],
-  model_router: ["web_search", "web_open", "directorx_record_provider_api_research"],
+  provider_operator: ["directorx_get_run_snapshot", "directorx_get_media_provider_setup", "directorx_begin_generation_attempt", "directorx_submit_media_generation", "directorx_poll_media_generation"],
+  model_router: ["web_search", "web_open", "directorx_list_media_providers", "directorx_get_media_provider_setup", "directorx_record_provider_api_research", "directorx_probe_provider_capability", "directorx_register_generation_plan"],
   cost_controller: ["directorx_list_model_pricing", "directorx_quote_model_cost"],
-  draw_loop_controller: ["directorx_review_generation_candidate", "directorx_select_generation_candidate"],
+  draw_loop_controller: ["directorx_get_run_snapshot", "directorx_review_generation_candidate", "directorx_select_generation_candidate"],
   memory_manager: ["directorx_get_run_snapshot", "directorx_query_director_knowledge"],
-  quality_evaluator: ["directorx_verify_final_media", "directorx_get_run_snapshot"],
+  quality_evaluator: ["directorx_get_run_snapshot", "directorx_review_generation_candidate", "directorx_verify_final_media", "directorx_record_scene_coverage_review", "directorx_record_final_review_evidence"],
   editing_agent: ["directorx_get_run_snapshot", "directorx_query_director_knowledge"],
   approval_producer: ["directorx_get_run_snapshot", "directorx_get_stage_requirements"]
 });
@@ -38,8 +38,9 @@ const ROLE_ESCALATIONS = Object.freeze({
   asset_manager: ["rights or license evidence is incomplete", "downloaded media fails quality audit"],
   model_router: ["official API documentation is missing or stale", "the exact model lifecycle or pricing cannot be verified"],
   cost_controller: ["official price evidence is missing", "the approved budget cannot cover the route"],
-  provider_operator: ["a paid attempt or credential is required", "provider capability probe fails"],
-  quality_evaluator: ["a critical decode or continuity defect is confirmed", "delivery evidence is incomplete"]
+  provider_operator: ["the approved generation plan or pricing quote is missing", "a paid attempt or credential is required", "provider capability probe fails", "reference media violates the selected mode or provider limits"],
+  draw_loop_controller: ["the defect requires a provider or model reroute", "the next attempt would exceed the shot cap", "the repair changes the approved delivery promise"],
+  quality_evaluator: ["a critical decode or continuity defect is confirmed", "the candidate needs a provider reroute rather than a prompt repair", "delivery evidence is incomplete"]
 });
 
 export function compileExecutionGraphSubagentTasks(run, input = {}) {

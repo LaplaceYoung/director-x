@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 const CLAIM_TYPES = new Set(["factual", "vision", "opinion"]);
 const GENERATION_MODES = new Set(["text_to_image", "image_edit", "text_to_video", "image_to_video", "first_last_frame_video", "video_extension"]);
 const NEGATIVE_POLICIES = new Set(["positive_constraints", "separate_negative_prompt", "inline_prohibitions"]);
+const REFERENCE_ROLES = new Set(["identity", "product_geometry", "layout", "pose", "style", "palette", "lighting"]);
 
 export function compileClaimProofMap(input, now = new Date().toISOString()) {
   if (!input?.mapId?.trim()) throw new Error("claim proof map requires mapId.");
@@ -62,6 +63,7 @@ export function compileVisualPromptPack(input, now = new Date().toISOString()) {
     if (!route.providerId?.trim() || !route.modelId?.trim()) throw new Error(`${route.routeId} requires providerId and modelId.`);
     if (!NEGATIVE_POLICIES.has(route.negativePromptPolicy)) throw new Error(`${route.routeId} requires a supported negativePromptPolicy.`);
     if (!isHttpsUrl(route.officialDocUrl)) throw new Error(`${route.routeId} requires an official HTTPS model document URL.`);
+    const promptDialect = promptDialectFor(route);
     routes.set(route.routeId, {
       routeId: route.routeId,
       providerId: route.providerId,
@@ -75,7 +77,9 @@ export function compileVisualPromptPack(input, now = new Date().toISOString()) {
       supportsLastFrame: route.supportsLastFrame === true,
       supportsNegativePrompt: route.supportsNegativePrompt === true,
       supportsExactText: route.supportsExactText === true,
-      supportsAudio: route.supportsAudio === true
+      supportsAudio: route.supportsAudio === true,
+      allowMultiRoleReferences: route.allowMultiRoleReferences === true,
+      promptDialect
     });
   }
   const shotIds = new Set();
@@ -87,7 +91,8 @@ export function compileVisualPromptPack(input, now = new Date().toISOString()) {
     requireText(shot, ["purpose", "subject", "action", "setting", "camera", "lighting", "composition", "style"]);
     if (!Number.isFinite(shot.durationSeconds) || shot.durationSeconds <= 0) throw new Error(`${shot.shotId} requires a positive durationSeconds.`);
     assertModeInputs(shot, route);
-    const positivePrompt = buildPositivePrompt(shot, route);
+    const referenceBindings = normalizeReferenceBindings(shot, route);
+    const positivePrompt = appendReferenceRoles(buildPositivePrompt(shot, route), referenceBindings);
     const negativeConstraints = uniqueStrings(shot.negativeConstraints);
     const negativePrompt = route.negativePromptPolicy === "separate_negative_prompt" ? negativeConstraints.join(", ") : null;
     const exactTextRequired = uniqueStrings(shot.exactText).length > 0;
@@ -104,12 +109,15 @@ export function compileVisualPromptPack(input, now = new Date().toISOString()) {
       referenceInputs: {
         firstFrameRef: shot.firstFrameRef ?? null,
         lastFrameRef: shot.lastFrameRef ?? null,
-        referenceAssetRefs: uniqueStrings(shot.referenceAssetRefs)
+        referenceAssetRefs: uniqueStrings([...uniqueStrings(shot.referenceAssetRefs), ...referenceBindings.map((binding) => binding.assetRef)]),
+        referenceBindings,
+        roleStatus: referenceBindings.length ? "typed" : uniqueStrings(shot.referenceAssetRefs).length ? "legacy_untyped" : "none"
       },
       continuityKeys: uniqueStrings(shot.continuityKeys),
       exactText: uniqueStrings(shot.exactText),
       renderOverlayRequired: exactTextRequired && !route.supportsExactText,
       audioResponsibility: normalizeAudioResponsibility(shot.audioResponsibility, route),
+      generationStrategy: generationStrategyFor(route),
       executionContract: compileShotExecutionContract(shot, route),
       reviewCriteria: uniqueStrings(shot.reviewCriteria),
       repairTargets: buildRepairTargets(shot, route)
@@ -298,6 +306,7 @@ function assertModeInputs(shot, route) {
 
 function buildPositivePrompt(shot, route) {
   if (route.mode === "text_to_image") {
+    if (route.promptDialect === "flux2_subject_first_positive_constraints") return `${shot.subject} ${shot.action}. ${shot.style}. ${shot.setting}. ${shot.camera}; ${shot.composition}. ${shot.lighting}. Shot function: ${shot.purpose}.`;
     return `${shot.purpose}. ${shot.subject} ${shot.action}. ${shot.setting}. ${shot.camera}; ${shot.composition}. ${shot.lighting}. ${shot.style}.`;
   }
   if (route.mode === "image_edit") {
@@ -360,8 +369,69 @@ function appendInlineConstraints(prompt, constraints, policy) {
 }
 
 function positiveConstraint(value) {
-  const normalized = value.replace(/^no\s+/i, "").replace(/^avoid\s+/i, "");
-  return `keep the result free of ${normalized}`;
+  const normalized = value.toLowerCase().replace(/^no\s+/i, "").replace(/^avoid\s+/i, "").trim();
+  if (/blur|soft focus/.test(normalized)) return "sharp focus with clearly resolved edges";
+  if (/motion jitter|jitter|flicker/.test(normalized)) return "smooth coherent motion with stable geometry between frames";
+  if (/generated text|garbled text|unreadable text|text artifacts/.test(normalized)) return "clean unlettered surfaces with typography reserved for the deterministic overlay layer";
+  if (/people|person|human/.test(normalized)) return "an empty environment containing only the specified subjects and objects";
+  if (/logo/.test(normalized)) return "clean unbranded surfaces reserved for the approved logo overlay";
+  if (/distortion|warping|morph/.test(normalized)) return "stable anatomy and object geometry with consistent proportions";
+  if (/extra limbs|extra fingers/.test(normalized)) return "anatomically coherent hands and limbs with the expected count";
+  return "a clean composition containing only the described subjects, objects, and actions";
+}
+
+function normalizeReferenceBindings(shot, route) {
+  if (!Array.isArray(shot.referenceBindings)) return [];
+  const seen = new Set();
+  return shot.referenceBindings.map((binding, index) => {
+    const assetRef = String(binding?.assetRef ?? "").trim();
+    const role = String(binding?.role ?? "").trim();
+    if (!assetRef || !REFERENCE_ROLES.has(role)) throw new Error(`${shot.shotId} referenceBindings[${index}] requires an assetRef and supported role.`);
+    if (seen.has(assetRef) && !route.allowMultiRoleReferences) throw new Error(`${shot.shotId} assigns multiple control roles to ${assetRef} without provider capability evidence.`);
+    seen.add(assetRef);
+    return {
+      assetRef,
+      role,
+      preserve: uniqueStrings(binding.preserve),
+      mutable: uniqueStrings(binding.mutable)
+    };
+  });
+}
+
+function appendReferenceRoles(prompt, bindings) {
+  if (!bindings.length) return prompt;
+  const roles = bindings.map((binding) => `${binding.assetRef} controls ${binding.role}${binding.preserve.length ? `; preserve ${binding.preserve.join(", ")}` : ""}${binding.mutable.length ? `; mutable ${binding.mutable.join(", ")}` : ""}`).join(". ");
+  return `${prompt} Reference roles: ${roles}.`;
+}
+
+function promptDialectFor(route) {
+  const key = `${route.providerId} ${route.modelId}`.toLowerCase();
+  if (/flux/.test(key)) return "flux2_subject_first_positive_constraints";
+  if (/openai|sora/.test(key) && route.mode.includes("video")) return "openai_sora_observable_shot";
+  if (/openai|gpt-image/.test(key)) return "openai_gpt_image_edit_fidelity";
+  if (/google|gemini|veo/.test(key)) return "google_veo_cinematic_components";
+  if (/runway|gen-?4/.test(key)) return "runway_positive_motion";
+  if (/seedance|doubao|volcengine/.test(key)) return "seedance_timed_multimodal_shot";
+  if (/wan|dashscope/.test(key)) return "wan_mode_specific_motion";
+  return "directorx_generic_mode_isolated";
+}
+
+function generationStrategyFor(route) {
+  const referenceSemantics = route.mode === "image_to_video" ? "first_frame_defines_appearance_prompt_defines_motion"
+    : route.mode === "first_last_frame_video" ? "audited_boundaries_prompt_defines_physical_path"
+      : route.mode === "video_extension" ? "tail_state_and_camera_momentum_continue"
+        : route.mode === "image_edit" ? "single_mutation_closed_invariants"
+          : "prompt_defines_complete_visible_state";
+  const repairPreference = route.mode === "image_edit" ? ["focused_edit", "regenerate"]
+    : route.mode === "video_extension" ? ["focused_edit", "shorter_extension", "regenerate"]
+      : route.mode.includes("video") ? ["focused_edit", "bridge_or_split", "regenerate"]
+        : ["focused_edit", "regenerate"];
+  return {
+    promptDialect: route.promptDialect,
+    constraintPolicy: route.negativePromptPolicy,
+    referenceSemantics,
+    repairPreference
+  };
 }
 
 function normalizeAudioResponsibility(value = {}, route) {
