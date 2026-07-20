@@ -165,6 +165,16 @@ codex plugin list
 
 Fully quit and reopen Codex after installation. Plugin tools and custom `dx_*` agent roles are loaded when the Codex task host starts and cannot be reliably hot-loaded into an existing task.
 
+### Verify the setup
+
+Run the read-only setup doctor before the first production or when local media tools are unavailable:
+
+```bash
+pnpm doctor -- --project /path/to/project --profile zero_key_edit
+```
+
+Profiles range from `planning_only` and `local_video_read` to `local_composition`, `provider_generation`, and `full_production`. The doctor does not expose credential values, call paid providers, install packages, or create a production Run. Inside Codex, the **Director X Setup Doctor** can request explicit native approval for a bounded two-second zero-Key smoke test; the verified clip and thumbnail are projected onto an active setup canvas.
+
 ### Start a production
 
 Open a new Codex task and enter:
@@ -199,6 +209,7 @@ Set `MOSS_TTS_NANO_COMMAND` only when the executable is not available as `moss-t
 - Director X Cut for evidence-linked, approval-gated timeline changes
 - Exhaustive decoded-frame audit and structured final quality review
 - Durable checkpoints, minimal recovery actions, and single-Run resume behavior
+- Profile-aware first-run diagnosis and an approval-gated zero-Key local media smoke test
 
 ## Architecture
 

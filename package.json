@@ -10,7 +10,9 @@
   },
   "scripts": {
     "test": "node --test mcp/*.test.mjs runtime/*.test.mjs",
-    "check": "node --check mcp/server.mjs && node --check scripts/validate-plugin.mjs",
+    "check": "node --check mcp/server.mjs && node --check scripts/validate-plugin.mjs && node --check runtime/doctor-plugin.mjs",
+    "doctor": "node runtime/doctor-plugin.mjs",
+    "install:runtime": "node runtime/install-media-runtime.mjs",
     "validate:plugin": "node scripts/validate-plugin.mjs",
     "ci": "pnpm validate:plugin && pnpm check && pnpm test"
   }

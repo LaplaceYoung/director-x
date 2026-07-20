@@ -1,6 +1,6 @@
 {
   "name": "directorx",
-  "version": "0.1.0+codex.20260720193753",
+  "version": "0.1.0+codex.20260720195811",
   "description": "Open-source AI video production harness for Codex with native Goals, dedicated DX agents, a live media canvas, provider routing, editing, and full-frame review.",
   "author": {
     "name": "openmoss",
@@ -30,7 +30,7 @@
     ],
     "defaultPrompt": [
       "Enter Director X Goal and produce a 60-second brand film",
-      "Turn my reference into a storyboard and production plan",
+      "Check my Director X setup and prove the zero-key local video path works",
       "Resume my latest Director X production run"
     ],
     "websiteURL": "https://laplaceyoung.github.io/director-x/",

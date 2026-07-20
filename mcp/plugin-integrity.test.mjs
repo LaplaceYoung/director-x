@@ -55,6 +55,24 @@ test("runs plugin validation in CI", async () => {
   assert.match(workflow, /brew install ffmpeg/);
 });
 
+test("ships a standalone setup doctor and approval-gated MCP repair path", async () => {
+  const packageJson = JSON.parse(await readFile(join(pluginRoot, "package.json"), "utf8"));
+  const setupSkill = await readFile(join(pluginRoot, "skills", "directorx-setup-doctor", "SKILL.md"), "utf8");
+  const server = await readFile(join(pluginRoot, "mcp", "server.mjs"), "utf8");
+  await access(join(pluginRoot, "runtime", "doctor-plugin.mjs"));
+  await access(join(pluginRoot, "runtime", "plugin-health.mjs"));
+  await access(join(pluginRoot, "runtime", "plugin-repair.mjs"));
+  await access(join(pluginRoot, "runtime", "plugin-smoke-test.mjs"));
+  assert.match(packageJson.scripts.doctor, /doctor-plugin\.mjs/);
+  assert.match(packageJson.scripts["install:runtime"], /install-media-runtime\.mjs/);
+  assert.match(setupSkill, /directorx_diagnose_setup/);
+  assert.match(setupSkill, /directorx_repair_setup/);
+  assert.match(setupSkill, /request_user_input/);
+  assert.match(setupSkill, /zero-Key/);
+  assert.match(server, /name: "directorx_diagnose_setup"/);
+  assert.match(server, /name: "directorx_repair_setup"/);
+});
+
 test("fails closed when the Director X MCP runtime is unavailable", async () => {
   const skill = await readFile(join(pluginRoot, "skills", "directorx", "SKILL.md"), "utf8");
   assert.match(skill, /If `directorx_capability_preflight` is absent[\s\S]*fail closed/);

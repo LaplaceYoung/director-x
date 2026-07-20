@@ -128,6 +128,8 @@ test("serves MCP tools over newline-delimited stdio", async () => {
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_record_generation_candidate"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_generate_mosi_voiceover"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_generate_local_moss_tts_nano_voiceover"));
+    assert.ok(message.result.tools.some((tool) => tool.name === "directorx_diagnose_setup"));
+    assert.ok(message.result.tools.some((tool) => tool.name === "directorx_repair_setup"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_verify_final_media"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_record_scene_coverage_review"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_record_final_review_evidence"));
@@ -169,6 +171,8 @@ test("serves MCP tools over newline-delimited stdio", async () => {
     const browserCanvas = message.result.tools.find((tool) => tool.name === "directorx_open_canvas");
     const inlineCanvas = message.result.tools.find((tool) => tool.name === "directorx_open_inline_canvas");
     const runSnapshot = message.result.tools.find((tool) => tool.name === "directorx_get_run_snapshot");
+    const setupDoctor = message.result.tools.find((tool) => tool.name === "directorx_diagnose_setup");
+    const setupRepair = message.result.tools.find((tool) => tool.name === "directorx_repair_setup");
     assert.equal(preflight.annotations.readOnlyHint, true);
     assert.equal(preflight.annotations.title, "准备制作空间");
     assert.ok(preflight.inputSchema.properties.hostToolNames);
@@ -176,6 +180,10 @@ test("serves MCP tools over newline-delimited stdio", async () => {
     assert.ok(preflight.inputSchema.required.includes("availableAgentTypes"));
     assert.ok(preflight.inputSchema.required.includes("hostToolNames"));
     assert.equal(createRun.annotations.readOnlyHint, false);
+    assert.equal(setupDoctor.annotations.readOnlyHint, true);
+    assert.equal(setupRepair.annotations.readOnlyHint, false);
+    assert.deepEqual(setupDoctor.inputSchema.properties.profile.enum, ["planning_only", "local_video_read", "zero_key_edit", "local_composition", "provider_generation", "full_production"]);
+    assert.equal(setupRepair.inputSchema.properties.confirmedBy.const, "request_user_input");
     assert.ok(message.result.tools.every((tool) => typeof tool.annotations?.title === "string" && tool.annotations.title.length > 0));
     assert.ok(message.result.tools.every((tool) => typeof tool._meta?.["openai/toolInvocation/invoking"] === "string"));
     assert.ok(message.result.tools.every((tool) => typeof tool._meta?.["openai/toolInvocation/invoked"] === "string"));

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import process, { stdin, stdout } from "node:process";
 import { randomUUID } from "node:crypto";
-import { extname } from "node:path";
+import { extname, resolve } from "node:path";
 import { createRun, publicSnapshot, readRun, updateRun, assertSecretFree } from "./run-store.mjs";
 import { projectCanvas } from "./canvas-projector.mjs";
 import { createPipelineRunState, missingRegisteredArtifacts, PIPELINE_CATALOG, transitionPipelineStage } from "./pipeline-catalog.mjs";
@@ -18,6 +18,9 @@ import { assertIntakeReady, confirmIntake } from "./intake-gate.mjs";
 import { analyzeMediaWaveform, executeHyperframesRender, executeMosiTts, executeMossTtsNano, executeRemotionRender, executeWhisperTranscription, inspectAudioSource, inspectMediaDelivery, writeExecutionReceipt } from "./media-execution.mjs";
 import { inspectMediaRuntime } from "../runtime/media-runtime.mjs";
 import { installDirectorXMediaRuntime } from "../runtime/install-media-runtime.mjs";
+import { diagnosePluginHealth, PLUGIN_HEALTH_PROFILES } from "../runtime/plugin-health.mjs";
+import { createPluginRepairRegistry } from "../runtime/plugin-repair.mjs";
+import { runPluginSmokeTest } from "../runtime/plugin-smoke-test.mjs";
 import { writeLongformPlan, writeLongformStitchPlan } from "./longform-control.mjs";
 import { assertRenderPropsBindSegmentStitch, auditSegmentContinuity, extractSegmentBoundaryFrames, preserveSegmentContinuityRenderEvidence, writeBoundaryContinuityReport, writeSegmentBoundaryIndex, writeSegmentContinuityPlan, writeSegmentStitchPlan } from "./segment-continuity.mjs";
 import { extractChromaLayers, writeLayeredCollagePlan, writeLayeredCollageReview } from "./layered-collage.mjs";
@@ -93,6 +96,7 @@ const SERVER_INSTRUCTIONS = "Use a concise consumer-facing Director X voice. In 
 const FAILURE_POLICY_INSTRUCTIONS = "When a tool fails, inspect retryable, attempts, stop, recovery, and nextRequiredAction. Retry a transient semantic operation at most once. Use directorx_get_recovery_action for the minimal blocked operation, root cause, corrected example, and unique resume action; completed artifacts remain available. For deterministic failures, call directorx_recover_run and retry only corrected arguments. Use directorx_create_and_ask_native_question for native gates; a chat message such as ‘继续’ cannot satisfy them. Never create a replacement Run or auxiliary MCP runtime.";
 const credentialStatus = new Map();
 const preflightSessions = new Map();
+const setupRepairRegistry = createPluginRepairRegistry();
 const ENV_NAME_PATTERN = /^[A-Z][A-Z0-9_]{2,80}$/;
 const INLINE_FALLBACK_REASONS = Object.freeze(["browser_runtime_unavailable", "browser_disconnected"]);
 const canvasSurfaceHost = createCanvasSurfaceHost({ handleRequest: handleCanvasRequest });
@@ -1607,6 +1611,24 @@ const rawTools = [
     annotations: writeAnnotations()
   },
   {
+    name: "directorx_diagnose_setup",
+    description: "Read-only, profile-aware Director X setup diagnosis. It performs no paid provider calls, returns no credential values, and may issue one bounded repair plan for explicit Codex request_user_input approval.",
+    inputSchema: objectSchema({
+      projectPath: stringSchema(), profile: { enum: PLUGIN_HEALTH_PROFILES, type: "string" }, sourceKind: { enum: ["local", "url"], type: "string" },
+      transcriptionRequested: { type: "boolean" }, expectedPluginVersion: { type: "string" }, providerId: { type: "string" },
+      availableAgentTypes: { type: "array", items: stringSchema() }, hostToolNames: { type: "array", items: stringSchema() }, hostSkillNames: { type: "array", items: stringSchema() }
+    }, ["projectPath", "profile"]),
+    outputSchema: pluginHealthEnvelopeSchema(),
+    annotations: readOnlyAnnotations()
+  },
+  {
+    name: "directorx_repair_setup",
+    description: "Execute exactly one plugin-owned setup repair from a fresh project-scoped diagnosis plan. Requires explicit request_user_input acceptance; external shell/package-manager instructions are never executed by this tool.",
+    inputSchema: objectSchema({ projectPath: stringSchema(), repairPlanId: stringSchema(), confirmedBy: { const: "request_user_input", type: "string" }, repairAccepted: { const: true, type: "boolean" } }, ["projectPath", "repairPlanId", "confirmedBy", "repairAccepted"]),
+    outputSchema: pluginRepairEnvelopeSchema(),
+    annotations: writeAnnotations()
+  },
+  {
     name: "directorx_get_builtin_media_runtime",
     description: "Inspect the Director X built-in Remotion, HyperFrames, and Whisper runtime without exposing implementation noise to the user.",
     inputSchema: objectSchema({}),
@@ -1856,6 +1878,8 @@ async function callTool(name, args) {
 
 async function executeTool(name, args) {
   if (name !== "directorx_set_session_credential") assertSecretFree(args);
+  if (name === "directorx_diagnose_setup") return await diagnoseSetup(args);
+  if (name === "directorx_repair_setup") return await repairSetup(args);
   if (name === "directorx_get_builtin_media_runtime") return await inspectMediaRuntime();
   if (name === "directorx_install_builtin_media_runtime") return await installDirectorXMediaRuntime();
   if (name === "directorx_list_pipelines") return { pipelines: PIPELINE_CATALOG };
@@ -1993,6 +2017,7 @@ async function executeTool(name, args) {
   if (name === "directorx_capability_preflight") {
     const subagentNamingStatus = await inspectCodexAgentRoles(args.projectPath, { availableAgentTypes: args.availableAgentTypes });
     const hostCapabilities = detectCodexHostCapabilities({ toolNames: args.hostToolNames ?? [], skillNames: args.hostSkillNames ?? [], availableAgentTypes: args.availableAgentTypes });
+    const setupHealth = await diagnosePluginHealth({ projectPath: args.projectPath, profile: "planning_only", sourceKind: "local", hostToolNames: args.hostToolNames, hostSkillNames: args.hostSkillNames, availableAgentTypes: args.availableAgentTypes });
     const invalidAgentTypeEvidence = !subagentNamingStatus.agentTypeEvidence.valid;
     const { browserCanvasUrl, sessionId: preflightId, canvasService } = await createBrowserSession({ projectPath: args.projectPath, outcome: args.outcome });
     const goalInteractionRequestId = `dxq-goal-${preflightId}`;
@@ -2002,7 +2027,7 @@ async function executeTool(name, args) {
     const goalInteraction = { requestId: goalInteractionRequestId, kind: "goal_entry", questions: goalQuestions, status: "pending", interactionSurface: "codex_request_user_input" };
     const roleInstallInteraction = { requestId: roleInstallInteractionRequestId, kind: "role_install", questions: roleInstallQuestions, status: "pending", interactionSurface: "codex_request_user_input" };
     const preflightSession = preflightSessions.get(preflightId);
-    Object.assign(preflightSession, { subagentNamingStatus, hostCapabilities, subagentSessionReady: subagentNamingStatus.sessionReady, invalidAgentTypeEvidence, goalInteractionRequestId, roleInstallInteractionRequestId, goalInteraction, roleInstallInteraction });
+    Object.assign(preflightSession, { subagentNamingStatus, hostCapabilities, setupHealthSummary: summarizeSetupHealth(setupHealth), subagentSessionReady: subagentNamingStatus.sessionReady, invalidAgentTypeEvidence, goalInteractionRequestId, roleInstallInteractionRequestId, goalInteraction, roleInstallInteraction });
     await savePreflightSession(preflightId, preflightSession);
     const bootTransaction = projectPreflightBootTransaction(preflightId, projectPreflightSession(preflightId, preflightSession));
     return {
@@ -2030,6 +2055,7 @@ async function executeTool(name, args) {
       status: "awaiting_canvas_open",
       subagentNamingStatus,
       hostCapabilities,
+      setupHealth: summarizeSetupHealth(setupHealth),
       requiredAgentTypes: subagentNamingStatus.unroutableRoleIds,
       stage: "intake",
       goal: { displayMode: "Director X Goal", outcome: args.outcome },
@@ -4868,8 +4894,78 @@ async function persistSubagentOrchestrationArtifacts(run, args) {
   for (const artifact of written) run.artifacts[artifact.artifactRef] = await inspectArtifact({ ...args, artifactRef: artifact.artifactRef, path: artifact.path, stage: "intake", mediaKind: "document", metadata: { canvasEssential: false, diagnosticsSurface: "activity" } });
 }
 
+async function diagnoseSetup(args) {
+  const context = {
+    projectPath: args.projectPath,
+    profile: args.profile,
+    sourceKind: args.sourceKind ?? "local",
+    transcriptionRequested: args.transcriptionRequested === true,
+    expectedPluginVersion: args.expectedPluginVersion,
+    availableAgentTypes: args.availableAgentTypes ?? [],
+    hostToolNames: args.hostToolNames ?? [],
+    hostSkillNames: args.hostSkillNames ?? [],
+    providerCredentialConfigured: args.providerId ? credentialStatus.get(args.providerId)?.configured === true : false
+  };
+  const health = await diagnosePluginHealth(context);
+  const repairPlan = setupRepairRegistry.issue({ projectPath: args.projectPath, health, context });
+  return {
+    health,
+    repairPlan,
+    userFacingSummary: {
+      status: health.status,
+      suggestedUpdate: health.ready
+        ? health.smokeTestEligible ? "Director X 本地链路已就绪，可以生成一个两秒零 Key 测试片验证播放。" : "Director X 当前配置满足所选工作模式。"
+        : health.nextAction?.label ?? `Director X 仍有 ${health.blockers.length} 项必要配置未就绪。`
+    }
+  };
+}
+
+async function repairSetup(args) {
+  return await setupRepairRegistry.execute({ planId: args.repairPlanId, projectPath: args.projectPath, confirmedBy: args.confirmedBy, repairAccepted: args.repairAccepted }, {
+    async install_managed_runtime({ context }) {
+      const installed = await installDirectorXMediaRuntime();
+      return { actionId: "install_managed_runtime", installed, postRepairHealth: await diagnosePluginHealth(context) };
+    },
+    async install_dx_roles({ context }) {
+      const installed = await installCodexAgentRoles(args.projectPath);
+      return { actionId: "install_dx_roles", installed, postRepairHealth: await diagnosePluginHealth(context) };
+    },
+    async run_zero_key_smoke_test({ context }) {
+      const smokeProof = await runPluginSmokeTest({ projectPath: args.projectPath });
+      await attachSetupSmokeToPreflights(args.projectPath, smokeProof);
+      return { actionId: "run_zero_key_smoke_test", smokeProof, postRepairHealth: await diagnosePluginHealth(context) };
+    }
+  });
+}
+
+async function attachSetupSmokeToPreflights(projectPath, smokeProof) {
+  const normalizedProjectPath = resolve(projectPath);
+  for (const [preflightId, state] of preflightSessions) {
+    if (resolve(state.projectPath) !== normalizedProjectPath || state.runId) continue;
+    await savePreflightSession(preflightId, { ...state, setupSmokeReceipt: smokeProof });
+  }
+}
+
+function summarizeSetupHealth(health) {
+  return { healthId: health.healthId, profile: health.profile, status: health.status, ready: health.ready, blockers: health.blockers, unverified: health.unverified, nextAction: health.nextAction };
+}
+
 function objectSchema(properties, required = []) { return { type: "object", additionalProperties: false, properties, required }; }
 function stringSchema() { return { type: "string", minLength: 1 }; }
+function looseObjectSchema() { return { type: "object", additionalProperties: true, properties: {} }; }
+function nullableLooseObjectSchema() { return { anyOf: [looseObjectSchema(), { type: "null" }] }; }
+function pluginHealthEnvelopeSchema() {
+  return objectSchema({
+    health: looseObjectSchema(),
+    repairPlan: nullableLooseObjectSchema(),
+    userFacingSummary: objectSchema({ status: stringSchema(), suggestedUpdate: stringSchema() }, ["status", "suggestedUpdate"])
+  }, ["health", "repairPlan", "userFacingSummary"]);
+}
+function pluginRepairEnvelopeSchema() {
+  return objectSchema({
+    schemaVersion: stringSchema(), plan: looseObjectSchema(), execution: looseObjectSchema(), verificationRequired: { type: "boolean" }, security: looseObjectSchema()
+  }, ["schemaVersion", "plan", "execution", "verificationRequired", "security"]);
+}
 function nativeQuestionSchema() {
   return objectSchema({
     header: stringSchema(),
@@ -5280,6 +5376,7 @@ async function handleCanvasRequest(request, response) {
       }
       const preflight = preflightSessions.get(sessionId);
       if (!preflight) return json(response, 404, { error: "Unknown or expired Director X preflight session." });
+      const smoke = preflight.setupSmokeReceipt;
       const snapshot = {
         status: preflight.subagentSessionReady === false ? "awaiting_agent_bootstrap" : "awaiting_goal_confirmation",
         stage: "intake",
@@ -5293,7 +5390,15 @@ async function handleCanvasRequest(request, response) {
           { kind: "voice_model", status: "pending" },
           { kind: "music_strategy", status: "pending" }
         ],
-        events: [{ sequence: 1, type: preflight.subagentSessionReady === false ? "preflight.agent_bootstrap_required" : "preflight.ready", stage: "intake", detail: preflight.subagentSessionReady === false ? `No compatible Codex host agent is available for: ${preflight.subagentNamingStatus?.unroutableRoleIds?.join(", ")}` : preflight.subagentNamingStatus?.sessionMode === "builtin_compatibility" ? "Director X is ready for Goal confirmation using built-in Codex hosts with canonical DX production identities." : "Director X is ready for Goal confirmation." }]
+        setupHealth: preflight.setupHealthSummary ?? null,
+        artifacts: smoke ? {
+          "setup.smoke.video": { path: smoke.media.clipPath, mediaKind: "video", stage: "intake", sha256: smoke.media.clipSha256, metadata: { canvasEssential: true, diagnosticsSurface: "setup", label: smoke.label, durationSeconds: smoke.media.durationSeconds } },
+          "setup.smoke.thumbnail": { path: smoke.media.thumbnailPath, mediaKind: "image", stage: "intake", sha256: smoke.media.thumbnailSha256, metadata: { canvasEssential: true, diagnosticsSurface: "setup", label: `${smoke.label} preview`, sourceArtifactRefs: ["setup.smoke.video"] } }
+        } : {},
+        events: [
+          { sequence: 1, type: preflight.subagentSessionReady === false ? "preflight.agent_bootstrap_required" : "preflight.ready", stage: "intake", detail: preflight.subagentSessionReady === false ? `No compatible Codex host agent is available for: ${preflight.subagentNamingStatus?.unroutableRoleIds?.join(", ")}` : preflight.subagentNamingStatus?.sessionMode === "builtin_compatibility" ? "Director X is ready for Goal confirmation using built-in Codex hosts with canonical DX production identities." : "Director X is ready for Goal confirmation." },
+          ...(smoke ? [{ sequence: 2, type: "setup.smoke.passed", stage: "intake", detail: `${smoke.label} · ${smoke.media.durationSeconds}s · zero provider budget` }] : [])
+        ]
       };
       return json(response, 200, { ...snapshot, productionCanvas: projectCanvas(snapshot), canvasSurfaceHealth });
     }

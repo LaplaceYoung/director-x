@@ -165,6 +165,16 @@ codex plugin list
 
 安装后需要完整退出并重新打开 Codex。插件工具和自定义 `dx_*` Agent 角色在任务宿主启动时加载，已打开的旧任务无法可靠地热加载这些能力。
 
+### 验证安装状态
+
+首次制作前，或本地媒体能力异常时，运行只读安装诊断：
+
+```bash
+pnpm doctor -- --project /path/to/project --profile zero_key_edit
+```
+
+诊断档位覆盖 `planning_only`、`local_video_read`、`zero_key_edit`、`local_composition`、`provider_generation` 和 `full_production`。诊断不会返回凭证值、调用付费 Provider、安装软件包或创建 Production Run。在 Codex 内，**Director X Setup Doctor** 只有经过原生用户确认，才会运行边界明确的 2 秒零 Key 音视频测试；通过验证的视频和缩略图会投影到当前安装画布。
+
 ### 开始制作
 
 在新的 Codex 任务中输入：
@@ -199,6 +209,7 @@ codex plugin list
 - Director X Cut 证据驱动、审批后生效的时间线修改
 - 完整解码帧审计和结构化最终质量审查
 - 持久化检查点、最小恢复动作和单 Run 恢复机制
+- 按工作模式诊断首次安装，并通过原生确认运行零 Key 本地媒体测试
 
 ## 架构
 
