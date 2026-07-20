@@ -60,16 +60,18 @@ test("declares the host tool needed to open the side Browser canvas", async () =
   assert.match(orchestrationSkill, /load the main `directorx` skill and complete its canvas-first boot sequence/i);
 });
 
-test("documents optional native DX roles and restart-free typed or collaboration compatibility", async () => {
+test("presents the public plugin around native Goals, DX agents, and the live canvas", async () => {
   const readme = await readFile(join(pluginRoot, "README.md"), "utf8");
   await access(join(pluginRoot, "scripts", "install-user-agents.mjs"));
-  assert.match(readme, /~\/\.codex\/agents/);
-  assert.match(readme, /install-user-agents\.mjs/);
-  assert.match(readme, /built-in `default`, `worker`, and `explorer`/i);
-  assert.match(readme, /task_name\/fork_turns\/message/);
-  assert.match(readme, /None of these compatibility paths block Goal entry or require a restart/i);
-  assert.match(readme, /claim-token `boot` heartbeat/);
-  assert.match(readme, /plain HTTP GET or forged token cannot satisfy the gate/);
+  await access(join(pluginRoot, "assets", "brand", "directorx-logo.png"));
+  await access(join(pluginRoot, "assets", "screenshots", "live-production-canvas.jpg"));
+  await access(join(pluginRoot, "assets", "screenshots", "native-goal-and-input.jpg"));
+  await access(join(pluginRoot, "assets", "screenshots", "dx-specialist-agents.jpg"));
+  assert.match(readme, /Native Codex Goals/);
+  assert.match(readme, /Dedicated DX Agents/);
+  assert.match(readme, /Live Production Canvas/);
+  assert.match(readme, /Pi Agent Harness/);
+  assert.match(readme, /Electron application/);
 });
 
 test("ships a standalone Chinese installation and production guide", async () => {
@@ -90,5 +92,5 @@ test("bundles an evidence-grounded directing knowledge seed", async () => {
   assert.ok(seed.entries.length >= 5);
   assert.ok(seed.entries.every((entry) => entry.principles.every((principle) => principle.evidenceLocator && principle.transferRule)));
   assert.ok(seed.entries.every((entry) => entry.rights.blockedReuse.length));
-  assert.match(readme, /directorx_query_director_knowledge/);
+  assert.match(readme, /evidence/);
 });
