@@ -7,6 +7,7 @@ import { projectCanvas } from "./canvas-projector.mjs";
 import { createPipelineRunState, missingRegisteredArtifacts, PIPELINE_CATALOG, transitionPipelineStage } from "./pipeline-catalog.mjs";
 import { writeDeliveryPromise, writeDirectorDocument, writeIntakeConfirmation, writeIntentResolution, writeProjectBrief } from "./director-artifacts.mjs";
 import { assertReferenceDownloadAuthorized, ingestReferenceVideo } from "./reference-ingest.mjs";
+import { readVideoEvidence, VIDEO_READ_PROFILES } from "./video-reading.mjs";
 import { artifactRecord, inspectArtifact } from "./artifact-registry.mjs";
 import { buildResearchPackageTemplate, validateResearchPackage, writeReferenceDownloadConsent, writeReferenceVideoAssessment, writeResearchPackage, writeWebResearch } from "./research-artifacts.mjs";
 import { beginGenerationAttempt, recordGenerationCandidate, registerGenerationPlan, reviewGenerationCandidate, selectGenerationCandidate, writeGenerationArtifacts } from "./generation-control.mjs";
@@ -784,6 +785,21 @@ const rawTools = [
     description: "Use yt-dlp, FFprobe, and FFmpeg to ingest an explicitly authorized reference section or complete video, extract every decoded frame plus audio, and verify frame-count parity. Reference media is never a delivery asset without separate reuse rights.",
     inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema(), url: stringSchema(), referenceId: stringSchema(), downloadAuthorized: { type: "boolean" }, rightsStatus: { enum: ["user_owned", "licensed", "public_domain", "reference_only"], type: "string" }, fullReference: { type: "boolean" }, startSeconds: { type: "number", minimum: 0 }, maxSeconds: { type: "number", minimum: 3, maximum: 3600 }, maxFrames: { type: "integer", minimum: 90, maximum: 3600 }, timeoutMs: { type: "integer", minimum: 1000, maximum: 600000 } }, ["projectPath", "runId", "url", "referenceId", "downloadAuthorized", "rightsStatus"]),
     annotations: { ...writeAnnotations(), openWorldHint: true }
+  },
+  {
+    name: "directorx_read_video",
+    description: "Read a project-contained local video or an already authorized reference clip with adaptive keyframe, scene, transcript-cue, or exhaustive full-frame evidence. Produces timestamped frames, a contact sheet, transcript evidence, and durable Run/canvas artifacts. URL sources must first pass the reference-download consent and ingest tools.",
+    inputSchema: objectSchema({
+      projectPath: stringSchema(), runId: stringSchema(), readId: stringSchema(),
+      videoPath: { type: "string" }, sourceArtifactRef: { type: "string" },
+      transcriptPath: { type: "string" }, transcriptArtifactRef: { type: "string" },
+      profile: { type: "string", enum: VIDEO_READ_PROFILES },
+      startSeconds: { type: "number", minimum: 0 }, endSeconds: { type: "number", exclusiveMinimum: 0 },
+      cueTimestamps: { type: "array", maxItems: 100, items: { type: "number", minimum: 0 } },
+      maxFrames: { type: "integer", minimum: 0, maximum: 3600 }, resolution: { type: "integer", minimum: 160, maximum: 1920 },
+      deduplicate: { type: "boolean" }, timeoutMs: { type: "integer", minimum: 1000, maximum: 600000 }
+    }, ["projectPath", "runId", "readId", "profile"]),
+    annotations: writeAnnotations()
   },
   {
     name: "directorx_compile_reference_replication_plan",
@@ -2991,6 +3007,56 @@ async function executeTool(name, args) {
       run.artifacts[contactSheetRecord.artifactRef] = contactSheetRecord;
       if (audioRecord) run.artifacts[audioRecord.artifactRef] = audioRecord;
       run.events.push(event(run, "reference.video.ingested", "research", `${ingested.referenceId} · ${ingested.framePaths.length} / ${ingested.fullFrameCoverage.identityFrameCount} decoded frames`));
+      return run;
+    } })), args);
+  }
+  if (name === "directorx_read_video") {
+    const current = await readRun(args);
+    const sourceRecord = args.sourceArtifactRef ? current.artifacts?.[args.sourceArtifactRef] : null;
+    if (args.sourceArtifactRef && !sourceRecord) throw new Error(`Video source artifact is not registered: ${args.sourceArtifactRef}`);
+    if (sourceRecord && sourceRecord.mediaKind !== "video") throw new Error("Video source artifact must have mediaKind=video.");
+    if (!sourceRecord && !args.videoPath) throw new Error("Provide sourceArtifactRef or a project-contained videoPath.");
+    const transcriptRecord = args.transcriptArtifactRef ? current.artifacts?.[args.transcriptArtifactRef] : null;
+    if (args.transcriptArtifactRef && !transcriptRecord) throw new Error(`Transcript artifact is not registered: ${args.transcriptArtifactRef}`);
+    const videoPath = sourceRecord?.path ?? args.videoPath;
+    const transcriptPath = transcriptRecord?.path ?? args.transcriptPath;
+    const result = await readVideoEvidence({ ...args, videoPath, transcriptPath });
+    const stage = current.stage ?? "research";
+    const sourceArtifactRef = sourceRecord?.artifactRef ?? `video-read:${result.readId}:source`;
+    const inheritedReferenceOnly = sourceRecord?.metadata?.referenceOnly === true;
+    const records = {};
+    if (!sourceRecord) records[sourceArtifactRef] = await inspectArtifact({
+      ...args, artifactRef: sourceArtifactRef, path: videoPath, stage, mediaKind: "video",
+      metadata: { canvasEssential: true, owner: "DX-Reference-Analyst", sourceArtifactRefs: [] }
+    });
+    const receiptArtifactRef = `video-read:${result.readId}:receipt`;
+    const manifestArtifactRef = `video-read:${result.readId}:manifest`;
+    const contactSheetArtifactRef = result.contactSheetPath ? `video-read:${result.readId}:contact-sheet` : null;
+    const transcriptArtifactRef = result.transcriptPath ? `video-read:${result.readId}:transcript` : null;
+    records[receiptArtifactRef] = await inspectArtifact({ ...args, artifactRef: receiptArtifactRef, path: result.receiptPath, stage, mediaKind: "document", metadata: { internal: true, referenceOnly: inheritedReferenceOnly, owner: "DX-Reference-Analyst", sourceArtifactRefs: [sourceArtifactRef] } });
+    records[manifestArtifactRef] = await inspectArtifact({ ...args, artifactRef: manifestArtifactRef, path: result.manifestPath, stage, mediaKind: "document", metadata: { internal: true, referenceOnly: inheritedReferenceOnly, owner: "DX-Reference-Analyst", profile: result.plan.profile, sourceArtifactRefs: [sourceArtifactRef] } });
+    if (contactSheetArtifactRef) records[contactSheetArtifactRef] = await inspectArtifact({ ...args, artifactRef: contactSheetArtifactRef, path: result.contactSheetPath, stage, mediaKind: "image", metadata: { canvasEssential: true, referenceOnly: inheritedReferenceOnly, owner: "DX-Reference-Analyst", profile: result.plan.profile, sourceArtifactRefs: [sourceArtifactRef, manifestArtifactRef] } });
+    if (transcriptArtifactRef) records[transcriptArtifactRef] = await inspectArtifact({ ...args, artifactRef: transcriptArtifactRef, path: result.transcriptPath, stage, mediaKind: "document", metadata: { canvasEssential: true, referenceOnly: inheritedReferenceOnly, owner: "DX-Reference-Analyst", segmentCount: result.transcript?.segments.length ?? 0, sourceArtifactRefs: [sourceArtifactRef, args.transcriptArtifactRef].filter(Boolean) } });
+    if (result.frameIdentityPath && result.frameIdentityArtifactRef) records[result.frameIdentityArtifactRef] = await inspectArtifact({ ...args, artifactRef: result.frameIdentityArtifactRef, path: result.frameIdentityPath, stage, mediaKind: "document", metadata: { internal: true, referenceOnly: inheritedReferenceOnly, owner: "DX-Reference-Analyst", sourceArtifactRefs: [sourceArtifactRef, manifestArtifactRef], fullFrameCoverage: result.fullFrameCoverage } });
+    const previewCount = Math.min(12, result.frames.length);
+    const previewIndices = previewCount === 0 ? [] : previewCount === 1 ? [0] : Array.from({ length: previewCount }, (_, index) => Math.round(index * (result.frames.length - 1) / (previewCount - 1)));
+    const frameArtifactRefs = [];
+    for (const frameIndex of [...new Set(previewIndices)]) {
+      const frame = result.frames[frameIndex];
+      const artifactRef = `video-read:${result.readId}:frame:${String(frame.frameIndex + 1).padStart(4, "0")}`;
+      records[artifactRef] = await inspectArtifact({ ...args, artifactRef, path: frame.path, stage, mediaKind: "image", metadata: { canvasEssential: true, referenceOnly: inheritedReferenceOnly, owner: "DX-Reference-Analyst", timestampSeconds: frame.timestampSeconds, selectionReason: frame.reason, pinned: frame.pinned, sourceArtifactRefs: [sourceArtifactRef, manifestArtifactRef] } });
+      frameArtifactRefs.push(artifactRef);
+    }
+    return await withBrowserCanvas(publicSnapshot(await updateRun({ ...args, mutate(run) {
+      run.videoReads ??= [];
+      const videoRead = { readId: result.readId, profile: result.plan.profile, sourceArtifactRef, receiptArtifactRef, manifestArtifactRef, contactSheetArtifactRef, transcriptArtifactRef, frameArtifactRefs, frameCount: result.frames.length, fullFrameCoverage: result.fullFrameCoverage, status: result.status };
+      const existingIndex = run.videoReads.findIndex((item) => item.readId === videoRead.readId);
+      if (existingIndex >= 0) run.videoReads[existingIndex] = videoRead;
+      else run.videoReads.push(videoRead);
+      run.artifacts ??= {};
+      Object.assign(run.artifacts, records);
+      upsertExecutionCanvasNode(run, { id: `video-read:${result.readId}`, type: "artifact", label: "视频阅读证据", detail: `${result.plan.profile} · ${result.frames.length} 帧${result.transcript ? ` · ${result.transcript.segments.length} 段字幕` : ""}`, stage, status: "complete", artifactRef: contactSheetArtifactRef ?? transcriptArtifactRef ?? manifestArtifactRef, metadata: { owner: "DX-Reference-Analyst", profile: result.plan.profile, sourceArtifactRefs: [sourceArtifactRef], frameArtifactRefs } }, `stage:${stage}`);
+      run.events.push(event(run, "video.read.completed", stage, `${result.readId} · ${result.plan.profile} · ${result.frames.length} evidence frame(s)`));
       return run;
     } })), args);
   }

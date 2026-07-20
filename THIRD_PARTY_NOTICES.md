@@ -18,6 +18,17 @@ The Director X product does not use the OpenCut name or logo as its own brand an
 
 Director X keeps its canonical timeline and source media outside the editor adapter. The adapter emits a reversible timeline patch that requires Codex native user approval, re-rendering, and renewed final-media review.
 
+## Claude Video
+
+Director X's adaptive video-reading profiles, duration-aware frame budgets, transcript cue frames, keyframe/scene fallback, and grayscale frame-deduplication strategy were informed by [bradautomates/claude-video](https://github.com/bradautomates/claude-video).
+
+- Upstream commit: `83da59fa78c3eee9e20f515fe75c438bb5166efd`
+- License: MIT
+- Copyright: 2026 Bradley Bonanno
+- License copy: `third_party/claude-video/LICENSE`
+
+Director X rewrites this capability in Node ESM and integrates it with the existing persistent Run, native download authorization, rights metadata, frame-identity evidence, and live canvas. It does not vendor the upstream Python runtime, Claude-specific read protocol, installer, or credential storage.
+
 ## Managed media runtime
 
 Director X installs the following tools into a user-scoped runtime directory. Their package code and model weights are not committed to this repository.

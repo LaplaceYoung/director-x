@@ -118,6 +118,7 @@ The canvas is designed around production assets rather than a decorative fixed w
 - trace relationships between references, scripts, keyframes, clips, and final renders
 - surface approvals, blockers, provider jobs, and recovery actions
 - inspect timelines, captions, waveforms, comparisons, and frame-level review evidence
+- read local or authorized reference videos through transcript cues, keyframes, scene summaries, focused ranges, or exhaustive full-frame evidence
 - resume from persisted state after the browser surface or MCP runtime restarts
 
 ## How It Works
@@ -142,6 +143,7 @@ Director X keeps production state under `.directorx/plugin-runs/`. The canvas re
 
 - Turn a product brief into a short brand film or launch video
 - Analyze a reference video and transfer its directing patterns without copying source pixels
+- Ask timestamp-grounded questions about a video and preview the supporting frames directly on the live canvas
 - Build a script, shot list, storyboard, keyframes, generated clips, and a reviewed cut
 - Coordinate local FFmpeg, Remotion, speech, transcription, and external media providers
 - Resume a long-running production from durable checkpoints after a runtime restart
