@@ -21,7 +21,7 @@
 <p align="center">
   <a href="#quick-start">Quick Start</a> ·
   <a href="#why-director-x">Why Director X</a> ·
-  <a href="USAGE.zh-CN.md">中文指南</a> ·
+  <a href="README.zh-CN.md">中文</a> ·
   <a href="skills/directorx/SKILL.md">Production Skill</a>
 </p>
 
@@ -119,7 +119,7 @@ show acquired and generated media on the live canvas,
 and do not finish until a reviewed video is ready for delivery.
 ```
 
-For provider setup, native-input configuration, media runtime details, and troubleshooting, see the [Chinese usage guide](USAGE.zh-CN.md).
+For the Chinese project overview and installation guide, see [README.zh-CN.md](README.zh-CN.md).
 
 ## Production Capabilities
 

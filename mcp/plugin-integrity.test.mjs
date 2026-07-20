@@ -74,16 +74,16 @@ test("presents the public plugin around native Goals, DX agents, and the live ca
   assert.match(readme, /Electron application/);
 });
 
-test("ships a standalone Chinese installation and production guide", async () => {
+test("ships a standalone Chinese project README", async () => {
   const readme = await readFile(join(pluginRoot, "README.md"), "utf8");
-  const guide = await readFile(join(pluginRoot, "USAGE.zh-CN.md"), "utf8");
-  assert.match(readme, /USAGE\.zh-CN\.md/);
-  assert.match(guide, /一键安装方式/);
-  assert.match(guide, /request_user_input/);
-  assert.match(guide, /MOSS-TTS/);
-  assert.match(guide, /quick、standard 与 complex/);
-  assert.match(guide, /render_quality_contract\.json/);
-  assert.match(guide, /full_frame_audit_required/);
+  const chineseReadme = await readFile(join(pluginRoot, "README.zh-CN.md"), "utf8");
+  assert.match(readme, /README\.zh-CN\.md/);
+  assert.match(chineseReadme, /Codex 原生 Goal/);
+  assert.match(chineseReadme, /专用 DX 子智能体/);
+  assert.match(chineseReadme, /实时侧边栏画布/);
+  assert.match(chineseReadme, /Pi Agent Harness/);
+  assert.match(chineseReadme, /Electron/);
+  assert.match(chineseReadme, /codex plugin marketplace add/);
 });
 
 test("bundles an evidence-grounded directing knowledge seed", async () => {
