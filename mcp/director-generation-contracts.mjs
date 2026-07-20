@@ -63,7 +63,7 @@ export function compileVisualPromptPack(input, now = new Date().toISOString()) {
     if (!route.providerId?.trim() || !route.modelId?.trim()) throw new Error(`${route.routeId} requires providerId and modelId.`);
     if (!NEGATIVE_POLICIES.has(route.negativePromptPolicy)) throw new Error(`${route.routeId} requires a supported negativePromptPolicy.`);
     if (!isHttpsUrl(route.officialDocUrl)) throw new Error(`${route.routeId} requires an official HTTPS model document URL.`);
-    const promptDialect = promptDialectFor(route);
+    const promptDialect = promptDialectForRoute(route);
     routes.set(route.routeId, {
       routeId: route.routeId,
       providerId: route.providerId,
@@ -404,7 +404,7 @@ function appendReferenceRoles(prompt, bindings) {
   return `${prompt} Reference roles: ${roles}.`;
 }
 
-function promptDialectFor(route) {
+export function promptDialectForRoute(route) {
   const key = `${route.providerId} ${route.modelId}`.toLowerCase();
   if (/flux/.test(key)) return "flux2_subject_first_positive_constraints";
   if (/openai|sora/.test(key) && route.mode.includes("video")) return "openai_sora_observable_shot";

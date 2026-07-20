@@ -77,6 +77,7 @@ export async function createRun({ projectPath, outcome, codexGoalId = null }) {
     checkpoints: [],
     providerCapabilities: {},
     repairs: [],
+    generationRepairs: {},
     taskTransport: null,
     avReviewTimeline: null,
     waveformWindows: {},

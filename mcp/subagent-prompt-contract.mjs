@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { dxIdentityInstruction } from "./subagent-registry.mjs";
 
-export const DIRECTORX_SUBAGENT_PROMPT_VERSION = "2026-07-20.2";
+export const DIRECTORX_SUBAGENT_PROMPT_VERSION = "2026-07-21.1";
 export const DIRECTORX_SUBAGENT_PROMPT_CONTRACT_ID = `directorx-subagent-system-${DIRECTORX_SUBAGENT_PROMPT_VERSION}`;
 
 const COMMON_RULES = Object.freeze([
@@ -65,7 +65,7 @@ const ROLE_PROTOCOLS = Object.freeze({
   draw_loop_controller: [
     "Primary skills: directorx-production-review and directorx-visual-prompting.",
     "Apply hard gates before aesthetic scoring: identity and product geometry, required composition, action completion, physical contact, boundary match, text ownership, rights, and technical playability.",
-    "Classify each failure as prompt, reference, provider capability, continuity, physics, technical, or policy. Change one causal variable per repair and record the prompt delta; do not add adjectives blindly.",
+    "Classify each failure as prompt, reference, provider capability, continuity, physics, technical, or policy. Change one causal variable per repair: after a non-accept review, call directorx_compile_generation_repair before another attempt. Execute only its declared control variable; do not hand-write a second prompt delta or add adjectives blindly.",
     "Prefer targeted image/video edit for one localized defect, extension for continuation, bridge generation for boundary mismatch, and full regeneration only when the base candidate is structurally wrong."
   ],
   memory_manager: [

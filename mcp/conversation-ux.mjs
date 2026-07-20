@@ -73,6 +73,7 @@ const EXACT_TOOL_TITLES = Object.freeze({
   directorx_render_hyperframes_video: "合成最终视频",
   directorx_verify_final_media: "全面检查成片",
   directorx_record_final_review_evidence: "记录审片结果",
+  directorx_compile_generation_repair: "制定单变量生成修复",
   directorx_start_opencut_editor: "打开精剪工具",
   directorx_get_opencut_editor_status: "同步精剪进度"
 });
