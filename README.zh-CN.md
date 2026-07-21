@@ -18,6 +18,7 @@
   <img alt="Node.js 22+" src="https://img.shields.io/badge/node-%3E%3D22-339933" />
   <img alt="Codex plugin" src="https://img.shields.io/badge/Codex-plugin-E85D3F" />
   <img alt="项目状态：早期版本" src="https://img.shields.io/badge/status-early%20access-F4A261" />
+  <a href="https://github.com/LaplaceYoung/director-x/releases"><img alt="最新版本：v0.1.13" src="https://img.shields.io/badge/release-v0.1.13-111111" /></a>
 </p>
 
 <p align="center">
@@ -212,6 +213,10 @@ pnpm doctor -- --project /path/to/project --profile zero_key_edit
 - Remotion、HyperFrames、FFmpeg、MOSS-TTS 和 Whisper 路线
 - Director X Cut 证据驱动、审批后生效的时间线修改
 - 完整解码帧审计和结构化最终质量审查
+- Evidence Rail 证据检索、可播放审看片段、源文件 hash、检索 lineage 和不可直接交付的派生素材边界
+- 已验证的 Prompt Pack：把镜头顺序、参考素材、Provider 模式、参数和定价证据绑定到第一次生成尝试
+- 证据驱动的生成修复：一次只修改一个可控变量，并在版权、Provider 或预算问题上停止等待决定
+- 明确的 MCP 工具合同与安全标注，区分只读查询、外部调用、幂等写入和破坏性操作
 - 持久化检查点、最小恢复动作和单 Run 恢复机制
 - 按工作模式诊断首次安装，并通过原生确认运行零 Key 本地媒体测试
 
@@ -300,6 +305,8 @@ pnpm validate:plugin
 插件 Runtime 不包含生产 npm 依赖。测试覆盖 MCP 协议、持久化 Run、媒体画布、Provider 路由、剪辑、恢复和审片合同。`pnpm validate:plugin` 与 GitHub Actions 会检查仓库 Marketplace、Manifest 路径、版本一致性和公开安装命令。
 
 版本记录见 [CHANGELOG.md](CHANGELOG.md)。不可变的优化前基线为 [Director X v0.1.0](https://github.com/LaplaceYoung/director-x/releases/tag/v0.1.0)。
+
+当前公开集成线为 [v0.1.13](https://github.com/LaplaceYoung/director-x/releases/tag/v0.1.13)。本次 2026-07 合并过程中的每项能力都发布了独立不可变 tag（`v0.1.1` 至 `v0.1.13`），方便按明确的能力边界回滚。较早的视频阅读分支仅作为历史参考；安装时请使用 `main` 或 Release tag，不要手动拼接多个 feature 分支。
 
 ## 参与贡献
 

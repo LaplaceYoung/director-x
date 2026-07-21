@@ -18,6 +18,7 @@
   <img alt="Node.js 22+" src="https://img.shields.io/badge/node-%3E%3D22-339933" />
   <img alt="Codex plugin" src="https://img.shields.io/badge/Codex-plugin-E85D3F" />
   <img alt="Project status: early access" src="https://img.shields.io/badge/status-early%20access-F4A261" />
+  <a href="https://github.com/LaplaceYoung/director-x/releases"><img alt="Latest release: v0.1.13" src="https://img.shields.io/badge/release-v0.1.13-111111" /></a>
 </p>
 
 <p align="center">
@@ -212,6 +213,10 @@ Set `MOSS_TTS_NANO_COMMAND` only when the executable is not available as `moss-t
 - Remotion, HyperFrames, FFmpeg, MOSS-TTS, and Whisper media paths
 - Director X Cut for evidence-linked, approval-gated timeline changes
 - Exhaustive decoded-frame audit and structured final quality review
+- Evidence Rail search with review-only playable clips, source hashes, retrieval lineage, and delivery-ineligible derivatives
+- Verified Prompt Packs that bind shot order, references, provider modes, parameters, and pricing evidence to the first generation attempt
+- Evidence-driven generation repair that changes one controllable variable at a time and stops for rights, provider, or budget decisions
+- Explicit MCP tool contracts and safety annotations for read-only queries, external calls, idempotent writes, and destructive operations
 - Durable checkpoints, minimal recovery actions, and single-Run resume behavior
 - Profile-aware first-run diagnosis and an approval-gated zero-Key local media smoke test
 
@@ -300,6 +305,8 @@ pnpm validate:plugin
 The plugin runtime intentionally has no production npm dependencies. Tests exercise the MCP protocol, persistent Run, media canvas, provider routing, editing, recovery, and review contracts. Repository marketplace metadata, manifest paths, version alignment, and public installation commands are validated by `pnpm validate:plugin` and GitHub Actions.
 
 Release history is recorded in [CHANGELOG.md](CHANGELOG.md). The immutable pre-optimization baseline is [Director X v0.1.0](https://github.com/LaplaceYoung/director-x/releases/tag/v0.1.0).
+
+The current public integration line is [v0.1.13](https://github.com/LaplaceYoung/director-x/releases/tag/v0.1.13). Each feature integration from the 2026-07 consolidation was published as its own immutable tag (`v0.1.1` through `v0.1.13`) so operators can roll back to a known capability boundary. The older video-reading branches remain historical references; install from `main` or a release tag instead of combining feature branches manually.
 
 ## Contributing
 
