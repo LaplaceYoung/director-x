@@ -119,6 +119,7 @@ test("gives generation roles the tools needed for prompt compilation, provider e
   assert.ok(byRole.get("provider_operator").allowedTools.includes("directorx_submit_media_generation"));
   assert.ok(byRole.get("provider_operator").allowedTools.includes("directorx_poll_media_generation"));
   assert.ok(byRole.get("draw_loop_controller").allowedTools.includes("directorx_review_generation_candidate"));
+  assert.ok(byRole.get("draw_loop_controller").allowedTools.includes("directorx_compile_generation_repair"));
   assert.deepEqual(byRole.get("provider_operator").dependsOnTaskIds, ["dx-generation-model_router"]);
   assert.deepEqual(byRole.get("draw_loop_controller").dependsOnTaskIds, ["dx-generation-provider_operator"]);
 });

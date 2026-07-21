@@ -12,6 +12,7 @@ import { artifactRecord, inspectArtifact } from "./artifact-registry.mjs";
 import { buildResearchPackageTemplate, validateResearchPackage, writeReferenceDownloadConsent, writeReferenceVideoAssessment, writeResearchPackage, writeWebResearch } from "./research-artifacts.mjs";
 import { beginGenerationAttempt, recordGenerationCandidate, registerGenerationPlan, reviewGenerationCandidate, selectGenerationCandidate, writeGenerationArtifacts } from "./generation-control.mjs";
 import { assertPromptBoundSubmission, compilePromptBoundGenerationPlan } from "./prompt-bound-generation-plan.mjs";
+import { compileGenerationRepairPlan, generationRepairDefectTypes, writeGenerationRepairArtifacts } from "./generation-repair-compiler.mjs";
 import { confirmDxSubagentHostClosed, DX_SUBAGENT_CATALOG, dxIdentityInstruction, registerDxSubagent, updateDxSubagent } from "./subagent-registry.mjs";
 import { inspectCodexAgentRoles, installCodexAgentRoles } from "./codex-agent-roles.mjs";
 import { projectRecoveryAction, toolFailurePayload, withToolFailureGuard } from "./tool-failure-policy.mjs";
@@ -1815,6 +1816,16 @@ const rawTools = [
     name: "directorx_review_generation_candidate",
     description: "Score a candidate with specialized intrinsic, continuity, motion, edit and A/V dimensions; video decisions require timecoded evidence and cannot hide a critical defect behind one average.",
     inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema(), requestId: stringSchema(), candidateId: stringSchema(), scores: objectSchema({ promptMatch: { type: "number", minimum: 0, maximum: 1 }, visualQuality: { type: "number", minimum: 0, maximum: 1 }, continuity: { type: "number", minimum: 0, maximum: 1 }, motion: { type: "number", minimum: 0, maximum: 1 }, editFit: { type: "number", minimum: 0, maximum: 1 }, worldConsistency: { type: "number", minimum: 0, maximum: 1 }, actionCompleteness: { type: "number", minimum: 0, maximum: 1 }, audioVisualSync: { type: "number", minimum: 0, maximum: 1 } }, ["promptMatch", "visualQuality", "continuity", "motion", "editFit"]), evidence: { type: "array", items: objectSchema({ timeSeconds: { type: "number", minimum: 0 }, endTimeSeconds: { type: "number", minimum: 0 }, frameRef: stringSchema(), dimension: stringSchema(), observation: stringSchema() }, ["timeSeconds", "frameRef", "dimension", "observation"]) }, defects: { type: "array", items: objectSchema({ code: stringSchema(), severity: { enum: ["info", "minor", "major", "critical"], type: "string" }, timeSeconds: { type: "number", minimum: 0 }, description: stringSchema(), repairAction: stringSchema() }, ["code", "severity", "timeSeconds", "description", "repairAction"]) }, decision: { enum: ["accept", "retry", "reroute", "add_reference", "split", "simplify", "request_approval", "terminate"], type: "string" }, reason: stringSchema(), failureType: { type: "string" }, promptDelta: { type: "string" } }, ["projectPath", "runId", "requestId", "candidateId", "scores", "evidence", "defects", "decision", "reason"]),
+    annotations: writeAnnotations()
+  },
+  {
+    name: "directorx_compile_generation_repair",
+    description: "Compile one evidence-bound generation repair from a reviewed candidate. The plan changes exactly one controllable prompt, reference, provider-parameter, shot-structure, or deterministic-edit variable; it stops or requests approval when the route, rights, attempts, or budget cannot support another draw.",
+    inputSchema: objectSchema({
+      projectPath: stringSchema(), runId: stringSchema(), repairId: stringSchema(), requestId: stringSchema(), candidateId: stringSchema(),
+      primaryDefect: { enum: generationRepairDefectTypes, type: "string" },
+      evidenceRefs: { type: "array", items: stringSchema() }, preserveDimensions: { type: "array", items: stringSchema() }
+    }, ["projectPath", "runId", "repairId", "requestId", "candidateId"]),
     annotations: writeAnnotations()
   },
   {
@@ -4077,6 +4088,34 @@ async function executeTool(name, args) {
       if (node) { node.status = args.decision === "accept" ? "complete" : args.decision === "terminate" ? "failed" : "blocked"; node.detail = `${args.decision} · ${candidate.qualityScore.toFixed(2)} · ${args.reason}`; node.metadata = { ...node.metadata, scores: args.scores, evidence: args.evidence ?? [], defects: args.defects ?? [], criticalFloor: candidate.criticalFloor, decision: args.decision, failureType: args.failureType, promptDelta: args.promptDelta }; }
       return run;
     }, "generation.candidate.reviewed", `${args.candidateId} · ${args.decision}`);
+  }
+  if (name === "directorx_compile_generation_repair") {
+    const current = await readRun(args);
+    const plan = compileGenerationRepairPlan(current, args);
+    const written = await writeGenerationRepairArtifacts({ ...args, plan });
+    const jsonRecord = await inspectArtifact({ ...args, artifactRef: written.json.artifactRef, path: written.json.path, stage: "generation", mediaKind: "document", metadata: { internal: true, sourceArtifactRefs: [`candidate:${args.candidateId}`, "shot_review_report.json"] } });
+    const summaryRecord = await inspectArtifact({ ...args, artifactRef: written.summary.artifactRef, path: written.summary.path, stage: "generation", mediaKind: "document", metadata: { canvasEssential: true, sourceArtifactRefs: [`candidate:${args.candidateId}`, written.json.artifactRef] } });
+    const snapshot = await updateRun({ ...args, mutate(run) {
+      const candidate = run.generation?.candidates?.find((item) => item.candidateId === args.candidateId && item.requestId === args.requestId);
+      if (!candidate || candidate.reviewedAt !== plan.sourceReview.reviewedAt || candidate.decision !== plan.sourceReview.decision) throw new Error("Candidate review changed while the generation repair plan was being compiled; compile again from the latest review.");
+      run.generationRepairs ??= {};
+      if (run.generationRepairs[plan.repairId]) throw new Error(`Duplicate generation repair plan: ${plan.repairId}`);
+      run.generationRepairs[plan.repairId] = plan;
+      candidate.repairPlanIds = [...new Set([...(candidate.repairPlanIds ?? []), plan.repairId])];
+      run.artifacts ??= {};
+      run.artifacts[jsonRecord.artifactRef] = jsonRecord;
+      run.artifacts[summaryRecord.artifactRef] = summaryRecord;
+      upsertExecutionCanvasNode(run, {
+        id: `generation-repair:${plan.repairId}`, type: "artifact", label: `生成修复 · ${plan.shotId}`,
+        detail: `${plan.diagnosis.primaryDefect} · 只改 ${plan.repair.controlVariable} · ${plan.execution.disposition}`,
+        stage: "generation", status: plan.execution.disposition === "request_approval" ? "blocked" : "complete",
+        artifactRef: summaryRecord.artifactRef,
+        metadata: { repairId: plan.repairId, sourceCandidateId: plan.sourceCandidateId, action: plan.repair.action, controlVariable: plan.repair.controlVariable, nextTool: plan.execution.nextTool, requiresNativeApproval: plan.execution.requiresNativeApproval, sourceArtifactRefs: [`candidate:${args.candidateId}`, jsonRecord.artifactRef] }
+      }, `candidate:${args.candidateId}`);
+      run.events.push(event(run, "generation.repair.compiled", "generation", `${plan.repairId} · ${plan.repair.action} · ${plan.repair.controlVariable}`));
+      return run;
+    } });
+    return await withBrowserCanvas(publicSnapshot(snapshot), args);
   }
   if (name === "directorx_select_generation_candidate") {
     return await mutateGeneration(args, (run) => {

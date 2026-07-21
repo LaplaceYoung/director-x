@@ -26,7 +26,7 @@ const ROLE_TOOL_DEFAULTS = Object.freeze({
   provider_operator: ["directorx_get_run_snapshot", "directorx_get_media_provider_setup", "directorx_begin_generation_attempt", "directorx_submit_media_generation", "directorx_poll_media_generation"],
   model_router: ["web_search", "web_open", "directorx_list_media_providers", "directorx_get_media_provider_setup", "directorx_record_provider_api_research", "directorx_probe_provider_capability", "directorx_register_prompt_bound_generation_plan", "directorx_register_generation_plan"],
   cost_controller: ["directorx_list_model_pricing", "directorx_quote_model_cost"],
-  draw_loop_controller: ["directorx_get_run_snapshot", "directorx_review_generation_candidate", "directorx_select_generation_candidate"],
+  draw_loop_controller: ["directorx_get_run_snapshot", "directorx_review_generation_candidate", "directorx_compile_generation_repair", "directorx_select_generation_candidate"],
   memory_manager: ["directorx_get_run_snapshot", "directorx_query_director_knowledge"],
   quality_evaluator: ["directorx_get_run_snapshot", "directorx_review_generation_candidate", "directorx_verify_final_media", "directorx_record_scene_coverage_review", "directorx_record_final_review_evidence"],
   editing_agent: ["directorx_get_run_snapshot", "directorx_query_director_knowledge"],

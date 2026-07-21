@@ -23,6 +23,8 @@ All notable public changes to Director X are recorded here.
 
 ### Added
 
+- Added an evidence-driven generation repair compiler that turns candidate review failures into one-variable prompt, reference, provider-parameter, shot-structure, edit, reroute, or stop decisions before another paid draw.
+
 - Native Codex Goal integration and durable Director X production Runs.
 - Dedicated DX production agents with bounded parallel orchestration and artifact handoffs.
 - Media-first side canvas, Director X Cut, provider routing, budget controls, recovery, editing, and exhaustive final-frame review.

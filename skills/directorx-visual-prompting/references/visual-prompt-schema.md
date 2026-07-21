@@ -120,6 +120,8 @@ The transition prompt describes the path, not two unrelated states. Insert a bri
 
 ## Repair Patterns
 
+Candidate review does not authorize an improvised retry. Call `directorx_compile_generation_repair` and execute only its declared `controlVariable`. If the compiler routes the defect to editing, grounding, shot design, provider approval, or a stop condition, do not convert that decision back into a prompt regeneration.
+
 | Failure | Repair action |
 | --- | --- |
 | Identity drift | Restate invariant markers and remove conflicting style terms. |

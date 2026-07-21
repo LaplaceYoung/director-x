@@ -159,6 +159,7 @@ test("serves MCP tools over newline-delimited stdio", async () => {
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_register_asset_search_plan"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_audit_asset_quality"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_review_generation_candidate"));
+    assert.ok(message.result.tools.some((tool) => tool.name === "directorx_compile_generation_repair"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_select_generation_candidate"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_prepare_goal_completion"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_register_edit_intent"));
