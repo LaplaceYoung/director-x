@@ -35,13 +35,13 @@ test("ships an installable repository marketplace with matching public instructi
   const marketplace = JSON.parse(await readFile(join(pluginRoot, ".agents", "plugins", "marketplace.json"), "utf8"));
   const readme = await readFile(join(pluginRoot, "README.md"), "utf8");
   const chineseReadme = await readFile(join(pluginRoot, "README.zh-CN.md"), "utf8");
-  assert.equal(marketplace.name, "openmoss-local");
-  assert.equal(marketplace.interface.displayName, "OpenMOSS");
+  assert.equal(marketplace.name, "mosi");
+  assert.equal(marketplace.interface.displayName, "MOSI");
   assert.deepEqual(marketplace.plugins.map((entry) => entry.name), [plugin.name]);
   assert.deepEqual(marketplace.plugins[0].source, { source: "local", path: "./" });
   assert.deepEqual(marketplace.plugins[0].policy, { installation: "AVAILABLE", authentication: "ON_INSTALL" });
-  assert.match(readme, /directorx@openmoss-local/);
-  assert.match(chineseReadme, /directorx@openmoss-local/);
+  assert.match(readme, /directorx@mosi/);
+  assert.match(chineseReadme, /directorx@mosi/);
 });
 
 test("runs plugin validation in CI", async () => {

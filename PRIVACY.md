@@ -2,7 +2,7 @@
 
 Last updated: July 20, 2026
 
-Director X is an open-source, local-first video production plugin maintained by openmoss. This policy describes how the Director X plugin handles information when installed in Codex or ChatGPT desktop environments.
+Director X is an open-source, local-first video production plugin maintained by mosi. This policy describes how the Director X plugin handles information when installed in Codex or ChatGPT desktop environments.
 
 ## Information Director X processes
 
@@ -16,7 +16,7 @@ Director X may process the following information only when needed for a user-req
 
 ## Local storage
 
-Director X stores production state and media artifacts locally in the user's selected project directory, normally under `.directorx/`. The plugin does not intentionally upload project files to an openmoss-operated server.
+Director X stores production state and media artifacts locally in the user's selected project directory, normally under `.directorx/`. The plugin does not intentionally upload project files to a mosi-operated server.
 
 API credentials entered through the Director X secure credential field are injected into the current local process as environment variables. Director X is designed not to write those credential values into project files, durable run records, logs, tool responses, or the plugin repository.
 
@@ -38,11 +38,11 @@ Downloading a reference for local analysis does not grant reuse rights. Director
 
 ## Telemetry
 
-Director X does not include an openmoss-operated analytics or advertising service. Local execution evidence may include low-sensitivity technical metadata such as tool name, stage, duration, status, hashes, and error category. It is stored with the local production run unless the user deliberately exports or shares it.
+Director X does not include a mosi-operated analytics or advertising service. Local execution evidence may include low-sensitivity technical metadata such as tool name, stage, duration, status, hashes, and error category. It is stored with the local production run unless the user deliberately exports or shares it.
 
 ## Data sharing
 
-Openmoss does not sell Director X project data. Data is shared only when the user directs the plugin to use a third-party service, publish or export a deliverable, or otherwise transmit a selected artifact.
+mosi does not sell Director X project data. Data is shared only when the user directs the plugin to use a third-party service, publish or export a deliverable, or otherwise transmit a selected artifact.
 
 ## Security
 

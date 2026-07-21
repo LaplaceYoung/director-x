@@ -3,7 +3,7 @@
   "version": "0.1.0+codex.20260721025842",
   "description": "Open-source AI video production harness for Codex with native Goals, dedicated DX agents, a live media canvas, provider routing, editing, and full-frame review.",
   "author": {
-    "name": "openmoss",
+    "name": "mosi",
     "url": "https://github.com/LaplaceYoung/director-x"
   },
   "homepage": "https://laplaceyoung.github.io/director-x/",
@@ -21,7 +21,7 @@
     "displayName": "Director X",
     "shortDescription": "Direct, approve, and track AI video production",
     "longDescription": "Director X installs a curated professional video-production skill pack and routes every video task through an enforced, evidence-backed pipeline. It resolves vague intent, writes a project Director.md, schedules canonical DX subagents in capacity-bounded concurrent waves, and resumes them through a model-visible action plan that rebinds the canvas/editor without duplicating running work. Storyboards first compile a SHA-bound scene coverage and cinematography contract covering geography, action, reaction, proof, camera position, blocking, depth, lighting, edit handles, fallbacks and setup waves; every adjacent shot then becomes executable Director transition language with match cuts, J/L audio bridges, first/last-frame handoffs, renderer recipes and boundary review gates. MOSS-TTS through platform.mosi.cn is the preferred managed voice route with native Key setup and session-only secure canvas injection; an already configured local MOSS-TTS-Nano CLI is the supported no-Key alternative. Image/video suppliers outside the built-in catalog are captured through native provider/model questions, researched from verified official API docs, and compiled into constrained declarative HTTPS JSON adapters without generated code or secret persistence. Research starts from an official-first asset search plan, expands through public-domain and licensed image/video libraries, and requires Codex-native authorization before uncertain-rights downloads. Selected logos, product visuals, landmarks, stock media and reference clips are saved with provenance, rights evidence and real-file DX-Asset-Manager quality audits before they can inform research or generation. The canvas preserves bounded inspection state per durable Run across MCP restarts and normalizes Codex ordinal host nicknames to stable DX product identities. Multi-segment videos require decoded first/end-frame evidence, continuity review and an exact stitch plan. Final media receives independent frame-count parity, constant-memory full decode, int64-safe PTS/VFR identity, bounded before/trigger/after evidence and structured DX-Quality-Reviewer dispositions. Confirmed defects carry versioned evidence lineage into approval-gated Director X Cut patches, executable FFmpeg rerenders and fresh audits. Users can optionally enter the local side-Browser editor with synchronized video, viewport-loaded long-media waveform, captions, crop, transition-language-aware edits and audio ducking. DX-Editor may prepare an evidence-bound rough-cut draft, and a canonical Revision can be exported through the verified Director X timeline interchange adapter. Model, credential, budget and delivery decisions stay explicit and auditable.",
-    "developerName": "openmoss",
+    "developerName": "mosi",
     "category": "Creative",
     "capabilities": [
       "Interactive",

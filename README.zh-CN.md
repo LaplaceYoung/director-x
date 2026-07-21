@@ -18,7 +18,7 @@
   <img alt="Node.js 22+" src="https://img.shields.io/badge/node-%3E%3D22-339933" />
   <img alt="Codex plugin" src="https://img.shields.io/badge/Codex-plugin-E85D3F" />
   <img alt="项目状态：早期版本" src="https://img.shields.io/badge/status-early%20access-F4A261" />
-  <a href="https://github.com/LaplaceYoung/director-x/releases"><img alt="最新版本：v0.1.13" src="https://img.shields.io/badge/release-v0.1.13-111111" /></a>
+  <a href="https://github.com/LaplaceYoung/director-x/releases"><img alt="最新版本：v0.1.14" src="https://img.shields.io/badge/release-v0.1.14-111111" /></a>
 </p>
 
 <p align="center">
@@ -164,7 +164,7 @@ Director X 注册了明确的视频制片角色，而不是把所有并行任务
 
 ```bash
 codex plugin marketplace add https://github.com/LaplaceYoung/director-x.git --ref main
-codex plugin add directorx@openmoss-local
+codex plugin add directorx@mosi
 codex plugin list
 ```
 
@@ -306,7 +306,7 @@ pnpm validate:plugin
 
 版本记录见 [CHANGELOG.md](CHANGELOG.md)。不可变的优化前基线为 [Director X v0.1.0](https://github.com/LaplaceYoung/director-x/releases/tag/v0.1.0)。
 
-当前公开集成线为 [v0.1.13](https://github.com/LaplaceYoung/director-x/releases/tag/v0.1.13)。本次 2026-07 合并过程中的每项能力都发布了独立不可变 tag（`v0.1.1` 至 `v0.1.13`），方便按明确的能力边界回滚。较早的视频阅读分支仅作为历史参考；安装时请使用 `main` 或 Release tag，不要手动拼接多个 feature 分支。
+当前公开集成线为 [v0.1.14](https://github.com/LaplaceYoung/director-x/releases/tag/v0.1.14)。本次 2026-07 合并过程中的每项能力都发布了独立不可变 tag（`v0.1.1` 至 `v0.1.14`），方便按明确的能力边界回滚。较早的视频阅读分支仅作为历史参考；安装时请使用 `main` 或 Release tag，不要手动拼接多个 feature 分支。
 
 ## 参与贡献
 
@@ -334,5 +334,5 @@ Director X 使用 [GNU Affero General Public License v3.0 or later](LICENSE) 开
 ---
 
 <p align="center">
-  <strong>openmoss</strong> 出品，让视频制片过程可见、可控、可追踪。
+  <strong>mosi</strong> 出品，让视频制片过程可见、可控、可追踪。
 </p>

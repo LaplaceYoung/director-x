@@ -42,7 +42,7 @@ for (const [index, prompt] of (manifest?.interface?.defaultPrompt ?? []).entries
 }
 
 requireText(marketplace, "name", "marketplace.name");
-if (marketplace?.name !== "openmoss-local") errors.push("marketplace.name must match the documented openmoss-local selector");
+if (marketplace?.name !== "mosi") errors.push("marketplace.name must match the documented mosi selector");
 const entry = marketplace?.plugins?.find((plugin) => plugin?.name === manifest?.name);
 if (!entry) errors.push(`marketplace must contain plugin ${manifest?.name ?? "<unknown>"}`);
 if (entry) {
@@ -60,7 +60,7 @@ if (entry) {
 
 for (const file of ["README.md", "README.zh-CN.md"]) {
   const content = await readText(file);
-  if (!content.includes("directorx@openmoss-local")) errors.push(`${file} must document the real marketplace selector`);
+  if (!content.includes("directorx@mosi")) errors.push(`${file} must document the real marketplace selector`);
   if (!content.includes("codex plugin marketplace add")) errors.push(`${file} must document marketplace installation`);
 }
 for (const file of [".codex-plugin/plugin.json", ".agents/plugins/marketplace.json", "README.md", "README.zh-CN.md"]) {

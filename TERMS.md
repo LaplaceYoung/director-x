@@ -2,7 +2,7 @@
 
 Last updated: July 20, 2026
 
-These terms apply to use of the Director X plugin maintained by openmoss. By installing or using Director X, you agree to these terms.
+These terms apply to use of the Director X plugin maintained by mosi. By installing or using Director X, you agree to these terms.
 
 ## 1. Purpose
 
@@ -46,7 +46,7 @@ Director X is provided on an "as is" and "as available" basis without warranties
 
 ## 9. Limitation of liability
 
-To the maximum extent permitted by law, openmoss and Director X contributors are not liable for indirect, incidental, special, consequential, exemplary, or punitive damages, loss of data, lost profits, provider charges, publication claims, or rights disputes arising from use of Director X.
+To the maximum extent permitted by law, mosi and Director X contributors are not liable for indirect, incidental, special, consequential, exemplary, or punitive damages, loss of data, lost profits, provider charges, publication claims, or rights disputes arising from use of Director X.
 
 ## 10. Changes and termination
 

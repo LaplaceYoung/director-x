@@ -1,7 +1,7 @@
 {
-  "name": "openmoss-local",
+  "name": "mosi",
   "interface": {
-    "displayName": "OpenMOSS"
+    "displayName": "MOSI"
   },
   "plugins": [
     {

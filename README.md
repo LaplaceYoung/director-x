@@ -18,7 +18,7 @@
   <img alt="Node.js 22+" src="https://img.shields.io/badge/node-%3E%3D22-339933" />
   <img alt="Codex plugin" src="https://img.shields.io/badge/Codex-plugin-E85D3F" />
   <img alt="Project status: early access" src="https://img.shields.io/badge/status-early%20access-F4A261" />
-  <a href="https://github.com/LaplaceYoung/director-x/releases"><img alt="Latest release: v0.1.13" src="https://img.shields.io/badge/release-v0.1.13-111111" /></a>
+  <a href="https://github.com/LaplaceYoung/director-x/releases"><img alt="Latest release: v0.1.14" src="https://img.shields.io/badge/release-v0.1.14-111111" /></a>
 </p>
 
 <p align="center">
@@ -164,7 +164,7 @@ Director X keeps production state under `.directorx/plugin-runs/`. The canvas re
 
 ```bash
 codex plugin marketplace add https://github.com/LaplaceYoung/director-x.git --ref main
-codex plugin add directorx@openmoss-local
+codex plugin add directorx@mosi
 codex plugin list
 ```
 
@@ -306,7 +306,7 @@ The plugin runtime intentionally has no production npm dependencies. Tests exerc
 
 Release history is recorded in [CHANGELOG.md](CHANGELOG.md). The immutable pre-optimization baseline is [Director X v0.1.0](https://github.com/LaplaceYoung/director-x/releases/tag/v0.1.0).
 
-The current public integration line is [v0.1.13](https://github.com/LaplaceYoung/director-x/releases/tag/v0.1.13). Each feature integration from the 2026-07 consolidation was published as its own immutable tag (`v0.1.1` through `v0.1.13`) so operators can roll back to a known capability boundary. The older video-reading branches remain historical references; install from `main` or a release tag instead of combining feature branches manually.
+The current public integration line is [v0.1.14](https://github.com/LaplaceYoung/director-x/releases/tag/v0.1.14). Each feature integration from the 2026-07 consolidation was published as its own immutable tag (`v0.1.1` through `v0.1.14`) so operators can roll back to a known capability boundary. The older video-reading branches remain historical references; install from `main` or a release tag instead of combining feature branches manually.
 
 ## Contributing
 
@@ -334,5 +334,5 @@ Director X is licensed under the [GNU Affero General Public License v3.0 or late
 ---
 
 <p align="center">
-  Built by <strong>openmoss</strong> for video production that stays visible, controllable, and accountable.
+  Built by <strong>mosi</strong> for video production that stays visible, controllable, and accountable.
 </p>

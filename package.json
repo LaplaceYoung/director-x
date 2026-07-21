@@ -1,5 +1,5 @@
 {
-  "name": "@openmoss/directorx-codex-plugin",
+  "name": "@mosi/directorx-codex-plugin",
   "version": "0.1.0",
   "private": false,
   "description": "Open-source AI video production harness for Codex with native Goals, dedicated DX agents, a live media canvas, provider routing, editing, and review.",
