@@ -11,6 +11,7 @@ import { readVideoEvidence, VIDEO_READ_PROFILES } from "./video-reading.mjs";
 import { artifactRecord, inspectArtifact } from "./artifact-registry.mjs";
 import { buildResearchPackageTemplate, validateResearchPackage, writeReferenceDownloadConsent, writeReferenceVideoAssessment, writeResearchPackage, writeWebResearch } from "./research-artifacts.mjs";
 import { beginGenerationAttempt, recordGenerationCandidate, registerGenerationPlan, reviewGenerationCandidate, selectGenerationCandidate, writeGenerationArtifacts } from "./generation-control.mjs";
+import { assertPromptBoundSubmission, compilePromptBoundGenerationPlan } from "./prompt-bound-generation-plan.mjs";
 import { confirmDxSubagentHostClosed, DX_SUBAGENT_CATALOG, dxIdentityInstruction, registerDxSubagent, updateDxSubagent } from "./subagent-registry.mjs";
 import { inspectCodexAgentRoles, installCodexAgentRoles } from "./codex-agent-roles.mjs";
 import { projectRecoveryAction, toolFailurePayload, withToolFailureGuard } from "./tool-failure-policy.mjs";
@@ -1539,6 +1540,18 @@ const rawTools = [
     annotations: writeAnnotations()
   },
   {
+    name: "directorx_register_prompt_bound_generation_plan",
+    description: "Compile generation_request.json directly from the currently verified visual_prompt_pack.json so the reviewed prompt, provider mode, parameters, anchors, and first paid attempt cannot drift during handoff.",
+    inputSchema: objectSchema({
+      projectPath: stringSchema(), runId: stringSchema(), generationRequestId: stringSchema(), currency: stringSchema(), routeId: stringSchema(), promptPackSha256: { type: "string", pattern: "^[A-Fa-f0-9]{64}$" }, credentialRef: { type: "string" },
+      requests: { type: "array", minItems: 1, items: objectSchema({
+        requestId: stringSchema(), shotId: stringSchema(), providerParameters: { type: "object" }, outputAnchorAssets: { type: "array", items: stringSchema() }, cameraGraphNodeId: { type: "string" }, referenceTargetIds: { type: "array", items: stringSchema() },
+        maxAttempts: { type: "integer", minimum: 1 }, maxCost: { type: "number", exclusiveMinimum: 0 }, attemptCostCap: { type: "number", exclusiveMinimum: 0 }, qualityThreshold: { type: "number", minimum: 0, maximum: 1 }
+      }, ["requestId", "shotId", "providerParameters", "outputAnchorAssets", "maxAttempts", "maxCost", "attemptCostCap", "qualityThreshold"]) }
+    }, ["projectPath", "runId", "generationRequestId", "currency", "routeId", "promptPackSha256", "requests"]),
+    annotations: writeAnnotations()
+  },
+  {
     name: "directorx_begin_generation_attempt",
     description: "Open one auditable generation attempt using a fresh cost quote calculated from official provider pricing, never a caller-supplied estimate.",
     inputSchema: objectSchema({
@@ -1548,7 +1561,7 @@ const rawTools = [
         requestCount: { type: "integer", minimum: 0 }, characterCount: { type: "integer", minimum: 0 }, quality: { type: "string" },
         resolution: { type: "string" }, size: { type: "string" }, generateAudio: { type: "boolean" }
       })
-    }, ["projectPath", "runId", "requestId", "attemptId", "prompt", "providerOptions", "pricingUsage"]),
+    }, ["projectPath", "runId", "requestId", "attemptId"]),
     annotations: writeAnnotations()
   },
   {
@@ -3443,12 +3456,36 @@ async function executeTool(name, args) {
   if (name === "directorx_register_generation_plan") {
     return await mutateGeneration(args, (run) => registerGenerationPlan(run, args.plan), "generation.plan.registered", `${args.plan.requests.length} bounded requests · ${args.plan.providerId}/${args.plan.modelId}`);
   }
+  if (name === "directorx_register_prompt_bound_generation_plan") {
+    const current = await readRun(args);
+    const stored = current.artifacts?.["visual_prompt_pack.json"];
+    if (!stored?.path) throw new Error("Register and verify visual_prompt_pack.json before binding generation work.");
+    const verified = await inspectArtifact({ ...args, artifactRef: "visual_prompt_pack.json", path: stored.path, stage: "storyboard", mediaKind: "document", metadata: stored.metadata });
+    if (verified.sha256 !== args.promptPackSha256) throw new Error("visual_prompt_pack.json changed after the supplied SHA-256 was reviewed; re-read the prompt pack before generation.");
+    const bindingInput = { ...args, promptPackSha256: verified.sha256 };
+    const plan = compilePromptBoundGenerationPlan(current, bindingInput);
+    return await mutateGeneration(args, (run) => {
+      const livePlan = compilePromptBoundGenerationPlan(run, bindingInput);
+      registerGenerationPlan(run, livePlan);
+      upsertExecutionCanvasNode(run, {
+        id: `generation-binding:${livePlan.generationRequestId}`,
+        type: "artifact",
+        label: "提示词已绑定生成",
+        detail: `${livePlan.requests.length} 个镜头 · ${livePlan.providerId}/${livePlan.modelId}`,
+        stage: "generation",
+        status: "complete",
+        artifactRef: "generation_request.json",
+        metadata: { canvasEssential: true, sourceArtifactRefs: ["visual_prompt_pack.json"], bindingSha256: livePlan.bindingSha256, promptPackSha256: verified.sha256, routeId: args.routeId }
+      }, "storyboard:visual-prompts");
+      return run;
+    }, "generation.prompt_pack.bound", `${plan.requests.length} bound requests · ${plan.bindingSha256}`);
+  }
   if (name === "directorx_begin_generation_attempt") {
     return await mutateGeneration(args, (run) => {
       beginGenerationAttempt(run, args);
       const request = run.generation.requests.find((item) => item.requestId === args.requestId);
       const attempt = run.generation.attempts.find((item) => item.attemptId === args.attemptId);
-      upsertExecutionCanvasNode(run, { id: `attempt:${args.attemptId}`, type: "artifact", label: `${request.shotId} · 正在生成`, detail: `${run.generation.providerId}/${run.generation.modelId} · 官方估价 ${run.generation.currency} ${attempt.estimatedCost}`, stage: "generation", status: "active", metadata: { requestId: args.requestId, attemptId: args.attemptId, prompt: args.prompt, pricingQuoteId: attempt.pricingQuote.quoteId, pricingSourceUrl: attempt.pricingQuote.sourceUrl } }, `shot:${request.shotId}`);
+      upsertExecutionCanvasNode(run, { id: `attempt:${args.attemptId}`, type: "artifact", label: `${request.shotId} · 正在生成`, detail: `${run.generation.providerId}/${run.generation.modelId} · 官方估价 ${run.generation.currency} ${attempt.estimatedCost}`, stage: "generation", status: "active", metadata: { requestId: args.requestId, attemptId: args.attemptId, prompt: attempt.prompt, pricingQuoteId: attempt.pricingQuote.quoteId, pricingSourceUrl: attempt.pricingQuote.sourceUrl } }, `shot:${request.shotId}`);
       return run;
     }, "generation.attempt.started", `${args.requestId} · ${args.attemptId} · official price quote`);
   }
@@ -4847,7 +4884,7 @@ function requireDirectMediaContext(run, args, label) {
   const attempt = run.generation.attempts.find((item) => item.requestId === args.requestId && item.attemptId === args.attemptId);
   if (!attempt || attempt.status !== "running") throw new Error(`${label} requires an active generation attempt.`);
   if (args.accountedCost != null && Number(args.accountedCost) !== Number(attempt.estimatedCost)) throw new Error("Provider submission cost must match the official Director X pricing quote for this attempt.");
-  const mode = args.directMode ?? directProviderMode(request.mode, Boolean(args.imagePaths?.length || args.imageUrls?.length));
+  const mode = args.directMode ?? request.providerMode ?? directProviderMode(request.mode, Boolean(args.imagePaths?.length || args.imageUrls?.length));
   const mediaType = mode === "text_to_image" || mode === "image_to_image" ? "image" : "video";
   const approvalKind = mediaType === "image" ? "image_model" : "video_model";
   requireExecutionApproval(run, label, ["budget", approvalKind]);
@@ -4857,6 +4894,7 @@ function requireDirectMediaContext(run, args, label) {
 }
 
 async function buildDirectMediaInput(args, context) {
+  assertPromptBoundSubmission(context.request, args);
   const imageUrls = [...(args.imageUrls ?? []).map(assertApprovedMediaUrl)];
   for (const path of args.imagePaths ?? []) imageUrls.push(await projectMediaDataUri(args.projectPath, path, "image"));
   const endImageUrl = args.endImagePath ? await projectMediaDataUri(args.projectPath, args.endImagePath, "image") : args.endImageUrl ? assertApprovedMediaUrl(args.endImageUrl) : undefined;

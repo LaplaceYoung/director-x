@@ -17,6 +17,7 @@ All notable public changes to Director X are recorded here.
 - Added durable, timecoded side-canvas review notes with idempotent capture, explicit non-approval semantics, Run projection, ownership acknowledgement, and evidence-required resolution.
 - Added bounded MCP Resource Templates for SHA-verified, Run-scoped document and media previews without exposing mutable filesystem access.
 - Centralized MCP safety annotations so Codex can distinguish read-only queries, runtime mutations, external provider calls, idempotent submissions, and destructive cancellation or revocation actions.
+- Bound reviewed visual prompt packs to generation requests with SHA-256 lineage and first-attempt drift protection for prompts, provider modes, parameters, and pricing usage.
 
 ## [0.1.0] - 2026-07-21
 

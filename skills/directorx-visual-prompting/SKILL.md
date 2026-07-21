@@ -20,6 +20,7 @@ Use this skill to convert shot plans into model-ready visual prompts with contin
 9. Classify failures causally: prompt ambiguity, reference conflict, unsupported capability, provider parameter error, identity/geometry drift, composition, motion/physics, boundary mismatch, text, policy/rights, or provider rejection. Repair one controllable variable per attempt so the result teaches the next attempt.
 10. Require a ready `shot_grounding_report.json` bound to the same real shotlist before prompt compilation. A shot may use only its own `authorizedGenerationAnchorRefs`; facts, style learnings, or reference-only media stay in evidence/transfer rules and never enter provider reference inputs.
 11. Call `directorx_compile_visual_prompt_pack` before Storyboard completes. It must bind the shotlist, sequence-review, and grounding-report hashes. Attach review criteria and draw-loop stop conditions.
+12. After the pack is reviewed and its file SHA-256 is verified, hand it to `directorx_register_prompt_bound_generation_plan`. Do not copy prompt prose or provider mode into a second free-form plan; the binding tool compiles `generation_request.json` and locks the initial attempt to the exact prompt, negative policy, duration, mode, parameters, and route.
 
 ## Prompt Construction Rules
 
@@ -58,7 +59,7 @@ Use this skill to convert shot plans into model-ready visual prompts with contin
 }
 ```
 
-`visual_prompt_pack.json` is the authoritative provider-executable handoff. Free-text prompts in chat or only inside the shot list do not satisfy the stage. `shot_grounding_plan.json` and `shot_grounding_report.json` are mandatory upstream evidence.
+`visual_prompt_pack.json` is the authoritative provider-executable handoff. `generation_request.json` must be mechanically derived from its verified SHA-256 through `directorx_register_prompt_bound_generation_plan`; free-text prompts in chat or only inside the shot list do not satisfy the stage. `shot_grounding_plan.json` and `shot_grounding_report.json` are mandatory upstream evidence.
 
 ## Reference
 
