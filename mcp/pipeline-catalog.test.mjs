@@ -28,6 +28,8 @@ test("ships complete production pipelines with stable stage contracts", () => {
   assert.ok(!getPipeline("brand-film").stages.find((stage) => stage.id === "research").requiredOutputs.includes("media_evidence_index.json"));
   assert.ok(getPipeline("reference-remix").stages.find((stage) => stage.id === "research").requiredOutputs.includes("reference_replication_plan.json"));
   assert.ok(getPipeline("reference-replication").stages.find((stage) => stage.id === "research").requiredOutputs.includes("reference_media_bundle.json"));
+  assert.ok(!getPipeline("reference-replication").stages.find((stage) => stage.id === "intake").requiredOutputs.includes("Director.md"));
+  assert.ok(getPipeline("reference-replication").stages.find((stage) => stage.id === "research").requiredOutputs.includes("Director.md"));
   assert.ok(getPipeline("reference-replication").stages.find((stage) => stage.id === "review").requiredOutputs.includes("replication_conformance_report.json"));
   assert.ok(!getPipeline("brand-film").stages.find((stage) => stage.id === "storyboard").requiredOutputs.includes("frame_handoff_manifest.json"));
   assert.ok(getPipeline("layered-collage").stages.find((stage) => stage.id === "storyboard").requiredOutputs.includes("layer_manifest.json"));

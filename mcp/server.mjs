@@ -769,7 +769,7 @@ const rawTools = [
   },
   {
     name: "directorx_write_director_document",
-    description: "Generate the project-level Director.md creative source of truth before research or generation.",
+    description: "Generate or update the project-level Director.md source of truth. For reference-replication, call only after the authorized video/audio bundle and replication plan are complete; bind the replacement strategy, shot blueprint, continuity, audio, and review rules.",
     inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema(), director: objectSchema({
       title: stringSchema(), logline: stringSchema(), audience: stringSchema(), platform: stringSchema(), duration: stringSchema(), aspectRatio: stringSchema(), objective: stringSchema(),
       directorInterpretation: stringSchema(), hook: stringSchema(), beatProgression: stringSchema(), visualLanguage: stringSchema(), cameraGrammar: stringSchema(), composition: stringSchema(), lightingColor: stringSchema(), performanceDirection: stringSchema(), audioDirection: stringSchema(), musicDirection: stringSchema(), editRhythm: stringSchema(), promptStrategy: stringSchema(), researchPlan: stringSchema(),
@@ -2656,16 +2656,23 @@ async function executeTool(name, args) {
     } })), args);
   }
   if (name === "directorx_write_director_document") {
+    const current = await readRun(args);
+    if (current.pipeline?.id === "reference-replication") {
+      const required = ["reference_media_bundle.json", "reference_replication_plan.json", "reference_shot_blueprint.json"];
+      const missing = required.filter((artifactRef) => !current.artifacts?.[artifactRef]);
+      if (missing.length) throw new Error(`Reference-replication Director.md must follow video understanding and the replication plan. Missing: ${missing.join(", ")}`);
+    }
     const written = await writeDirectorDocument(args);
     return await withBrowserCanvas(publicSnapshot(await updateRun({ ...args, mutate(run) {
+      const stage = run.pipeline?.id === "reference-replication" ? "research" : "intake";
       run.directorDocument = written;
       run.artifacts ??= {};
-      run.artifacts[written.artifactRef] = artifactRecord({ ...written, stage: "intake" });
-      run.artifacts[written.contractArtifactRef] = artifactRecord({ artifactRef: written.contractArtifactRef, path: written.contractPath, fingerprint: written.fingerprint, stage: "intake" });
+      run.artifacts[written.artifactRef] = artifactRecord({ ...written, stage });
+      run.artifacts[written.contractArtifactRef] = artifactRecord({ artifactRef: written.contractArtifactRef, path: written.contractPath, fingerprint: written.fingerprint, stage });
       run.canvas ??= { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 0.72 } };
-      const node = { id: "document:director", type: "document", label: "Director.md", detail: args.director.logline, stage: "intake", status: "complete", artifactRef: "Director.md", metadata: { path: written.path, contractRef: written.contractArtifactRef, fingerprint: written.fingerprint }, updatedAt: new Date().toISOString() };
+      const node = { id: "document:director", type: "document", label: "Director.md", detail: args.director.logline, stage, status: "complete", artifactRef: "Director.md", metadata: { path: written.path, contractRef: written.contractArtifactRef, fingerprint: written.fingerprint }, updatedAt: new Date().toISOString() };
       const index = run.canvas.nodes.findIndex((item) => item.id === node.id); if (index >= 0) run.canvas.nodes[index] = node; else run.canvas.nodes.push(node);
-      run.events.push(event(run, "director.document.written", "intake", written.path));
+      run.events.push(event(run, "director.document.written", stage, written.path));
       return run;
     } })), args);
   }
@@ -3064,13 +3071,13 @@ async function executeTool(name, args) {
   }
   if (name === "directorx_register_asset_search_plan") {
     const current = await readRun(args);
-    if (!current.directorDocument) throw new Error("Generate Director.md before registering the asset search plan.");
+    if (!current.directorDocument && current.pipeline?.id !== "reference-replication") throw new Error("Generate Director.md before registering the asset search plan.");
     const plan = registerAssetSearchPlan(current, args.plan);
     const written = await writeAssetSearchPlan({ ...args, plan });
-    const record = await inspectArtifact({ ...args, artifactRef: written.artifactRef, path: written.path, stage: "research", mediaKind: "document", metadata: { canvasEssential: true, owner: "DX-Asset-Manager", sourceArtifactRefs: ["Director.md"] } });
+    const record = await inspectArtifact({ ...args, artifactRef: written.artifactRef, path: written.path, stage: "research", mediaKind: "document", metadata: { canvasEssential: true, owner: "DX-Asset-Manager", sourceArtifactRefs: current.directorDocument ? ["Director.md"] : [] } });
     return await withBrowserCanvas(publicSnapshot(await updateRun({ ...args, mutate(run) {
       run.assetSearchPlan = plan; run.artifacts ??= {}; run.artifacts[record.artifactRef] = record;
-      upsertExecutionCanvasNode(run, { id: "research:asset-search", type: "artifact", label: "公开素材检索计划", detail: `${plan.queries.length} queries · ${plan.requiredAssetTypes.length} roles · official first`, stage: "research", status: "active", artifactRef: record.artifactRef, metadata: { owner: "DX-Asset-Manager", sourcePriority: plan.sourcePriority, sourceArtifactRefs: ["Director.md"] } }, "stage:research");
+      upsertExecutionCanvasNode(run, { id: "research:asset-search", type: "artifact", label: "公开素材检索计划", detail: `${plan.queries.length} queries · ${plan.requiredAssetTypes.length} roles · official first`, stage: "research", status: "active", artifactRef: record.artifactRef, metadata: { owner: "DX-Asset-Manager", sourcePriority: plan.sourcePriority, sourceArtifactRefs: run.directorDocument ? ["Director.md"] : [] } }, "stage:research");
       run.events.push(event(run, "asset.search.plan.registered", "research", `${plan.queries.length} queries · ${plan.sourcePriority.join(" > ")}`)); return run;
     } })), args);
   }
@@ -4269,7 +4276,8 @@ async function executeTool(name, args) {
 
       const intakeWritten = await writeIntakeConfirmation(args);
       const intentWritten = await writeIntentResolution(args);
-      const directorWritten = await writeDirectorDocument(args);
+      const isReferenceReplication = args.pipelineId === "reference-replication";
+      const directorWritten = isReferenceReplication ? null : await writeDirectorDocument(args);
       const briefWritten = await writeProjectBrief({ ...args, brief: {
         videoType: args.production.videoType,
         targetPlatform: platform,
@@ -4284,8 +4292,10 @@ async function executeTool(name, args) {
       const records = await Promise.all([
         inspectArtifact({ ...args, artifactRef: intakeWritten.artifactRef, path: intakeWritten.path, stage: "intake", mediaKind: "document" }),
         inspectArtifact({ ...args, artifactRef: intentWritten.artifactRef, path: intentWritten.path, stage: "intake", mediaKind: "document" }),
-        inspectArtifact({ ...args, artifactRef: directorWritten.artifactRef, path: directorWritten.path, stage: "intake", mediaKind: "document", metadata: { canvasEssential: true, contractRef: directorWritten.contractArtifactRef, fingerprint: directorWritten.fingerprint } }),
-        inspectArtifact({ ...args, artifactRef: directorWritten.contractArtifactRef, path: directorWritten.contractPath, stage: "intake", mediaKind: "document", metadata: { fingerprint: directorWritten.fingerprint } }),
+        ...(directorWritten ? [
+          inspectArtifact({ ...args, artifactRef: directorWritten.artifactRef, path: directorWritten.path, stage: "intake", mediaKind: "document", metadata: { canvasEssential: true, contractRef: directorWritten.contractArtifactRef, fingerprint: directorWritten.fingerprint } }),
+          inspectArtifact({ ...args, artifactRef: directorWritten.contractArtifactRef, path: directorWritten.contractPath, stage: "intake", mediaKind: "document", metadata: { fingerprint: directorWritten.fingerprint } })
+        ] : []),
         inspectArtifact({ ...args, artifactRef: briefWritten.artifactRef, path: briefWritten.path, stage: "intake", mediaKind: "document" }),
         inspectArtifact({ ...args, artifactRef: deliveryWritten.artifactRef, path: deliveryWritten.path, stage: "intake", mediaKind: "document" }),
         inspectArtifact({ ...args, artifactRef: "production_complexity_plan.json", path: complexityPath, stage: "intake", mediaKind: "document", metadata: { internal: true, profile: complexity.profile } })
@@ -4293,17 +4303,19 @@ async function executeTool(name, args) {
 
       run.pipeline = run.pipeline ?? selected;
       run.intentResolution = { ...args.resolution, artifactRef: intentWritten.artifactRef, path: intentWritten.path };
-      run.directorDocument = directorWritten;
+      if (directorWritten) run.directorDocument = directorWritten;
       run.projectBrief = briefWritten.artifact;
       run.deliveryPromise = deliveryWritten.artifact;
       run.productionComplexityPlan = complexity;
       run.artifacts ??= {};
       for (const record of records) run.artifacts[record.artifactRef] = record;
       run.canvas ??= { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 0.72 } };
-      const node = { id: "document:director", type: "document", label: "Director.md", detail: args.director.logline, stage: "intake", status: "complete", artifactRef: "Director.md", metadata: { path: directorWritten.path, contractRef: directorWritten.contractArtifactRef, fingerprint: directorWritten.fingerprint }, updatedAt: new Date().toISOString() };
-      const nodeIndex = run.canvas.nodes.findIndex((item) => item.id === node.id);
-      if (nodeIndex >= 0) run.canvas.nodes[nodeIndex] = node; else run.canvas.nodes.push(node);
-      run.events.push(event(run, "fast_start.intake.prepared", "intake", `${selected.id} · ${complexity.profile} · 7 required artifacts`));
+      if (directorWritten) {
+        const node = { id: "document:director", type: "document", label: "Director.md", detail: args.director.logline, stage: "intake", status: "complete", artifactRef: "Director.md", metadata: { path: directorWritten.path, contractRef: directorWritten.contractArtifactRef, fingerprint: directorWritten.fingerprint }, updatedAt: new Date().toISOString() };
+        const nodeIndex = run.canvas.nodes.findIndex((item) => item.id === node.id);
+        if (nodeIndex >= 0) run.canvas.nodes[nodeIndex] = node; else run.canvas.nodes.push(node);
+      }
+      run.events.push(event(run, "fast_start.intake.prepared", "intake", `${selected.id} · ${complexity.profile} · ${directorWritten ? "7" : "6"} required artifacts; Director.md deferred until reference planning`));
       return run;
     } });
     const response = await withBrowserCanvas(publicSnapshot(snapshot), args);

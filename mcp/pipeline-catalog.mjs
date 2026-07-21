@@ -68,8 +68,10 @@ function pipeline(id, label, overlaySkills, useWhen) {
   if (["reference-remix", "footage-edit"].includes(id)) stages.find((stage) => stage.id === "research").requiredOutputs.push("media_evidence_index.json", "video_query_plan.json", "retrieval_trace.json", "evidence_bundle.json");
   if (id === "reference-remix") stages.find((stage) => stage.id === "research").requiredOutputs.push("reference_replication_plan.json", "reference_shot_blueprint.json", "reference_tool_route.json");
   if (id === "reference-replication") {
+    const intake = stages.find((stage) => stage.id === "intake");
+    intake.requiredOutputs = intake.requiredOutputs.filter((artifactRef) => !["Director.md", "director_contract.json"].includes(artifactRef));
     const research = stages.find((stage) => stage.id === "research");
-    research.requiredOutputs.push("reference_replication_plan.json", "reference_shot_blueprint.json", "reference_tool_route.json", "reference_media_bundle.json");
+    research.requiredOutputs.push("reference_replication_plan.json", "reference_shot_blueprint.json", "reference_tool_route.json", "reference_media_bundle.json", "Director.md", "director_contract.json");
     stages.find((stage) => stage.id === "review").requiredOutputs.push("replication_conformance_report.json");
   }
   if (id === "longform") {
