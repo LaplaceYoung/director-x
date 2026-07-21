@@ -82,6 +82,17 @@ function setupRevealMotion() {
   document.querySelectorAll("[data-reveal]").forEach(element => {
     element.querySelectorAll(".phrase").forEach((phrase, index) => phrase.style.setProperty("--phrase-index", index));
   });
+  document.querySelectorAll("[data-kinetic] .phrase > span").forEach(wrapper => {
+    if (wrapper.querySelector(".char")) return;
+    wrapper.setAttribute("aria-label", wrapper.textContent);
+    wrapper.innerHTML = [...wrapper.textContent].map((character, index) => character === " "
+      ? '<span class="char space" aria-hidden="true">&nbsp;</span>'
+      : `<span class="char" style="--char-index:${index}" aria-hidden="true">${escapeHtml(character)}</span>`).join("");
+  });
+}
+
+function escapeHtml(value) {
+  return value.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
 }
 
 function bindInteractions() {
@@ -114,7 +125,9 @@ function bindInteractions() {
   window.addEventListener("pointermove", event => {
     pointerX = (event.clientX / window.innerWidth - .5) * 2;
     pointerY = (event.clientY / window.innerHeight - .5) * 2;
+    updatePointerTrace(event.clientX, event.clientY);
   }, { passive: true });
+  setupPointerInteractions();
   document.addEventListener("visibilitychange", () => { visible = !document.hidden; });
   const revealObserver = new IntersectionObserver(entries => {
     for (const entry of entries) if (entry.isIntersecting) entry.target.classList.add("visible");
@@ -124,6 +137,70 @@ function bindInteractions() {
     for (const entry of entries) if (!entry.isIntersecting && !entry.target.paused) entry.target.pause();
   }, { threshold: .12 });
   document.querySelectorAll("video").forEach(video => videoObserver.observe(video));
+}
+
+function updatePointerTrace(x, y) {
+  if (narrowScreen || reducedMotion) return;
+  document.documentElement.style.setProperty("--pointer-x", `${x}px`);
+  document.documentElement.style.setProperty("--pointer-y", `${y}px`);
+}
+
+function setupPointerInteractions() {
+  if (narrowScreen || reducedMotion || !window.matchMedia("(pointer: fine)").matches) return;
+  document.body.classList.add("has-pointer");
+  const trace = document.querySelector(".pointer-trace");
+  const ring = trace.querySelector(".pointer-ring");
+  const dot = trace.querySelector(".pointer-dot");
+  const crosshair = trace.querySelector(".pointer-crosshair");
+  let ringX = window.innerWidth / 2;
+  let ringY = window.innerHeight / 2;
+  let dotX = ringX;
+  let dotY = ringY;
+  function tick() {
+    const x = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--pointer-x")) || window.innerWidth / 2;
+    const y = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--pointer-y")) || window.innerHeight / 2;
+    ringX += (x - ringX) * .16;
+    ringY += (y - ringY) * .16;
+    dotX += (x - dotX) * .42;
+    dotY += (y - dotY) * .42;
+    ring.style.left = `${ringX}px`; ring.style.top = `${ringY}px`;
+    dot.style.left = `${dotX}px`; dot.style.top = `${dotY}px`;
+    crosshair.style.left = `${ringX}px`; crosshair.style.top = `${ringY}px`;
+    requestAnimationFrame(tick);
+  }
+  tick();
+  document.querySelectorAll("a, button, [data-tilt], video").forEach(element => {
+    element.addEventListener("pointerenter", () => trace.classList.add("is-hovering"));
+    element.addEventListener("pointerleave", () => trace.classList.remove("is-hovering"));
+  });
+  window.addEventListener("pointerdown", () => trace.classList.add("is-pressed"), { passive: true });
+  window.addEventListener("pointerup", () => trace.classList.remove("is-pressed"), { passive: true });
+  document.querySelectorAll("[data-magnetic]").forEach(element => {
+    element.addEventListener("pointermove", event => {
+      const rect = element.getBoundingClientRect();
+      element.style.setProperty("--magnetic-x", `${(event.clientX - rect.left - rect.width / 2) * .16}px`);
+      element.style.setProperty("--magnetic-y", `${(event.clientY - rect.top - rect.height / 2) * .22}px`);
+    });
+    element.addEventListener("pointerleave", () => {
+      element.style.setProperty("--magnetic-x", "0px");
+      element.style.setProperty("--magnetic-y", "0px");
+    });
+  });
+  document.querySelectorAll("[data-tilt]").forEach(element => {
+    element.addEventListener("pointermove", event => {
+      const rect = element.getBoundingClientRect();
+      const x = (event.clientX - rect.left) / rect.width - .5;
+      const y = (event.clientY - rect.top) / rect.height - .5;
+      element.classList.add("is-tilting");
+      element.style.setProperty("--tilt-x", `${(-y * 5.5).toFixed(2)}deg`);
+      element.style.setProperty("--tilt-y", `${(x * 6.5).toFixed(2)}deg`);
+    });
+    element.addEventListener("pointerleave", () => {
+      element.classList.remove("is-tilting");
+      element.style.setProperty("--tilt-x", "0deg");
+      element.style.setProperty("--tilt-y", "0deg");
+    });
+  });
 }
 
 function selectAgent(row) {

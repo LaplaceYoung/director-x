@@ -44,6 +44,7 @@
 <body>
   <a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
   <div class="sr-status" aria-live="polite" data-language-status></div>
+  <div class="pointer-trace" aria-hidden="true"><span class="pointer-ring"></span><span class="pointer-dot"></span><span class="pointer-crosshair"></span></div>
 
   <div class="site-loader" data-loader aria-hidden="true">
     <div class="loader-mark">DX</div>
@@ -100,11 +101,11 @@
       <div class="hero-copy">
         <p class="kicker" data-i18n-html="hero.kicker"><span>Open source</span> / Codex plugin / Early access</p>
         <img class="hero-logo" src="assets/directorx-logo.png" alt="Director X" />
-        <h1 data-reveal data-i18n-html="hero.title"><span class="phrase"><span>Direct the Goal.</span></span><br><span class="phrase"><span>Watch production happen.</span></span></h1>
+        <h1 data-reveal data-kinetic data-i18n-html="hero.title"><span class="phrase"><span>Direct the Goal.</span></span><br><span class="phrase"><span>Watch production happen.</span></span></h1>
         <p class="hero-summary" data-i18n="hero.summary">Director X turns a native Codex Goal into a persistent video production Run—coordinated by dedicated agents, reflected live on a media-first canvas, and carried through to reviewed output.</p>
         <div class="hero-actions">
-          <a class="button primary" href="#install" data-i18n="hero.install">Install Director X</a>
-          <a class="button secondary" href="https://github.com/LaplaceYoung/director-x"><span data-i18n="hero.github">View on GitHub</span><span aria-hidden="true">↗</span></a>
+          <a class="button primary" data-magnetic href="#install" data-i18n="hero.install">Install Director X</a>
+          <a class="button secondary" data-magnetic href="https://github.com/LaplaceYoung/director-x"><span data-i18n="hero.github">View on GitHub</span><span aria-hidden="true">↗</span></a>
         </div>
         <dl class="runtime-strip">
           <div><dt>Goal</dt><dd data-i18n="hero.goal">Native</dd></div>
@@ -134,7 +135,7 @@
             </ol>
           </div>
         </div>
-        <figure class="evidence-frame reveal">
+        <figure class="evidence-frame reveal" data-tilt>
           <img src="assets/native-goal-and-input.jpg" alt="Codex showing Director X native Goal and user input" loading="lazy" />
           <figcaption><span>Evidence 01</span><span data-i18n="goal.caption">Native Goal and native user input keep material production decisions explicit.</span></figcaption>
         </figure>
@@ -157,7 +158,7 @@
           <button class="crew-row" type="button" data-agent="editor"><span>DX-Editor</span><em data-i18n="crew.editor">Timeline & delivery</em><b data-i18n="crew.cut">Cut</b></button>
           <button class="crew-row" type="button" data-agent="review"><span>DX-Quality-Reviewer</span><em data-i18n="crew.review">Final audit</em><b data-i18n="crew.reviewStatus">Review</b></button>
         </div>
-        <figure class="agent-proof reveal">
+        <figure class="agent-proof reveal" data-tilt>
           <img src="assets/dx-specialist-agents.jpg" alt="Dedicated DX specialist agents running in Codex" loading="lazy" />
           <figcaption data-i18n="crew.caption">Named roles remain visible in Codex and in the persistent production record.</figcaption>
         </figure>
@@ -171,7 +172,7 @@
           <h2 data-reveal data-i18n-html="canvas.title"><span class="phrase"><span>The canvas shows the work.</span></span><br><span class="phrase"><span>Not just the workflow.</span></span></h2>
           <p data-i18n="canvas.body">References, scripts, images, audio, shots, cuts, approvals, and review evidence appear as they are created. Their relationships stay visible throughout the Run.</p>
         </div>
-        <figure class="canvas-stage">
+        <figure class="canvas-stage" data-tilt>
           <div class="monitor-bezel"><span>DX / LIVE RUN</span><span data-canvas-time>00:00:00</span></div>
           <img src="assets/live-production-canvas.jpg" alt="Director X live side-panel production canvas showing media and production state" />
           <div class="canvas-focus">
@@ -204,13 +205,13 @@
           <p data-i18n="demo.body">Two 60-second WAIC × MOSS promotional films produced through a Director X 0-Key route. Playback is user-controlled; production evidence stays visible.</p>
         </div>
         <div class="review-theater">
-          <article class="demo-monitor" data-demo="0">
+          <article class="demo-monitor" data-demo="0" data-tilt>
             <video controls playsinline preload="metadata" poster="assets/demos/directorx-waic-moss-promo-v4-poster.jpg">
               <source src="assets/demos/directorx-waic-moss-promo-v4.mp4" type="video/mp4" />
             </video>
             <div><strong data-i18n="demo.v4">WAIC × MOSS Promo / v4</strong><span data-i18n="demo.route">0-Key route · 60 seconds · reviewed output</span></div>
           </article>
-          <article class="demo-monitor" data-demo="1">
+          <article class="demo-monitor" data-demo="1" data-tilt>
             <video controls playsinline preload="metadata" poster="assets/demos/directorx-waic-moss-promo-v2-poster.jpg">
               <source src="assets/demos/directorx-waic-moss-promo-v2.mp4" type="video/mp4" />
             </video>
@@ -250,8 +251,8 @@ codex plugin list</code></pre>
       <p data-i18n="closing.eyebrow">Persistent state. Explicit approvals. Reviewable media.</p>
       <h2 data-reveal data-i18n-html="closing.title"><span class="phrase"><span>Direct the Run.</span></span><br><span class="phrase"><span>Ship the film.</span></span></h2>
       <div class="hero-actions">
-        <a class="button primary" href="#install" data-i18n="closing.install">Install Director X</a>
-        <a class="button secondary" href="https://github.com/LaplaceYoung/director-x"><span data-i18n="closing.star">Star on GitHub</span><span aria-hidden="true">↗</span></a>
+        <a class="button primary" data-magnetic href="#install" data-i18n="closing.install">Install Director X</a>
+        <a class="button secondary" data-magnetic href="https://github.com/LaplaceYoung/director-x"><span data-i18n="closing.star">Star on GitHub</span><span aria-hidden="true">↗</span></a>
       </div>
     </section>
 
@@ -260,11 +261,11 @@ codex plugin list</code></pre>
         <div class="section-index" data-i18n="future.index">08 / The next instrument</div>
         <div class="future-head">
           <p class="future-kicker" data-i18n="future.kicker">In development / Video Agent Harness</p>
-          <h2 data-reveal data-i18n-html="future.title"><span class="phrase"><span>One word,</span></span><br><span class="phrase"><span>one world.</span></span></h2>
+          <h2 data-reveal data-kinetic data-i18n-html="future.title"><span class="phrase"><span>One word,</span></span><br><span class="phrase"><span>one world.</span></span></h2>
           <p class="future-body" data-i18n="future.body">A dedicated Video Agent Harness, adapted from Pi Harness, for video work that needs memory, rhythm, continuity, and a real path from intent to final frame.</p>
         </div>
         <div class="future-grid">
-          <div class="future-orbit" aria-hidden="true">
+          <div class="future-orbit" data-tilt aria-hidden="true">
             <span class="future-orbit-word">VIDEO</span>
             <span class="future-orbit-ring ring-one"></span>
             <span class="future-orbit-ring ring-two"></span>
