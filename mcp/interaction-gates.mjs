@@ -16,6 +16,14 @@ export function requestNativeInteraction(run, input, now = new Date().toISOStrin
   const fingerprint = interactionFingerprint(input);
   const previous = [...store.history].reverse().find((item) => item.fingerprint === fingerprint && item.status === "resolved");
   if (previous) return { request: previous, hostAction: null, deduplicated: true };
+  // Provider intake is often rebuilt after a runtime recovery or skill refresh.
+  // Wording/recommended-label changes must not make the user answer the same
+  // supplier/model question again. A caller can intentionally re-open it by
+  // using a new gateKey (for example, a new provider job or route revision).
+  if (input.kind === "provider_input") {
+    const equivalent = [...store.history].reverse().find((item) => item.status === "resolved" && item.kind === input.kind && (item.gateKey ?? item.kind) === gateKey && sameQuestionIds(item.questions, input.questions));
+    if (equivalent) return { request: equivalent, hostAction: null, deduplicated: true };
+  }
   const pending = store.pending.find((item) => item.fingerprint === fingerprint);
   if (pending) return { request: pending, hostAction: hostAction(pending), deduplicated: true };
   const sameKind = store.pending.find((item) => item.kind === input.kind && (item.gateKey ?? item.kind) === gateKey);
@@ -143,7 +151,18 @@ function assertInteractionInput(input) {
   }
 }
 
-function normalizedGateKey(input) { return input.gateKey ?? input.kind; }
+function normalizedGateKey(input) {
+  const value = input.gateKey ?? input.kind;
+  // Keep compatibility with the short-lived `*-v2` provider intake keys that
+  // shipped during the custom-adapter migration.
+  return input.kind === "provider_input" ? value.replace(/-v\d+$/i, "") : value;
+}
+
+function sameQuestionIds(left = [], right = []) {
+  const a = left.map((item) => item?.id).filter(Boolean).sort();
+  const b = right.map((item) => item?.id).filter(Boolean).sort();
+  return a.length > 0 && a.length === b.length && a.every((id, index) => id === b[index]);
+}
 
 function assertRawRequestUserInputEnvelope(questions, answers) {
   if (!answers || typeof answers !== "object" || Array.isArray(answers)) {

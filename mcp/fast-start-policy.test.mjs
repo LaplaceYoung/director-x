@@ -1,13 +1,20 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { beginCreativeWork, evaluateCreativeProgressSla, evaluateFastStartReadiness } from "./fast-start-policy.mjs";
+import { beginCreativeWork, beginReferenceResearch, evaluateCreativeProgressSla, evaluateFastStartReadiness, evaluateReferenceResearchReadiness } from "./fast-start-policy.mjs";
 
 function readyRun() {
   const requiredOutputs = ["intake_confirmation.json", "intent_resolution.json", "Director.md", "director_contract.json", "project_brief.json", "delivery_promise.json", "production_complexity_plan.json"];
   return {
     goal: { boundAt: "2026-07-20T00:00:00.000Z" }, intakeGate: { ready: true },
     runMode: { mode: "guided_autonomy" },
-    pipeline: { id: "reference-remix", stages: [{ id: "intake", requiredOutputs, deferredOutputs: ["execution_graph.json"] }] },
+    pipeline: {
+      id: "reference-remix",
+      stages: [
+        { id: "intake", requiredOutputs, deferredOutputs: ["execution_graph.json"], approvalKinds: [] },
+        { id: "research", requiredOutputs: [], deferredOutputs: [], approvalKinds: [] }
+      ],
+      stageStates: { intake: { status: "active", evidenceRefs: [] }, research: { status: "pending", evidenceRefs: [] } }
+    },
     productionComplexityPlan: { settings: { firstKeyframeTargetMinutes: 10, targetFirstPreviewMinutes: 15 } },
     approvals: ["budget", "image_model", "video_model", "voice_model"].map((kind) => ({ kind, status: "approved" })),
     artifacts: Object.fromEntries(requiredOutputs.map((ref) => [ref, { artifactRef: ref }])), references: []
@@ -38,6 +45,18 @@ test("allows creative work before deferred governance artifacts exist", () => {
   assert.deepEqual(readiness.deferredUntilGeneration, ["execution_graph.json"]);
   const started = beginCreativeWork(run, "2026-07-20T00:05:00.000Z");
   assert.equal(started.creativeAssetSlaMinutes, 5);
+});
+
+test("starts reference research before provider approvals are complete", () => {
+  const run = readyRun();
+  run.approvals = [];
+  const readiness = evaluateReferenceResearchReadiness(run);
+  assert.equal(readiness.ready, true);
+  assert.deepEqual(readiness.generationBlockedUntil, ["budget", "image_model", "video_model", "voice_model"]);
+  const started = beginReferenceResearch(run, "2026-07-20T00:00:00.000Z");
+  assert.equal(started.status, "reference_research_started");
+  assert.equal(run.stage, "research");
+  assert.equal(run.pipeline.stageStates.research.status, "active");
 });
 
 test("requires reference consent only when a reference is actually registered", () => {

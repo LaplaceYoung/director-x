@@ -1,4 +1,5 @@
 const ESSENTIAL_APPROVALS = Object.freeze(["budget", "image_model", "video_model", "voice_model"]);
+import { transitionPipelineStage } from "./pipeline-catalog.mjs";
 const CREATIVE_DOCUMENTS = new Set([
   "research_plan.json", "reference_analysis.json", "reference_learning_report.json", "style_playbook.json",
   "script_or_outline.json", "shotlist.json", "keyframe_storyboard.json", "visual_prompt_pack.json"
@@ -24,6 +25,52 @@ export function evaluateFastStartReadiness(run) {
     deferredUntilGeneration: intake?.deferredOutputs ?? [],
     nextTool: blockers.length ? nextTool(blockers[0]) : "directorx_begin_creative_work"
   };
+}
+
+// Research must be able to start while a paid provider is still being configured.
+// Provider approvals remain hard gates for generation, but they should not prevent
+// downloading and understanding an authorized reference or writing the first script.
+export function evaluateReferenceResearchReadiness(run) {
+  const blockers = [];
+  if (!run.goal?.boundAt) blockers.push("goal_not_bound");
+  if (!run.runMode?.mode) blockers.push("run_mode_not_confirmed");
+  if (!run.intakeGate?.ready) blockers.push("minimum_intake_not_confirmed");
+  if (!run.pipeline) blockers.push("pipeline_not_selected");
+  if (!run.productionComplexityPlan) blockers.push("complexity_not_planned");
+  const intake = run.pipeline?.stages?.find((stage) => stage.id === "intake");
+  for (const artifactRef of intake?.requiredOutputs ?? []) if (!run.artifacts?.[artifactRef]) blockers.push(`artifact:${artifactRef}`);
+  if (run.runMode?.mode === "stage_approval" && run.stageApprovals?.research?.status !== "approved") blockers.push("stage_approval:research");
+  return {
+    schemaVersion: "1.0",
+    ready: blockers.length === 0,
+    blockers,
+    generationBlockedUntil: ESSENTIAL_APPROVALS.filter((kind) => !approved(run, kind)),
+    nextTool: blockers.length ? nextTool(blockers[0]) : "directorx_begin_reference_research"
+  };
+}
+
+export function beginReferenceResearch(run, now = new Date().toISOString()) {
+  const readiness = evaluateReferenceResearchReadiness(run);
+  if (!readiness.ready) throw new Error(`Reference research is blocked: ${readiness.blockers.join(", ")}`);
+  if (run.fastStart?.startedAt && run.stage === "research") return run.fastStart;
+  run.fastStart = {
+    schemaVersion: "1.0",
+    startedAt: run.fastStart?.startedAt ?? now,
+    creativeAssetSlaMinutes: 5,
+    firstKeyframeTargetMinutes: run.productionComplexityPlan?.settings?.firstKeyframeTargetMinutes ?? 10,
+    firstPreviewTargetMinutes: run.productionComplexityPlan?.settings?.targetFirstPreviewMinutes ?? 15,
+    deferredUntilGeneration: run.pipeline?.stages?.find((stage) => stage.id === "intake")?.deferredOutputs ?? [],
+    status: "reference_research_started",
+    generationReady: false,
+    generationBlockers: readiness.generationBlockedUntil
+  };
+  const intake = run.pipeline.stages.find((stage) => stage.id === "intake");
+  const evidenceRefs = intake.requiredOutputs;
+  run.pipeline = transitionPipelineStage(run.pipeline, run.approvals, { stageId: "intake", action: "complete", detail: "Minimum Intake complete; research starts before provider generation readiness.", evidenceRefs });
+  run.pipeline = transitionPipelineStage(run.pipeline, run.approvals, { stageId: "research", action: "begin", detail: "Reference download, media understanding, asset search, and first script run in parallel." });
+  run.stage = "research";
+  run.status = "production_in_progress";
+  return run.fastStart;
 }
 
 export function beginCreativeWork(run, now = new Date().toISOString()) {

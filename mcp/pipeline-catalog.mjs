@@ -13,6 +13,7 @@ export const PIPELINE_CATALOG = [
   pipeline("brand-film", "品牌宣传片", ["directorx-director-runtime", "directorx-cinematography-audio"], "企业品牌、产品发布、科技宣传片"),
   pipeline("social-short", "平台短视频", ["directorx-platform-content-strategy", "directorx-subtitle-localization"], "抖音、小红书、视频号、Bilibili 短内容"),
   pipeline("reference-remix", "参考驱动创作", ["directorx-reference-intake", "directorx-continuity-memory"], "参考视频、竞品拆解、风格迁移"),
+  pipeline("reference-replication", "参考片复刻", ["directorx-reference-intake", "directorx-visual-prompting", "directorx-production-review"], "下载并理解参考视频/音频，迁移节奏与导演语言，生成后做差异审计与复刻评分"),
   pipeline("screen-demo", "录屏与产品演示", ["directorx-screen-demo-production", "directorx-subtitle-localization"], "SaaS 演示、教程、应用走查"),
   pipeline("avatar", "数字人口播", ["directorx-avatar-lipsync", "directorx-cinematography-audio"], "数字人、真人口播、配音与唇形同步"),
   pipeline("footage-edit", "素材驱动剪辑", ["directorx-asset-sourcing", "directorx-render-composition"], "用户素材、采访、活动回顾与混剪"),
@@ -66,6 +67,11 @@ function pipeline(id, label, overlaySkills, useWhen) {
   const stages = structuredClone(CORE_PIPELINE_STAGES);
   if (["reference-remix", "footage-edit"].includes(id)) stages.find((stage) => stage.id === "research").requiredOutputs.push("media_evidence_index.json", "video_query_plan.json", "retrieval_trace.json", "evidence_bundle.json");
   if (id === "reference-remix") stages.find((stage) => stage.id === "research").requiredOutputs.push("reference_replication_plan.json", "reference_shot_blueprint.json", "reference_tool_route.json");
+  if (id === "reference-replication") {
+    const research = stages.find((stage) => stage.id === "research");
+    research.requiredOutputs.push("reference_replication_plan.json", "reference_shot_blueprint.json", "reference_tool_route.json", "reference_media_bundle.json");
+    stages.find((stage) => stage.id === "review").requiredOutputs.push("replication_conformance_report.json");
+  }
   if (id === "longform") {
     stages.find((stage) => stage.id === "storyboard").requiredOutputs.push("longform_segment_plan.json", "frame_handoff_manifest.json");
     stages.find((stage) => stage.id === "edit").requiredOutputs.push("longform_stitch_plan.json");

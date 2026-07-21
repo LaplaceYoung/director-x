@@ -72,9 +72,10 @@ import { assertQuoteApprovedByBudget, listModelPricing, quoteModelCost, register
 import { applyAudioResponsibilityToMediaInput, compileAudioResponsibilityPlan, musicRouteSetup, writeAudioResponsibilityPlan } from "./audio-routing.mjs";
 import { auditMusicAsset, listMusicLibraries, registerMusicAudit, writeMusicAudit } from "./music-assets.mjs";
 import { compileReferenceReplicationPlan, writeReferenceReplicationPlan } from "./reference-replication.mjs";
+import { compileReferenceReplicationReview, writeReferenceReplicationReview, REPLICATION_DIMENSIONS } from "./reference-replication-review.mjs";
 import { assertRenderQualityReady, compileRenderQualityContract } from "./render-quality-contract.mjs";
 import { planProductionComplexity } from "./production-complexity.mjs";
-import { beginCreativeWork, evaluateCreativeProgressSla, evaluateFastStartReadiness } from "./fast-start-policy.mjs";
+import { beginCreativeWork, beginReferenceResearch, evaluateCreativeProgressSla, evaluateFastStartReadiness, evaluateReferenceResearchReadiness } from "./fast-start-policy.mjs";
 import { compileTransitionLanguagePlan, DIRECTOR_TRANSITION_METHODS, writeTransitionLanguagePlan } from "./transition-language.mjs";
 import { assertRenderPropsBindTransitionExecution, preserveTransitionExecutionRenderEvidence } from "./transition-execution-contract.mjs";
 import { assertRenderPropsBindRemotionProjection, compileRemotionRenderProjection } from "./remotion-render-projection.mjs";
@@ -99,7 +100,7 @@ import { assertDirectorXToolSafetyPolicy } from "./tool-safety-policy.mjs";
 const CANVAS_URI = "ui://directorx/production-canvas-v1.html";
 const SCENE_CONFORMANCE_INSTRUCTIONS = "After directorx_verify_final_media, require scene_coverage_conformance_report.json to pass all non-waivable shot identity, order, duration, source-handle, full-frame, and PTS checks. Dispatch DX-Quality-Reviewer to inspect every planned shot's first/middle/last identity-bound frame, then call directorx_record_scene_coverage_review before final frame-finding acceptance. Metadata cannot prove camera, blocking, composition, lighting, movement, proof, reaction, or narrative fulfillment.";
 const SERVER_INSTRUCTIONS = "Use a concise consumer-facing Director X voice. In the Codex conversation, never narrate tool calls, file registration, JSON artifacts, schemas, MCP/runtime details, IDs, paths, test counts, or subagent plumbing unless the user asks for technical details or a failure requires diagnosis. Do not use Current Problem / Plan / Risks / Changed / Verified templates during production. Send one short start message, then only tangible stage milestones, blockers, native questions, preview availability, and final delivery. A normal update is at most two short sentences and should reuse userFacingSummary.suggestedUpdate. Do not duplicate a request_user_input question in chat. A returned native interaction may batch up to three independent image, video, voice, or music route questions; execute it once, then execute every afterAnswer resolution action with the same answer map before continuing. Never batch Goal, budget, credential, rights, stage, edit, or delivery approvals. Keep technical execution in collapsed tool results and the canvas Activity details. A delegated DX child must never call directorx_plan_production_team or create another background delegation plan. " +
-  "For every Director X trigger, call directorx_capability_preflight before all other work. Use directorx_create_and_ask_native_question as the single model-visible native interaction entry. At production start, confirm exact image, video, and voice routes through Codex request_user_input. For built-in routes, call directorx_get_media_provider_setup, resolve its native keySetupInteraction, and inject the secret only through the secure canvas credential field before recording the decision. For an unknown supplier/model, call directorx_get_custom_media_provider_intake and require the user to provide the exact model plus an official HTTPS API documentation or homepage URL; DX-Model-Router must read only verified official sources before registering a declarative adapter. After Goal, run mode, model routes, Key setup, and any required Intake question are resolved, prefer directorx_prepare_fast_start_intake to compile the complete minimum Intake contract in one durable Run transaction. After budget, essential image/video/voice routes, and any required reference-download consent are ready, call directorx_begin_creative_work immediately. Research, reference analysis, asset search, and scripting must begin before execution_graph.json, tool_inventory.json, audio_responsibility_plan.json, or parallel_subagent_plan.json are complete; these governance artifacts are required before Generation. The canvas is a projection of the durable Run and must prioritize growing real image, video, audio, research, script, storyboard, keyframe, and preview assets. If the five-minute creative-output SLA breaches, stop adding configuration work and dispatch the creative tracks immediately. Record music_strategy before research, then music_asset_selection only after search, local acquisition, rights proof, and quality audit. Never start an auxiliary Director X MCP runtime; one active runtime owns each Run. Preserve all existing provider, rights, pricing, continuity, render, exhaustive review, and delivery gates.";
+  "For every Director X trigger, call directorx_capability_preflight before all other work. Use directorx_create_and_ask_native_question as the single model-visible native interaction entry. At production start, confirm exact image, video, and voice routes through Codex request_user_input. For built-in routes, call directorx_get_media_provider_setup, resolve its native keySetupInteraction, and inject the secret only through the secure canvas credential field before recording the decision. For an unknown supplier/model, call directorx_get_custom_media_provider_intake and require the user to provide the exact model plus an official HTTPS API documentation or homepage URL; DX-Model-Router must read only verified official sources before registering a declarative adapter. After Goal, run mode, any required Intake answer, and the minimum Intake contract are resolved, use directorx_prepare_fast_start_intake when available, then call directorx_begin_reference_research immediately. Reference download, audio extraction, video reading, asset search, and the first script must proceed in parallel while provider docs and Keys are being configured. Provider, budget, and Key approvals remain hard gates for Generation, not for Research. Use directorx_begin_creative_work only as an idempotent compatibility path after research has started. The canvas is a projection of the durable Run and must prioritize growing real image, video, audio, research, script, storyboard, keyframe, and preview assets. If the five-minute creative-output SLA breaches, stop adding configuration work and dispatch the creative tracks immediately. Record music_strategy before research, then music_asset_selection only after search, local acquisition, rights proof, and quality audit. Research and generation must register the audio_responsibility_plan.json route before final review. For a reference-replication run, ingest the video and audio bundle first, compile the replication plan, then call directorx_score_reference_replication after exhaustive audit to choose pass_export, needs_edit, or regenerate. Never start an auxiliary Director X MCP runtime; one active runtime owns each Run. Preserve all existing provider, rights, pricing, continuity, render, exhaustive review, and delivery gates.";
 const FAILURE_POLICY_INSTRUCTIONS = "When a tool fails, inspect retryable, attempts, stop, recovery, and nextRequiredAction. Retry a transient semantic operation at most once. Use directorx_get_recovery_action for the minimal blocked operation, root cause, corrected example, and unique resume action; completed artifacts remain available. For deterministic failures, call directorx_recover_run and retry only corrected arguments. Use directorx_create_and_ask_native_question for native gates; a chat message such as ‘继续’ cannot satisfy them. Never create a replacement Run or auxiliary MCP runtime.";
 const credentialStatus = new Map();
 const preflightSessions = new Map();
@@ -558,6 +559,12 @@ const rawTools = [
     description: "Return the minimum production blockers and the five-minute creative-output SLA without requiring deferred governance artifacts.",
     inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema() }, ["projectPath", "runId"]),
     annotations: readOnlyAnnotations()
+  },
+  {
+    name: "directorx_begin_reference_research",
+    description: "Start the reference-first production lane after minimum Intake. This begins authorized reference download, audio extraction, video understanding, asset search, and first-script work without waiting for paid provider or Key approvals; those remain hard gates for Generation.",
+    inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema() }, ["projectPath", "runId"]),
+    annotations: writeAnnotations()
   },
   {
     name: "directorx_get_recovery_action",
@@ -1810,6 +1817,16 @@ const rawTools = [
         }, ["taskId", "status", "reason", "evidenceRefs"]) }
       }, ["reviewId", "reviewerId", "decision", "summary", "dispositions"])
     }, ["projectPath", "runId", "review"]),
+    annotations: writeAnnotations()
+  },
+  {
+    name: "directorx_score_reference_replication",
+    description: "Compare an audited final video against its downloaded reference video/audio, persist a difference-mode conformance report, and decide pass_export, needs_edit, or regenerate. Regeneration is the default when pacing, camera, motion, audio, structure, or originality falls below the score floor.",
+    inputSchema: objectSchema({
+      projectPath: stringSchema(), runId: stringSchema(), reportId: stringSchema(), referenceId: stringSchema(), reviewerId: { const: "DX-Quality-Reviewer", type: "string" }, outputArtifactRef: stringSchema(), outputMediaSha256: { type: "string" },
+      scores: objectSchema(Object.fromEntries(REPLICATION_DIMENSIONS.map((dimension) => [dimension, { type: "number", minimum: 0, maximum: 1 }])), REPLICATION_DIMENSIONS),
+      minimumScore: { type: "number", minimum: 0, maximum: 1 }, decision: { enum: ["pass_export", "needs_edit", "regenerate"], type: "string" }, rationale: stringSchema(), evidenceRefs: { type: "array", minItems: 1, items: stringSchema() }, auditRefs: { type: "array", items: stringSchema() }, differenceMethod: { type: "string" }
+    }, ["projectPath", "runId", "reportId", "referenceId", "reviewerId", "outputArtifactRef", "scores", "decision", "rationale", "evidenceRefs"]),
     annotations: writeAnnotations()
   },
   {
@@ -3102,6 +3119,23 @@ async function executeTool(name, args) {
       ...args, artifactRef: audioArtifactRef, path: ingested.audioPath, stage: "research", mediaKind: "audio",
       metadata: { canvasEssential: true, referenceOnly: true, sourceArtifactRefs: [clipArtifactRef], rightsStatus: ingested.rightsStatus }
     }) : null;
+    const mediaBundle = {
+      schemaVersion: "1.0",
+      referenceId: ingested.referenceId,
+      sourceUrl: args.url,
+      rightsStatus: ingested.rightsStatus,
+      videoArtifactRef: clipArtifactRef,
+      audioArtifactRef: audioRecord?.artifactRef ?? null,
+      contactSheetArtifactRef,
+      fullFrameManifestArtifactRef,
+      frameIdentityArtifactRef: ingested.frameIdentityArtifactRef,
+      frameCount: ingested.framePaths.length,
+      fullFrameCoverage: ingested.fullFrameCoverage,
+      analysisSection: ingested.analysisSection,
+      understandingRoute: ["yt-dlp", "FFprobe", "FFmpeg", "directorx_read_video", "DX-Reference-Analyst"]
+    };
+    const mediaBundlePath = await writeExecutionReceipt(args.projectPath, args.runId, "reference_media_bundle.json", mediaBundle);
+    const mediaBundleRecord = await inspectArtifact({ ...args, artifactRef: "reference_media_bundle.json", path: mediaBundlePath, stage: "research", mediaKind: "document", metadata: { canvasEssential: true, referenceOnly: true, sourceArtifactRefs: [clipArtifactRef, audioArtifactRef, fullFrameManifestArtifactRef, ingested.frameIdentityArtifactRef].filter(Boolean) } });
     return await withBrowserCanvas(publicSnapshot(await updateRun({ ...args, mutate(run) {
       run.references ??= [];
       const reference = {
@@ -3129,6 +3163,8 @@ async function executeTool(name, args) {
       run.artifacts[identityRecord.artifactRef] = identityRecord;
       run.artifacts[contactSheetRecord.artifactRef] = contactSheetRecord;
       if (audioRecord) run.artifacts[audioRecord.artifactRef] = audioRecord;
+      run.artifacts[mediaBundleRecord.artifactRef] = mediaBundleRecord;
+      upsertExecutionCanvasNode(run, { id: `reference-bundle:${ingested.referenceId}`, type: "artifact", label: "参考片视频·音频理解包", detail: `${ingested.framePaths.length} 全帧 · ${audioRecord ? "音频已提取" : "无音频"} · 等待复刻分析`, stage: "research", status: "complete", artifactRef: mediaBundleRecord.artifactRef, previewUri: contactSheetRecord.path, metadata: { sourceArtifactRefs: [clipArtifactRef, audioArtifactRef, contactSheetArtifactRef, fullFrameManifestArtifactRef].filter(Boolean), referenceOnly: true } }, "stage:research");
       run.events.push(event(run, "reference.video.ingested", "research", `${ingested.referenceId} · ${ingested.framePaths.length} / ${ingested.fullFrameCoverage.identityFrameCount} decoded frames`));
       return run;
     } })), args);
@@ -4080,6 +4116,20 @@ async function executeTool(name, args) {
       return next;
     } })), args);
   }
+  if (name === "directorx_score_reference_replication") {
+    const current = await readRun(args);
+    const report = compileReferenceReplicationReview(current, args);
+    const written = await writeReferenceReplicationReview({ ...args, report });
+    const record = await inspectArtifact({ ...args, artifactRef: written.artifactRef, path: written.path, stage: "review", mediaKind: "document", metadata: { canvasEssential: true, owner: "DX-Quality-Reviewer", sourceArtifactRefs: [report.source.videoArtifactRef, report.source.audioArtifactRef, report.output.artifactRef, ...report.auditRefs].filter(Boolean), comparisonMode: "difference", weightedScore: report.weightedScore, decision: report.decision, recommendation: report.recommendation } });
+    return await withBrowserCanvas(publicSnapshot(await updateRun({ ...args, mutate(run) {
+      run.artifacts ??= {};
+      run.artifacts[record.artifactRef] = record;
+      run.replicationConformanceReport = report;
+      upsertExecutionCanvasNode(run, { id: `replication-review:${report.reportId}`, type: "decision", label: "复刻差异审计", detail: `${report.decision} · ${report.weightedScore.toFixed(2)} · ${report.weakDimensions.length ? `弱项 ${report.weakDimensions.join("、")}` : "通过评分线"}`, stage: "review", status: report.decision === "pass_export" ? "complete" : "blocked", artifactRef: record.artifactRef, metadata: { comparisonMode: "difference", sourceArtifactRefs: report.comparison.compareArtifactRefs, weightedScore: report.weightedScore, minimumScore: report.minimumScore, recommendation: report.recommendation, nextAction: report.nextAction } }, "review:final-media");
+      run.events.push(event(run, report.decision === "pass_export" ? "review.replication.pass_export" : "review.replication.regenerate", "review", `${report.reportId} · ${report.weightedScore} · ${report.decision}`));
+      return run;
+    } })), args);
+  }
   if (name === "directorx_review_generation_candidate") {
     return await mutateGeneration(args, (run) => {
       reviewGenerationCandidate(run, args);
@@ -4282,13 +4332,17 @@ async function executeTool(name, args) {
   }
   if (name === "directorx_get_fast_start_status") {
     const run = await readRun(args);
-    return { readiness: evaluateFastStartReadiness(run), creativeProgressSla: evaluateCreativeProgressSla(run) };
+    return { readiness: evaluateFastStartReadiness(run), researchReadiness: evaluateReferenceResearchReadiness(run), creativeProgressSla: evaluateCreativeProgressSla(run) };
   }
   if (name === "directorx_get_recovery_action") {
     const run = await readRun(args);
     return { recovery: run.recoveryGate?.recovery ?? projectRecoveryAction(run.recoveryGate ?? {}) };
   }
   if (name === "directorx_begin_creative_work") {
+    const current = await readRun(args);
+    if (current.stage === "research" && current.fastStart?.status === "reference_research_started") {
+      return await withRunResumeActions(current, args);
+    }
     return await withRunResumeActions(await updateRun({ ...args, mutate(run) {
       const fastStart = beginCreativeWork(run);
       assertRunModeAllowsStage(run, "research", "begin");
@@ -4301,6 +4355,13 @@ async function executeTool(name, args) {
       run.events.push(event(run, "fast_start.ready", "research", `Creative asset SLA ${fastStart.creativeAssetSlaMinutes} minutes`));
       run.events.push(event(run, "stage.complete", "intake", "Minimum Intake complete"));
       run.events.push(event(run, "stage.active", "research", "Creative work started"));
+      return run;
+    } }), args);
+  }
+  if (name === "directorx_begin_reference_research") {
+    return await withRunResumeActions(await updateRun({ ...args, mutate(run) {
+      const fastStart = beginReferenceResearch(run);
+      run.events.push(event(run, "reference.research.started", "research", `Reference-first lane started · generation blockers ${fastStart.generationBlockers.join(", ") || "none"}`));
       return run;
     } }), args);
   }

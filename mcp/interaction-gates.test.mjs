@@ -94,6 +94,22 @@ test("keeps independent same-kind provider questions separate by gateKey", () =>
   assert.equal(run.interactions.history.length, 0);
 });
 
+test("does not repeat equivalent provider intake after a gate-key version refresh", () => {
+  const run = { runId: "dx-test", interactions: { pending: [], history: [] } };
+  const providerQuestions = [{
+    id: "image_provider_name", header: "供应商", question: "选择图像供应商。",
+    options: [{ label: "内置", description: "使用内置路线。" }, { label: "其他", description: "填写供应商。" }]
+  }, {
+    id: "image_model_name", header: "模型", question: "填写精确模型。",
+    options: [{ label: "精确模型", description: "使用精确 model ID。" }, { label: "稍后", description: "稍后提供。" }]
+  }];
+  const first = requestNativeInteraction(run, { kind: "provider_input", gateKey: "image-custom-provider-model-v2", reason: "确定图像供应商。", questions: providerQuestions });
+  resolveNativeInteraction(run, { requestId: first.request.requestId, confirmedBy: "request_user_input", answers: { image_provider_name: { answers: ["内置"] }, image_model_name: { answers: ["精确模型"] } } });
+  const refreshed = requestNativeInteraction(run, { kind: "provider_input", gateKey: "image-custom-provider-model", reason: "重新整理图像供应商问题。", questions: providerQuestions.map((item) => ({ ...item, question: `${item.question}（更新）` })) });
+  assert.equal(refreshed.request.requestId, first.request.requestId);
+  assert.equal(refreshed.deduplicated, true);
+});
+
 test("does not replay a reference authorization for a different source", () => {
   const run = { runId: "dx-test", interactions: { pending: [], history: [] } };
   const first = requestNativeInteraction(run, {

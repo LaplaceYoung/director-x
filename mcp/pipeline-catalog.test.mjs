@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { CORE_PIPELINE_STAGES, createPipelineRunState, getPipeline, missingRegisteredArtifacts, PIPELINE_CATALOG, transitionPipelineStage } from "./pipeline-catalog.mjs";
 
 test("ships complete production pipelines with stable stage contracts", () => {
-  assert.equal(PIPELINE_CATALOG.length, 8);
+  assert.equal(PIPELINE_CATALOG.length, 9);
   assert.deepEqual(CORE_PIPELINE_STAGES.map((stage) => stage.id), ["intake", "research", "script", "storyboard", "generation", "edit", "review", "delivery"]);
   assert.deepEqual(getPipeline("brand-film").stages.find((stage) => stage.id === "generation").approvalKinds, ["image_model", "video_model", "voice_model", "music_strategy"]);
   assert.ok(getPipeline("brand-film").stages.find((stage) => stage.id === "generation").requiredOutputs.includes("audio_responsibility_plan.json"));
@@ -27,6 +27,8 @@ test("ships complete production pipelines with stable stage contracts", () => {
   assert.ok(getPipeline("footage-edit").stages.find((stage) => stage.id === "research").requiredOutputs.includes("media_evidence_index.json"));
   assert.ok(!getPipeline("brand-film").stages.find((stage) => stage.id === "research").requiredOutputs.includes("media_evidence_index.json"));
   assert.ok(getPipeline("reference-remix").stages.find((stage) => stage.id === "research").requiredOutputs.includes("reference_replication_plan.json"));
+  assert.ok(getPipeline("reference-replication").stages.find((stage) => stage.id === "research").requiredOutputs.includes("reference_media_bundle.json"));
+  assert.ok(getPipeline("reference-replication").stages.find((stage) => stage.id === "review").requiredOutputs.includes("replication_conformance_report.json"));
   assert.ok(!getPipeline("brand-film").stages.find((stage) => stage.id === "storyboard").requiredOutputs.includes("frame_handoff_manifest.json"));
   assert.ok(getPipeline("layered-collage").stages.find((stage) => stage.id === "storyboard").requiredOutputs.includes("layer_manifest.json"));
   assert.ok(getPipeline("layered-collage").stages.find((stage) => stage.id === "storyboard").requiredOutputs.includes("layered_review_static_layout.json"));
