@@ -174,7 +174,7 @@ test("ships the public landing page and deployment workflow", async () => {
   assert.match(landing, /Live canvas/);
   assert.match(landing, /data-locale="zh-CN"/);
   assert.match(landing, /Review theater/);
-  assert.match(landing, /One word\.<\/span><\/span><br><span class="phrase"><span>One world\./);
+  assert.match(landing, /One word,.*one world\./);
   assert.match(landing, /Video Agent Harness/);
   assert.match(landing, /video-harness/);
   assert.match(landing, /assets\/demos\/directorx-waic-moss-promo-v4\.mp4/);
