@@ -117,6 +117,7 @@ export const locales = {
       "future.manifestLabel": "The next production layer",
       "future.manifest": "Pi Harness × Video Intelligence × One persistent world",
       "future.manifestStatus": "Building now / mosi",
+      "future.videoCaption": "A playable production surface for the next Video Agent Harness — not a mockup, a real output in motion.",
       "footer.by": "by mosi",
       "footer.status": "2026 / Early access",
       "language.changed": "Language changed to English"
@@ -242,6 +243,7 @@ export const locales = {
       "future.manifestLabel": "下一层制片基础设施",
       "future.manifest": "Pi Harness × Video Intelligence × 一个持久世界",
       "future.manifestStatus": "正在构建 / mosi",
+      "future.videoCaption": "这是下一代 Video Agent Harness 的可播放生产界面，不是静态 Mock，而是真实成果正在运动。",
       "footer.by": "mosi 出品",
       "footer.status": "2026 / 早期版本",
       "language.changed": "语言已切换为中文"

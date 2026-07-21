@@ -79,12 +79,17 @@
     </div>
   </header>
 
-  <div class="scene-layer" aria-hidden="true">
+  <div class="scene-layer">
     <canvas id="production-scene"></canvas>
     <div class="scene-hud">
       <span data-scene-index>00</span>
       <span data-scene-name>Production corridor</span>
       <span data-i18n="scene.live">Live</span>
+      <div class="scene-controls" role="group" aria-label="3D scene controls">
+        <button type="button" data-scene-mode="auto" class="active">AUTO</button>
+        <button type="button" data-scene-mode="media">MEDIA</button>
+        <button type="button" data-scene-mode="crew">CREW</button>
+      </div>
     </div>
     <div class="scene-fallback">
       <span class="fallback-spine"></span>
@@ -261,7 +266,7 @@ codex plugin list</code></pre>
         <div class="section-index" data-i18n="future.index">08 / The next instrument</div>
         <div class="future-head">
           <p class="future-kicker" data-i18n="future.kicker">In development / Video Agent Harness</p>
-          <h2 data-reveal data-kinetic data-i18n-html="future.title"><span class="phrase"><span>One word,</span></span><br><span class="phrase"><span>one world.</span></span></h2>
+          <h2 data-reveal data-kinetic data-depth-text data-i18n-html="future.title"><span class="phrase"><span>One word,</span></span><br><span class="phrase"><span>one world.</span></span></h2>
           <p class="future-body" data-i18n="future.body">A dedicated Video Agent Harness, adapted from Pi Harness, for video work that needs memory, rhythm, continuity, and a real path from intent to final frame.</p>
         </div>
         <div class="future-grid">
@@ -281,6 +286,17 @@ codex plugin list</code></pre>
             <article><span>03</span><div><h3 data-i18n="future.capability3">A working world</h3><p data-i18n="future.capability3Body">The harness turns one creative direction into a coherent production environment where every decision can become a frame.</p></div></article>
           </div>
         </div>
+        <figure class="future-video-stage" data-tilt>
+          <div class="future-video-frame">
+            <div class="future-video-topline"><span>VIDEO AGENT HARNESS / PREVIEW</span><span data-future-time>00:00:00:00</span></div>
+            <video autoplay muted loop playsinline preload="metadata" poster="assets/demos/directorx-waic-moss-promo-v4-poster.jpg">
+              <source src="assets/demos/directorx-waic-moss-promo-v4.mp4" type="video/mp4" />
+            </video>
+            <div class="future-video-scan"></div>
+            <div class="future-video-label"><span>ONE WORLD</span><strong>Every decision becomes a frame.</strong></div>
+          </div>
+          <figcaption data-i18n="future.videoCaption">A playable production surface for the next Video Agent Harness — not a mockup, a real output in motion.</figcaption>
+        </figure>
         <div class="future-manifest"><span data-i18n="future.manifestLabel">The next production layer</span><strong data-i18n="future.manifest">Pi Harness × Video Intelligence × One persistent world</strong><span data-i18n="future.manifestStatus">Building now / mosi</span></div>
       </div>
     </section>

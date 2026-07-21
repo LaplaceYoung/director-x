@@ -21,6 +21,7 @@ let smoothScrollY = scrollY;
 let lastScrollY = scrollY;
 let scrollVelocity = 0;
 let highlightedAgent = "director";
+let sceneMode = "auto";
 let lastWebglFrame = 0;
 const groups = {};
 const nodes = new Map();
@@ -82,6 +83,7 @@ function setupRevealMotion() {
   document.querySelectorAll("[data-reveal]").forEach(element => {
     element.querySelectorAll(".phrase").forEach((phrase, index) => phrase.style.setProperty("--phrase-index", index));
   });
+  document.querySelectorAll("[data-depth-text]").forEach(element => element.classList.add("depth-text"));
   document.querySelectorAll("[data-kinetic] .phrase > span").forEach(wrapper => {
     if (wrapper.querySelector(".char")) return;
     wrapper.setAttribute("aria-label", wrapper.textContent);
@@ -137,6 +139,10 @@ function bindInteractions() {
     for (const entry of entries) if (!entry.isIntersecting && !entry.target.paused) entry.target.pause();
   }, { threshold: .12 });
   document.querySelectorAll("video").forEach(video => videoObserver.observe(video));
+  document.querySelectorAll("[data-scene-mode]").forEach(button => button.addEventListener("click", () => {
+    sceneMode = button.dataset.sceneMode;
+    document.querySelectorAll("[data-scene-mode]").forEach(item => item.classList.toggle("active", item === button));
+  }));
 }
 
 function updatePointerTrace(x, y) {
@@ -255,6 +261,8 @@ function updateDomMotion() {
   const future = document.querySelector(".future-harness");
   const futureProgress = sectionTravel(future);
   future.style.setProperty("--future-progress", futureProgress.toFixed(3));
+  const futureVideo = document.querySelector(".future-video-stage video");
+  if (futureVideo) document.querySelector("[data-future-time]").textContent = timecode(futureVideo.currentTime || futureProgress * 31);
   document.querySelectorAll(".future-capabilities article").forEach((item, index) => {
     item.style.setProperty("--future-progress", clamp(futureProgress * 2.2 - index * .24).toFixed(3));
   });
@@ -397,8 +405,10 @@ function buildProductionWorld() {
   groups.root = new THREE.Group();
   groups.nodes = new THREE.Group();
   groups.lines = new THREE.Group();
+  groups.particles = buildParticleField();
+  groups.beams = buildSignalBeams();
   groups.aperture = buildAperture();
-  groups.root.add(groups.lines, groups.nodes, groups.aperture);
+  groups.root.add(groups.particles, groups.beams, groups.lines, groups.nodes, groups.aperture);
   scene.add(groups.root);
 
   const definitions = [
@@ -428,6 +438,32 @@ function buildProductionWorld() {
   const spine = new THREE.Line(spineGeometry, new THREE.LineBasicMaterial({ color: 0xe85d3f, transparent: true, opacity: .35 }));
   groups.root.add(spine);
   updateSceneLabels();
+}
+
+function buildParticleField() {
+  const count = narrowScreen ? 70 : 160;
+  const positions = new Float32Array(count * 3);
+  for (let index = 0; index < count; index += 1) {
+    positions[index * 3] = (Math.random() - .5) * 24;
+    positions[index * 3 + 1] = (Math.random() - .5) * 15;
+    positions[index * 3 + 2] = (Math.random() - .5) * 7 - 2;
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  const material = new THREE.PointsMaterial({ color: 0xe85d3f, size: narrowScreen ? .035 : .052, transparent: true, opacity: .28, depthWrite: false, sizeAttenuation: true });
+  return new THREE.Points(geometry, material);
+}
+
+function buildSignalBeams() {
+  const group = new THREE.Group();
+  for (let index = 0; index < 3; index += 1) {
+    const geometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-5 + index * 4.5, -4.2, -1.5 + index * .7),
+      new THREE.Vector3(-3.1 + index * 4.5, 4.1, -1.5 + index * .7)
+    ]);
+    group.add(new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: index === 1 ? 0xe85d3f : 0x817d73, transparent: true, opacity: .16 })));
+  }
+  return group;
 }
 
 function createNode(id, size, color, type) {
@@ -565,7 +601,8 @@ function renderFrame(time = 0) {
   const currentLayout = layouts[currentId] ?? layouts.hero;
   const nextLayout = layouts[nextId] ?? currentLayout;
   const seconds = time * .001;
-    const activeIds = currentId === "goal" ? ["goal"] : currentId === "agents" ? [highlightedAgent] : currentId === "canvas" ? ["reference", "asset", "shot", "editor"] : currentId === "demos" ? ["review", "final"] : currentId === "closing" ? ["final"] : currentId === "future" ? ["director", "model", "final"] : [];
+    const modeIds = sceneMode === "media" ? ["reference", "asset", "shot", "editor"] : sceneMode === "crew" ? ["director", "model", "review"] : null;
+    const activeIds = modeIds ?? (currentId === "goal" ? ["goal"] : currentId === "agents" ? [highlightedAgent] : currentId === "canvas" ? ["reference", "asset", "shot", "editor"] : currentId === "demos" ? ["review", "final"] : currentId === "closing" ? ["final"] : currentId === "future" ? ["director", "model", "final"] : []);
   for (const [id, mesh] of nodes) {
     const from = currentLayout[id] ?? layouts.hero[id];
     const to = nextLayout[id] ?? from;
@@ -579,6 +616,17 @@ function renderFrame(time = 0) {
     mesh.material.emissiveIntensity = active ? .72 : 0;
     mesh.rotation.x += ((currentId === "flow" ? -.18 : -.06) - mesh.rotation.x) * .05;
     mesh.rotation.y += ((currentId === "demos" ? .12 : .06) - mesh.rotation.y) * .05;
+  }
+  if (groups.particles) {
+    groups.particles.rotation.y += .0008 + Math.abs(scrollVelocity) * .000025;
+    groups.particles.rotation.x += .00018;
+    groups.particles.material.opacity += ((currentId === "future" ? .7 : .28) - groups.particles.material.opacity) * .04;
+  }
+  if (groups.beams) {
+    groups.beams.rotation.z += .00035;
+    groups.beams.children.forEach((beam, index) => {
+      beam.material.opacity = .12 + (Math.sin(seconds * .8 + index) + 1) * .08;
+    });
   }
   const pageProgress = scrollY / Math.max(document.documentElement.scrollHeight - window.innerHeight, 1);
   updateRelations(seconds, clamp(pageProgress * 3.4 + .15));
