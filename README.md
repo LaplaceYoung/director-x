@@ -101,7 +101,7 @@ Director X registers specialist production roles instead of treating every paral
 - `DX-Reference-Analyst` for reference-video and source analysis
 - `DX-Asset-Manager` for acquisition, provenance, rights, and quality checks
 - `DX-Shot-Planner` for shot design, coverage, and continuity
-- `DX-Model-Router` and `DX-Cost-Controller` for provider and budget routing
+- `DX-Director` owns provider/model routing, capability checks, fallback selection, and budget control directly
 - `DX-Editor` and `DX-Quality-Reviewer` for the cut, render, and final audit
 - `DX-Approval-Producer` for user-facing approval boundaries
 

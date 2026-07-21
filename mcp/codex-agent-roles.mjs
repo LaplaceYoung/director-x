@@ -15,8 +15,6 @@ const ROLE_FALLBACK_PREFERENCES = Object.freeze({
   shot_planner: ["default", "explorer", "worker"],
   asset_manager: ["explorer", "worker", "default"],
   provider_operator: ["worker", "default", "explorer"],
-  model_router: ["explorer", "default", "worker"],
-  cost_controller: ["explorer", "default", "worker"],
   draw_loop_controller: ["worker", "default", "explorer"],
   memory_manager: ["worker", "default", "explorer"],
   quality_evaluator: ["explorer", "default", "worker"],

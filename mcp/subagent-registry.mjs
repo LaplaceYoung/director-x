@@ -7,8 +7,6 @@ export const DX_SUBAGENT_CATALOG = Object.freeze([
   role("shot_planner", "dx_shot_planner", "DX-Shot-Planner", "镜头设计、关键帧与依赖关系"),
   role("asset_manager", "dx_asset_manager", "DX-Asset-Manager", "资产、来源、授权与替代方案"),
   role("provider_operator", "dx_provider_operator", "DX-Provider-Operator", "Provider 调用、轮询与结果持久化"),
-  role("model_router", "dx_model_router", "DX-Model-Router", "模型能力、成本与 fallback 路由"),
-  role("cost_controller", "dx_cost_controller", "DX-Cost-Controller", "项目、阶段、镜头与尝试预算"),
   role("draw_loop_controller", "dx_draw_loop", "DX-Draw-Loop", "候选生成、审核、修复与停止条件"),
   role("memory_manager", "dx_memory_manager", "DX-Memory-Manager", "连续性、审批与失败记忆"),
   role("quality_evaluator", "dx_quality_reviewer", "DX-Quality-Reviewer", "画面、连续性、剪辑与终审"),
@@ -16,8 +14,20 @@ export const DX_SUBAGENT_CATALOG = Object.freeze([
   role("approval_producer", "dx_approval_producer", "DX-Approval-Producer", "用户确认、发布打包与交付证据")
 ]);
 
+// These names were present in persisted plans before the routing/budget work
+// moved into the parent Director. Keep the aliases readable for migration
+// tooling, but never expose them as spawnable roles or installable Codex agents.
+export const LEGACY_NON_AGENT_ROLES = Object.freeze({
+  model_router: { displayName: "DX-Model-Router", replacementRoleId: "director_runtime", replacementDisplayName: "DX-Director" },
+  cost_controller: { displayName: "DX-Cost-Controller", replacementRoleId: "director_runtime", replacementDisplayName: "DX-Director" }
+});
+
 export function registerDxSubagent(run, input) {
   assertDxName(input.displayName);
+  if (LEGACY_NON_AGENT_ROLES[input.roleId]) {
+    const legacy = LEGACY_NON_AGENT_ROLES[input.roleId];
+    throw new Error(`${legacy.displayName} is no longer a spawnable subagent; route model and budget decisions through ${legacy.replacementDisplayName}.`);
+  }
   const catalogRole = DX_SUBAGENT_CATALOG.find((item) => item.roleId === input.roleId);
   if (!catalogRole) throw new Error(`Unknown Director X subagent role: ${input.roleId}`);
   if (catalogRole.displayName !== input.displayName) throw new Error(`Role ${input.roleId} must use the canonical name ${catalogRole.displayName}.`);

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { classifyDxHostNickname, confirmDxSubagentHostClosed, DX_SUBAGENT_CATALOG, dxIdentityInstruction, registerDxSubagent, updateDxSubagent } from "./subagent-registry.mjs";
 
 test("catalog gives every Director X subagent a canonical DX name", () => {
-  assert.equal(DX_SUBAGENT_CATALOG.length, 13);
+  assert.equal(DX_SUBAGENT_CATALOG.length, 11);
   assert.ok(DX_SUBAGENT_CATALOG.every((role) => /^DX-/.test(role.displayName)));
   assert.ok(DX_SUBAGENT_CATALOG.every((role) => /^dx_[a-z_]+$/.test(role.agentType)));
   assert.equal(new Set(DX_SUBAGENT_CATALOG.map((role) => role.displayName)).size, DX_SUBAGENT_CATALOG.length);
@@ -25,6 +25,11 @@ test("registers and updates a host agent through its canonical DX identity", () 
 test("rejects non-DX and noncanonical role names", () => {
   assert.throws(() => registerDxSubagent({}, { roleId: "shot_planner", displayName: "Shot Planner", hostAgentId: "a", stage: "storyboard", mission: "x" }), /must match DX-/);
   assert.throws(() => registerDxSubagent({}, { roleId: "shot_planner", displayName: "DX-Shots", hostAgentId: "a", stage: "storyboard", mission: "x" }), /canonical name DX-Shot-Planner/);
+});
+
+test("does not spawn retired routing or budget roles", () => {
+  assert.throws(() => registerDxSubagent({}, { roleId: "model_router", displayName: "DX-Model-Router", hostAgentId: "a", stage: "research", mission: "route" }), /no longer a spawnable subagent/);
+  assert.throws(() => registerDxSubagent({}, { roleId: "cost_controller", displayName: "DX-Cost-Controller", hostAgentId: "a", stage: "research", mission: "budget" }), /no longer a spawnable subagent/);
 });
 
 test("rejects a generic Codex host nickname instead of masking it", () => {
@@ -143,7 +148,7 @@ test("blocks later dispatch batches until prior artifacts complete and terminal 
       tasks: [
         { taskId: "refs", roleId: "reference_analyst", agentType: "dx_reference_analyst", displayName: "DX-Reference-Analyst", stage: "research", status: "pending", hostLifecycle: "not_spawned", hostReleaseRequired: true, outputArtifactRefs: ["refs.json"] },
         { taskId: "assets", roleId: "asset_manager", agentType: "dx_asset_manager", displayName: "DX-Asset-Manager", stage: "research", status: "pending", hostLifecycle: "not_spawned", hostReleaseRequired: true, outputArtifactRefs: ["assets.json"] },
-        { taskId: "route", roleId: "model_router", agentType: "dx_model_router", displayName: "DX-Model-Router", stage: "research", status: "pending", hostLifecycle: "not_spawned", hostReleaseRequired: true, outputArtifactRefs: ["route.json"] }
+        { taskId: "route", roleId: "director_runtime", agentType: "dx_director", displayName: "DX-Director", stage: "research", status: "pending", hostLifecycle: "not_spawned", hostReleaseRequired: true, outputArtifactRefs: ["route.json"] }
       ],
       batches: [
         { batchId: "wave-batch-1", order: 1, status: "pending", taskIds: ["refs", "assets"] },
@@ -152,7 +157,7 @@ test("blocks later dispatch batches until prior artifacts complete and terminal 
     }
   };
   const spawn = (roleId, displayName, hostAgentId) => registerDxSubagent(run, { roleId, displayName, hostAgentId, hostNickname: displayName, stage: "research", mission: roleId, status: "running" });
-  assert.throws(() => spawn("model_router", "DX-Model-Router", "agent-route"), /prior batches complete/);
+  assert.throws(() => spawn("director_runtime", "DX-Director", "agent-route"), /prior batches complete/);
   spawn("reference_analyst", "DX-Reference-Analyst", "agent-refs");
   spawn("asset_manager", "DX-Asset-Manager", "agent-assets");
   updateDxSubagent(run, { displayName: "DX-Reference-Analyst", status: "complete", detail: "done", outputArtifactRefs: ["refs.json"] });
@@ -161,10 +166,10 @@ test("blocks later dispatch batches until prior artifacts complete and terminal 
   confirmDxSubagentHostClosed(run, { displayName: "DX-Reference-Analyst", hostAgentId: "agent-refs", closedBy: "close_agent", hostCloseStatus: "closed" });
   confirmDxSubagentHostClosed(run, { displayName: "DX-Asset-Manager", hostAgentId: "agent-assets", closedBy: "close_agent", hostCloseStatus: "closed" });
   assert.equal(run.subagentOrchestrationPlan.batches[0].status, "complete");
-  spawn("model_router", "DX-Model-Router", "agent-route");
+  spawn("director_runtime", "DX-Director", "agent-route");
   assert.equal(run.subagentOrchestrationPlan.batches[1].status, "running");
   assert.equal(run.subagentOrchestrationPlan.tasks[2].dispatchReceipt.batchId, "wave-batch-2");
-  assert.throws(() => spawn("model_router", "DX-Model-Router", "agent-route-duplicate"), /already dispatched/);
+  assert.throws(() => spawn("director_runtime", "DX-Director", "agent-route-duplicate"), /already dispatched/);
 });
 
 test("rejects forged or premature DX host-release confirmations", () => {

@@ -7,19 +7,19 @@ function role(roleId) { return DX_SUBAGENT_CATALOG.find((item) => item.roleId ==
 
 test("gives visual production roles distinct executable system protocols", () => {
   const shotPlanner = buildSubagentSystemPrompt(role("shot_planner"));
-  const router = buildSubagentSystemPrompt(role("model_router"));
+  const director = buildSubagentSystemPrompt(role("director_runtime"));
   const operator = buildSubagentSystemPrompt(role("provider_operator"));
   const drawLoop = buildSubagentSystemPrompt(role("draw_loop_controller"));
   const reviewer = buildSubagentSystemPrompt(role("quality_evaluator"));
   assert.match(shotPlanner, /Choose the generation mode before writing prompt prose/);
   assert.match(shotPlanner, /identity, product_geometry, layout, pose, style, palette, or lighting/);
-  assert.match(router, /exact provider, model version, endpoint, and mode/);
-  assert.match(router, /directorx_register_prompt_bound_generation_plan/);
+  assert.match(director, /parent Director owns provider\/model routing and budget accounting/);
+  assert.match(director, /directorx_register_prompt_bound_generation_plan/);
   assert.match(operator, /Do not rewrite creative intent during submission/);
   assert.match(operator, /promptBinding and bindingSha256 as immutable/);
   assert.match(drawLoop, /Change one causal variable per repair/);
   assert.match(reviewer, /first, middle, and last states/);
-  assert.ok(new Set([shotPlanner, router, operator, drawLoop, reviewer]).size === 5);
+  assert.ok(new Set([shotPlanner, director, operator, drawLoop, reviewer]).size === 5);
 });
 
 test("delegated prompts preserve scope, artifacts, tools, caps, and the current prompt contract", () => {

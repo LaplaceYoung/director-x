@@ -101,7 +101,7 @@ Director X 注册了明确的视频制片角色，而不是把所有并行任务
 - `DX-Reference-Analyst`：参考片与来源分析
 - `DX-Asset-Manager`：素材获取、来源、版权和质量检查
 - `DX-Shot-Planner`：镜头、场景覆盖与连续性设计
-- `DX-Model-Router`、`DX-Cost-Controller`：模型和预算路线
+- `DX-Director`：直接负责供应商/模型路由、能力核验、回退选择与预算控制
 - `DX-Editor`、`DX-Quality-Reviewer`：剪辑、渲染和最终审片
 - `DX-Approval-Producer`：整理需要用户确认的生产门禁
 

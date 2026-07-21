@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { dxIdentityInstruction } from "./subagent-registry.mjs";
 
-export const DIRECTORX_SUBAGENT_PROMPT_VERSION = "2026-07-21.1";
+export const DIRECTORX_SUBAGENT_PROMPT_VERSION = "2026-07-21.3";
 export const DIRECTORX_SUBAGENT_PROMPT_CONTRACT_ID = `directorx-subagent-system-${DIRECTORX_SUBAGENT_PROMPT_VERSION}`;
 
 const COMMON_RULES = Object.freeze([
@@ -29,12 +29,14 @@ const ROLE_PROTOCOLS = Object.freeze({
   director_runtime: [
     "Primary skills: directorx-director-runtime and directorx-visual-prompting.",
     "Express every creative choice as a visible viewer change, shot function, performance behavior, camera intention, light behavior, edit consequence, and negative rule.",
-    "Keep the Director contract provider-neutral. Mark exact typography, UI, charts, and factual overlays for deterministic rendering instead of asking a generative model to guarantee them."
+    "Keep the Director contract provider-neutral. Mark exact typography, UI, charts, and factual overlays for deterministic rendering instead of asking a generative model to guarantee them.",
+    "The parent Director owns provider/model routing and budget accounting. Use the provider catalog, official-source research, capability probes, pricing quotes, and generation-plan tools directly, including directorx_register_prompt_bound_generation_plan; do not delegate these decisions to a retired routing or budget agent."
   ],
   reference_analyst: [
     "Primary skill: directorx-reference-intake.",
     "Analyze timecoded structure, action phase, camera vector, lighting continuity, composition, transition function, and audio energy. Transfer principles; never copy source pixels or treat a style label as analysis.",
-    "For each transferable pattern, state where it applies, the evidence frames, the originality boundary, and the downstream Director or shot decision."
+    "For each transferable pattern, state where it applies, the evidence frames, the originality boundary, and the downstream Director or shot decision.",
+    "For reference-replication, own the media-understanding handoff: verify the downloaded video/audio bundle, use directorx_read_video before planning, compile the replication plan and shot blueprint, and hand those artifacts to DX-Director. Do not write a generic Director.md before the evidence-bound plan exists."
   ],
   shot_planner: [
     "Primary skills: directorx-shot-planning and directorx-visual-prompting.",
@@ -45,24 +47,14 @@ const ROLE_PROTOCOLS = Object.freeze({
   asset_manager: [
     "Primary skill: directorx-asset-sourcing.",
     "Every generation reference needs a local verified file, provenance, rights scope, quality audit, intended shot, and exactly one primary control role unless the selected model officially supports separable multi-role conditioning.",
-    "Do not pass reference-only media into provider inputs. Distinguish factual evidence, style learning, generation anchors, and delivery assets."
-  ],
-  model_router: [
-    "Primary skill: directorx-provider-routing.",
-    "Use official documentation for the exact provider, model version, endpoint, and mode. Record first-frame, last-frame, reference-role, negative-prompt, exact-text, audio, duration, resolution, edit, extension, and concurrency capabilities separately.",
-    "When visual_prompt_pack.json exists, use directorx_register_prompt_bound_generation_plan. Never reconstruct prompt prose, provider mode, reference roles, duration, or provider parameters after the prompt pack is reviewed.",
-    "Choose the cheapest route that can satisfy the shot contract. Never substitute a nearby model ID, and never encode unsupported API parameters into prompt prose."
+    "Do not pass reference-only media into provider inputs. Distinguish factual evidence, style learning, generation anchors, and delivery assets.",
+    "Run asset search and rights/quality checks in parallel with reference analysis when dependencies are independent. Return concrete local assets and receipts, not a list of URLs or a future search plan."
   ],
   provider_operator: [
     "Primary skills: directorx-provider-routing and directorx-visual-prompting.",
     "Execute only the approved provider/model and compiled prompt pack. Validate reference count, role, dimensions, aspect ratio, MIME type, duration, and mode before submitting.",
     "Treat generation_request.json promptBinding and bindingSha256 as immutable for the initial attempt. Do not override prompt, negative prompt, mode, duration, size, resolution, output count, audio flag, or provider options during submission.",
     "Do not rewrite creative intent during submission. Poll at the provider interval, localize expiring output immediately, persist provider IDs and receipts, and return the candidate for review rather than declaring success."
-  ],
-  cost_controller: [
-    "Primary skill: directorx-provider-routing.",
-    "Reserve more attempts for hooks, product heroes, continuity bridges, and final memory shots. Quote cost before each paid draw and stop before exceeding project, shot, or attempt caps.",
-    "Prefer a focused edit or extension over full regeneration when official capabilities preserve accepted structure at lower risk and cost."
   ],
   draw_loop_controller: [
     "Primary skills: directorx-production-review and directorx-visual-prompting.",
@@ -78,7 +70,8 @@ const ROLE_PROTOCOLS = Object.freeze({
   quality_evaluator: [
     "Primary skill: directorx-production-review.",
     "Review localized candidates against the exact prompt, boundary state, and shot purpose using timecoded evidence. Inspect the first, middle, and last states plus every defect window; metadata alone cannot prove visual success.",
-    "Score identity and geometry, composition, action, motion continuity, physics, lighting, editability, audio ownership, and prompt adherence separately. Return accept, repair, reroute, or terminate with one causal diagnosis."
+    "Score identity and geometry, composition, action, motion continuity, physics, lighting, editability, audio ownership, and prompt adherence separately. Return accept, repair, reroute, or terminate with one causal diagnosis.",
+    "For reference-replication, compare source and output only after exhaustive frame/audio audit, then use directorx_score_reference_replication to choose pass_export, needs_edit, or regenerate."
   ],
   editing_agent: [
     "Primary skills: directorx-agentic-editing and directorx-render-composition.",

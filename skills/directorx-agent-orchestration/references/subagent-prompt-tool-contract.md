@@ -15,8 +15,6 @@ Canonical identities:
 - `DX-Shot-Planner`
 - `DX-Asset-Manager`
 - `DX-Provider-Operator`
-- `DX-Model-Router`
-- `DX-Cost-Controller`
 - `DX-Draw-Loop`
 - `DX-Memory-Manager`
 - `DX-Quality-Reviewer`
@@ -45,7 +43,7 @@ The prompt must require the agent to read the declared artifacts before acting. 
 | Role | Required responsibility |
 | --- | --- |
 | `DX-Shot-Planner` | read scene coverage and continuity, create shot sequence, authorize grounding, compile the visual prompt pack |
-| `DX-Model-Router` | inspect the model catalog and provider setup, research official capability evidence, probe the exact mode, write the generation plan |
+| `DX-Director` | inspect the model catalog and provider setup, research official capability evidence, probe the exact mode, write the generation plan, and quote the budget |
 | `DX-Provider-Operator` | inspect the Run, verify setup, reserve the attempt, submit the compiled request, poll, persist evidence, and localize the candidate |
 | `DX-Draw-Loop` | inspect the candidate and attempt history, apply hard gates, review/compare candidates, choose one causal repair delta |
 | `DX-Quality-Reviewer` | inspect timecoded visual evidence, validate coverage and continuity, issue the candidate or final disposition |

@@ -26,7 +26,7 @@ test("builds canonical DX host actions in dependency-layered parallel batches", 
     tasks: [
       task("references", "reference_analyst", ["reference_analysis.json"]),
       task("assets", "asset_manager", ["asset_manifest.json"]),
-      task("routing", "model_router", ["provider_route.json"], ["references"])
+      task("routing", "director_runtime", ["provider_route.json"], ["references"])
     ]
   }), "2026-07-15T00:00:00.000Z");
   assert.equal(plan.maxConcurrency, 2);
@@ -83,7 +83,7 @@ test("compiles a bounded DX production team directly from the execution graph", 
   const tasks = compileExecutionGraphSubagentTasks(run, { currency: "CNY" });
   assert.deepEqual(tasks.map((item) => item.taskId), ["dx-research-asset_manager", "dx-research-reference_analyst", "dx-script-director_runtime"]);
   assert.deepEqual(tasks[2].dependsOnTaskIds, ["dx-research-asset_manager", "dx-research-reference_analyst"]);
-  assert.deepEqual(tasks[0].allowedTools, ["web_search", "web_open", "directorx_audit_asset_quality"]);
+  assert.deepEqual(tasks[0].allowedTools, ["directorx_get_run_snapshot", "web_search", "web_open", "directorx_register_asset_search_plan", "directorx_acquire_web_image_asset", "directorx_register_asset", "directorx_audit_asset_quality", "directorx_audit_visual_asset_coverage"]);
   assert.match(tasks[1].mission, /Research references/);
   const plan = planParallelSubagents(run, input({
     projectPath: "/tmp/directorx-project",
@@ -105,7 +105,7 @@ test("gives generation roles the tools needed for prompt compilation, provider e
       intentSummary: "Generate reviewed image and video shots",
       nodes: [
         { nodeId: "prompts", kind: "agent", owner: "DX-Shot-Planner", stage: "storyboard", label: "Compile visual prompts", dependsOn: [], inputArtifactRefs: ["shotlist.json"], outputArtifactRefs: ["visual_prompt_pack.json"] },
-        { nodeId: "route", kind: "agent", owner: "DX-Model-Router", stage: "generation", label: "Bind exact model route", dependsOn: ["prompts"], inputArtifactRefs: ["visual_prompt_pack.json"], outputArtifactRefs: ["generation_request.json"] },
+        { nodeId: "route", kind: "agent", owner: "DX-Director", stage: "generation", label: "Bind exact model route", dependsOn: ["prompts"], inputArtifactRefs: ["visual_prompt_pack.json"], outputArtifactRefs: ["generation_request.json"] },
         { nodeId: "execute", kind: "agent", owner: "DX-Provider-Operator", stage: "generation", label: "Generate and localize candidates", dependsOn: ["route"], inputArtifactRefs: ["generation_request.json"], outputArtifactRefs: ["attempt_log.json"] },
         { nodeId: "review", kind: "agent", owner: "DX-Draw-Loop", stage: "generation", label: "Review and select candidates", dependsOn: ["execute"], inputArtifactRefs: ["attempt_log.json"], outputArtifactRefs: ["selected_clips.json"] }
       ]
@@ -114,13 +114,13 @@ test("gives generation roles the tools needed for prompt compilation, provider e
   const tasks = compileExecutionGraphSubagentTasks(run);
   const byRole = new Map(tasks.map((item) => [item.roleId, item]));
   assert.ok(byRole.get("shot_planner").allowedTools.includes("directorx_compile_visual_prompt_pack"));
-  assert.ok(byRole.get("model_router").allowedTools.includes("directorx_probe_provider_capability"));
-  assert.ok(byRole.get("model_router").allowedTools.includes("directorx_register_prompt_bound_generation_plan"));
+  assert.ok(byRole.get("director_runtime").allowedTools.includes("directorx_probe_provider_capability"));
+  assert.ok(byRole.get("director_runtime").allowedTools.includes("directorx_register_prompt_bound_generation_plan"));
   assert.ok(byRole.get("provider_operator").allowedTools.includes("directorx_submit_media_generation"));
   assert.ok(byRole.get("provider_operator").allowedTools.includes("directorx_poll_media_generation"));
   assert.ok(byRole.get("draw_loop_controller").allowedTools.includes("directorx_review_generation_candidate"));
   assert.ok(byRole.get("draw_loop_controller").allowedTools.includes("directorx_compile_generation_repair"));
-  assert.deepEqual(byRole.get("provider_operator").dependsOnTaskIds, ["dx-generation-model_router"]);
+  assert.deepEqual(byRole.get("provider_operator").dependsOnTaskIds, ["dx-generation-director_runtime"]);
   assert.deepEqual(byRole.get("draw_loop_controller").dependsOnTaskIds, ["dx-generation-provider_operator"]);
 });
 
@@ -132,7 +132,7 @@ test("rejects an execution graph that overstaffs the selected complexity profile
       nodes: [
         { nodeId: "a", kind: "agent", owner: "DX-Reference-Analyst", stage: "research", label: "A", dependsOn: [], inputArtifactRefs: [], outputArtifactRefs: ["a.json"] },
         { nodeId: "b", kind: "agent", owner: "DX-Asset-Manager", stage: "research", label: "B", dependsOn: [], inputArtifactRefs: [], outputArtifactRefs: ["b.json"] },
-        { nodeId: "c", kind: "agent", owner: "DX-Model-Router", stage: "research", label: "C", dependsOn: [], inputArtifactRefs: [], outputArtifactRefs: ["c.json"] }
+        { nodeId: "c", kind: "agent", owner: "DX-Director", stage: "research", label: "C", dependsOn: [], inputArtifactRefs: [], outputArtifactRefs: ["c.json"] }
       ]
     }
   };
@@ -170,17 +170,17 @@ test("keeps one immutable delegation tree per Director X run", () => {
 });
 
 test("bounds independent DX work to the host concurrency capacity", () => {
-  const roles = ["task_planner", "reference_analyst", "asset_manager", "model_router", "cost_controller"];
+  const roles = ["task_planner", "reference_analyst", "asset_manager", "director_runtime"];
   const plan = planParallelSubagents({ runId: "dx-test" }, input({
     planId: "capacity-wave", objective: "Reduce the research critical path", hostConcurrencyLimit: 2,
     tasks: roles.map((roleId, index) => task(`task-${index + 1}`, roleId, [`output-${index + 1}.json`]))
   }), "2026-07-16T01:00:00.000Z");
   assert.equal(plan.strategy, "capacity_bounded_dependency_layered_parallelism");
-  assert.equal(plan.independentWidth, 5);
+  assert.equal(plan.independentWidth, 4);
   assert.equal(plan.hostConcurrencyLimit, 2);
   assert.equal(plan.maxConcurrency, 2);
-  assert.equal(plan.estimatedDispatchWaves, 3);
-  assert.deepEqual(plan.batches.map((batch) => batch.taskIds.length), [2, 2, 1]);
+  assert.equal(plan.estimatedDispatchWaves, 2);
+  assert.deepEqual(plan.batches.map((batch) => batch.taskIds.length), [2, 2]);
   assert.equal(plan.batches[0].parallelGroupId, "capacity-wave:wave:1");
   assert.equal(plan.batches[0].hostActions[0].parallelGroupId, "capacity-wave:wave:1");
   assert.match(plan.schedulingPolicy, /without awaiting individual results/);
@@ -196,7 +196,7 @@ test("prevents a quick production from spawning a full department for one stage"
     tasks: [
       task("references", "reference_analyst", ["references.json"]),
       task("assets", "asset_manager", ["assets.json"]),
-      task("routing", "model_router", ["routing.json"])
+      task("routing", "director_runtime", ["routing.json"])
     ]
   })), /quick production profile permits at most 2 delegated tasks per stage/);
 });

@@ -25,14 +25,6 @@ nickname_candidates = ["DX-Asset-Manager"]
 description = "Director X provider operator"
 nickname_candidates = ["DX-Provider-Operator"]
 
-[agents.dx_model_router]
-description = "Director X model router"
-nickname_candidates = ["DX-Model-Router"]
-
-[agents.dx_cost_controller]
-description = "Director X cost controller"
-nickname_candidates = ["DX-Cost-Controller"]
-
 [agents.dx_draw_loop]
 description = "Director X draw-loop controller"
 nickname_candidates = ["DX-Draw-Loop"]

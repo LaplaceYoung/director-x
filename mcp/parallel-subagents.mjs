@@ -19,25 +19,21 @@ const NESTED_DELEGATION_TOOLS = Object.freeze([
 
 const ROLE_TOOL_DEFAULTS = Object.freeze({
   task_planner: ["directorx_get_stage_requirements", "directorx_query_director_knowledge"],
-  director_runtime: ["directorx_query_director_knowledge", "directorx_query_cinematic_references"],
-  reference_analyst: ["web_search", "web_open", "directorx_query_cinematic_references"],
+  director_runtime: ["directorx_get_run_snapshot", "directorx_query_director_knowledge", "directorx_query_cinematic_references", "directorx_write_director_document", "directorx_list_media_providers", "directorx_get_media_provider_setup", "directorx_get_custom_media_provider_intake", "directorx_record_provider_api_research", "directorx_probe_provider_capability", "directorx_register_prompt_bound_generation_plan", "directorx_register_generation_plan", "directorx_list_model_pricing", "directorx_quote_model_cost"],
+  reference_analyst: ["directorx_get_run_snapshot", "web_search", "web_open", "directorx_query_cinematic_references", "directorx_ingest_reference_video", "directorx_read_video", "directorx_compile_reference_replication_plan", "directorx_compile_reference_learning_candidate", "directorx_register_asset"],
   shot_planner: ["directorx_query_director_knowledge", "directorx_query_cinematic_references", "directorx_compile_scene_coverage_plan", "directorx_review_shot_sequence", "directorx_compile_shot_grounding_plan", "directorx_finalize_shot_grounding", "directorx_compile_visual_prompt_pack"],
-  asset_manager: ["web_search", "web_open", "directorx_audit_asset_quality"],
+  asset_manager: ["directorx_get_run_snapshot", "web_search", "web_open", "directorx_register_asset_search_plan", "directorx_acquire_web_image_asset", "directorx_register_asset", "directorx_audit_asset_quality", "directorx_audit_visual_asset_coverage"],
   provider_operator: ["directorx_get_run_snapshot", "directorx_get_media_provider_setup", "directorx_begin_generation_attempt", "directorx_submit_media_generation", "directorx_poll_media_generation"],
-  model_router: ["web_search", "web_open", "directorx_list_media_providers", "directorx_get_media_provider_setup", "directorx_record_provider_api_research", "directorx_probe_provider_capability", "directorx_register_prompt_bound_generation_plan", "directorx_register_generation_plan"],
-  cost_controller: ["directorx_list_model_pricing", "directorx_quote_model_cost"],
   draw_loop_controller: ["directorx_get_run_snapshot", "directorx_review_generation_candidate", "directorx_compile_generation_repair", "directorx_select_generation_candidate"],
   memory_manager: ["directorx_get_run_snapshot", "directorx_query_director_knowledge"],
-  quality_evaluator: ["directorx_get_run_snapshot", "directorx_review_generation_candidate", "directorx_verify_final_media", "directorx_record_scene_coverage_review", "directorx_record_final_review_evidence"],
-  editing_agent: ["directorx_get_run_snapshot", "directorx_query_director_knowledge"],
+  quality_evaluator: ["directorx_get_run_snapshot", "directorx_review_generation_candidate", "directorx_verify_final_media", "directorx_score_reference_replication", "directorx_record_scene_coverage_review", "directorx_record_final_review_evidence"],
+  editing_agent: ["directorx_get_run_snapshot", "directorx_query_director_knowledge", "directorx_register_edit_intent", "directorx_render_remotion_video", "directorx_render_hyperframes_video", "directorx_render_opencut_timeline"],
   approval_producer: ["directorx_get_run_snapshot", "directorx_get_stage_requirements"]
 });
 
 const ROLE_ESCALATIONS = Object.freeze({
   reference_analyst: ["source provenance is unclear", "local reference download requires user consent"],
   asset_manager: ["rights or license evidence is incomplete", "downloaded media fails quality audit"],
-  model_router: ["official API documentation is missing or stale", "the exact model lifecycle or pricing cannot be verified"],
-  cost_controller: ["official price evidence is missing", "the approved budget cannot cover the route"],
   provider_operator: ["the approved generation plan or pricing quote is missing", "a paid attempt or credential is required", "provider capability probe fails", "reference media violates the selected mode or provider limits"],
   draw_loop_controller: ["the defect requires a provider or model reroute", "the next attempt would exceed the shot cap", "the repair changes the approved delivery promise"],
   quality_evaluator: ["a critical decode or continuity defect is confirmed", "the candidate needs a provider reroute rather than a prompt repair", "delivery evidence is incomplete"]
@@ -51,6 +47,11 @@ export function compileExecutionGraphSubagentTasks(run, input = {}) {
   const agentNodes = graphNodes.filter((node) => node.kind === "agent" && stageFilter.has(node.stage));
   if (agentNodes.length < 2) throw new Error("The execution graph must expose at least two DX agent nodes for automatic production-team planning.");
   const roleByDisplayName = new Map(DX_SUBAGENT_CATALOG.map((role) => [role.displayName, role]));
+  // Migrate old execution graphs in memory. Routing and budget nodes now
+  // belong to DX-Director, so old persisted owners remain resumable without
+  // recreating the retired agents.
+  roleByDisplayName.set("DX-Model-Router", roleByDisplayName.get("DX-Director"));
+  roleByDisplayName.set("DX-Cost-Controller", roleByDisplayName.get("DX-Director"));
   const nodeById = new Map(graphNodes.map((node) => [node.nodeId, node]));
   const groups = new Map();
   for (const node of agentNodes) {
@@ -161,7 +162,10 @@ export function planParallelSubagents(run, input, now = new Date().toISOString()
     if (STAGE_ORDER.indexOf(dependency.stage) > STAGE_ORDER.indexOf(task.stage)) throw new Error(`${task.taskId} cannot depend on later-stage task ${dependencyId}.`);
   }
   if (run.executionGraph?.nodes?.length) for (const task of tasks) {
-    const ownedNodes = run.executionGraph.nodes.filter((node) => node.kind === "agent" && node.owner === task.displayName && node.stage === task.stage);
+    const ownerNames = task.displayName === "DX-Director"
+      ? new Set(["DX-Director", "DX-Model-Router", "DX-Cost-Controller"])
+      : new Set([task.displayName]);
+    const ownedNodes = run.executionGraph.nodes.filter((node) => node.kind === "agent" && ownerNames.has(node.owner) && node.stage === task.stage);
     if (!ownedNodes.length) throw new Error(`${task.taskId} is not owned by ${task.displayName} in execution_graph.json.`);
     const graphOutputs = new Set(ownedNodes.flatMap((node) => node.outputArtifactRefs));
     const outsideGraph = task.outputArtifactRefs.filter((artifactRef) => !graphOutputs.has(artifactRef));
