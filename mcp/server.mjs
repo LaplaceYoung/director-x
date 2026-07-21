@@ -3250,14 +3250,16 @@ async function executeTool(name, args) {
       mediaKind: "document",
       metadata: { canvasEssential: result.artifactRef !== "reference_tool_route.json", internal: result.artifactRef === "reference_tool_route.json", owner: "DX-Reference-Analyst", sourceArtifactRefs: [plan.sourceEvidence.clipArtifactRef, plan.sourceEvidence.fullFrameManifestArtifactRef, plan.sourceEvidence.frameIdentityArtifactRef] }
     });
-    return await withBrowserCanvas(publicSnapshot(await updateRun({ ...args, mutate(run) {
+    const snapshot = await updateRun({ ...args, mutate(run) {
       const registered = compileReferenceReplicationPlan(run, input);
       run.artifacts ??= {};
       Object.assign(run.artifacts, records);
       upsertExecutionCanvasNode(run, { id: `reference-replication:${registered.planId}`, type: "document", label: "参考片复刻蓝图", detail: `${registered.execution.shots.length} 镜头 · ${registered.execution.totalDurationSeconds}s · ${registered.adaptationMode === "structure_and_directing_language_only" ? "仅迁移导演语言" : "已授权素材复刻"}`, stage: "research", status: "complete", artifactRef: "reference_replication_plan.json", metadata: { owner: "DX-Reference-Analyst", sourceArtifactRefs: [registered.sourceEvidence.clipArtifactRef, registered.sourceEvidence.fullFrameManifestArtifactRef, registered.sourceEvidence.frameIdentityArtifactRef] } }, "stage:research");
       run.events.push(event(run, "reference.replication.planned", "research", `${registered.referenceId} · ${registered.execution.shots.length} executable shot(s)`));
       return run;
-    } })), args);
+    } });
+    const response = await withBrowserCanvas(publicSnapshot(snapshot), args);
+    return { ...response, nextRequiredAction: snapshot.pipeline?.id === "reference-replication" ? "directorx_write_director_document" : null, nextActionReason: snapshot.pipeline?.id === "reference-replication" ? "参考片视频、音频和复刻镜头蓝图已完成；先生成绑定替换策略与分镜继承规则的 Director.md，再进入脚本和分镜。" : null };
   }
   if (name === "directorx_compile_reference_learning_candidate") {
     const current = await readRun(args);
