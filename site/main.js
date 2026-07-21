@@ -175,6 +175,13 @@ function updateDomMotion() {
     item.style.setProperty("--roadmap-line", `${clamp(roadmapProgress * 2.2 - index * .3) * 100}%`);
   });
 
+  const future = document.querySelector(".future-harness");
+  const futureProgress = sectionTravel(future);
+  future.style.setProperty("--future-progress", futureProgress.toFixed(3));
+  document.querySelectorAll(".future-capabilities article").forEach((item, index) => {
+    item.style.setProperty("--future-progress", clamp(futureProgress * 2.2 - index * .24).toFixed(3));
+  });
+
   const track = resolveSceneTrack(smoothScrollY);
   const chapterIndex = sceneChapters.indexOf(track.current);
   const chapterProgress = clamp(track.mix);
@@ -183,7 +190,8 @@ function updateDomMotion() {
   document.querySelector("[data-scene-name]").textContent = track.current.dataset.chapterName;
   const canvasVisible = canvasProgress > .08 && canvasProgress < .92;
   const demosVisible = demoProgress > .08 && demoProgress < .92;
-  document.documentElement.style.setProperty("--scene-opacity", canvasVisible || demosVisible ? ".08" : "1");
+  const futureVisible = futureProgress > .08 && futureProgress < .92;
+  document.documentElement.style.setProperty("--scene-opacity", canvasVisible || demosVisible || futureVisible ? ".08" : "1");
   requestAnimationFrame(updateDomMotion);
 }
 
@@ -250,7 +258,8 @@ const sceneStates = {
   demos: { camera: [7.6, .2, 10.6], target: [6.2, -.3, 0], spread: .88, roll: 0 },
   install: { camera: [2.4, 4.8, 16], target: [2.5, 0, 0], spread: .5, roll: 0 },
   roadmap: { camera: [0, .7, 19], target: [2, 0, 0], spread: 1.42, roll: .02 },
-  closing: { camera: [5.8, 0, 13], target: [5.8, 0, 0], spread: .72, roll: 0 }
+  closing: { camera: [5.8, 0, 13], target: [5.8, 0, 0], spread: .72, roll: 0 },
+  future: { camera: [1.8, 1.4, 15.5], target: [1.5, .15, 0], spread: .68, roll: -.02 }
 };
 
 const layouts = {
@@ -280,6 +289,9 @@ const layouts = {
   },
   closing: {
     goal: [-2.2, 0, -2], director: [-1.2, 0, -1.7], reference: [-.2, 0, -1.4], asset: [.8, 0, -1.1], shot: [1.8, 0, -.8], model: [2.8, 0, -.5], editor: [3.8, 0, -.2], review: [4.8, 0, .2], final: [6.4, 0, 1.8]
+  },
+  future: {
+    goal: [-3.5, 1.8, -1.2], director: [-1.9, 3.2, -.4], reference: [.2, 3.8, -1.2], asset: [2.7, 2.3, -.3], shot: [-.2, .2, 1.1], model: [3.4, .1, .6], editor: [.2, -3.2, -.6], review: [3.9, -2.8, .5], final: [7, 0, 1.5]
   }
 };
 
@@ -476,7 +488,7 @@ function renderFrame(time = 0) {
   const currentLayout = layouts[currentId] ?? layouts.hero;
   const nextLayout = layouts[nextId] ?? currentLayout;
   const seconds = time * .001;
-  const activeIds = currentId === "goal" ? ["goal"] : currentId === "agents" ? [highlightedAgent] : currentId === "canvas" ? ["reference", "asset", "shot", "editor"] : currentId === "demos" ? ["review", "final"] : currentId === "closing" ? ["final"] : [];
+    const activeIds = currentId === "goal" ? ["goal"] : currentId === "agents" ? [highlightedAgent] : currentId === "canvas" ? ["reference", "asset", "shot", "editor"] : currentId === "demos" ? ["review", "final"] : currentId === "closing" ? ["final"] : currentId === "future" ? ["director", "model", "final"] : [];
   for (const [id, mesh] of nodes) {
     const from = currentLayout[id] ?? layouts.hero[id];
     const to = nextLayout[id] ?? from;
@@ -493,7 +505,7 @@ function renderFrame(time = 0) {
   }
   const pageProgress = scrollY / Math.max(document.documentElement.scrollHeight - window.innerHeight, 1);
   updateRelations(seconds, clamp(pageProgress * 3.4 + .15));
-  groups.aperture.visible = ["demos", "closing"].includes(currentId);
+  groups.aperture.visible = ["demos", "closing", "future"].includes(currentId);
   if (groups.aperture.visible) groups.aperture.rotation.z = Math.sin(seconds * .25) * .012;
   renderer.render(scene, camera);
 }

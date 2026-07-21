@@ -104,12 +104,25 @@ export const locales = {
       "closing.title": "<span class=\"phrase\"><span>Direct the Run.</span></span><br><span class=\"phrase\"><span>Ship the film.</span></span>",
       "closing.install": "Install Director X",
       "closing.star": "Star on GitHub",
+      "future.index": "08 / The next instrument",
+      "future.kicker": "In development / Video Agent Harness",
+      "future.title": "<span class=\"phrase\"><span>One word.</span></span><br><span class=\"phrase\"><span>One world.</span></span>",
+      "future.body": "A dedicated Video Agent Harness, adapted from Pi Harness, for video work that needs memory, rhythm, continuity, and a real path from intent to final frame.",
+      "future.capability1": "Video-native memory",
+      "future.capability1Body": "Scenes, assets, voices, camera grammar, and review evidence stay available across a long production.",
+      "future.capability2": "Agentic continuity",
+      "future.capability2Body": "Specialist agents reason over time, frames, transitions, and handoffs instead of isolated prompts.",
+      "future.capability3": "A working world",
+      "future.capability3Body": "The harness turns one creative direction into a coherent production environment where every decision can become a frame.",
+      "future.manifestLabel": "The next production layer",
+      "future.manifest": "Pi Harness × Video Intelligence × One persistent world",
+      "future.manifestStatus": "Building now / mosi",
       "footer.by": "by mosi",
       "footer.status": "2026 / Early access",
       "language.changed": "Language changed to English"
     },
     sceneLabels: { goal: "GOAL", director: "DX DIRECTOR", reference: "REFERENCE", asset: "ASSET", shot: "SHOT PLAN", model: "MODEL ROUTE", editor: "ROUGH CUT", review: "REVIEW", final: "FINAL FILM" },
-    chapterNames: { hero: "Production corridor", goal: "Native Goal", agents: "Dedicated crew", canvas: "Live canvas", flow: "Continuous Run", demos: "Review theater", install: "Install", roadmap: "What ships next", closing: "Final film" }
+    chapterNames: { hero: "Production corridor", goal: "Native Goal", agents: "Dedicated crew", canvas: "Live canvas", flow: "Continuous Run", demos: "Review theater", install: "Install", roadmap: "What ships next", closing: "Final film", future: "One world" }
   },
   "zh-CN": {
     meta: {
@@ -216,12 +229,25 @@ export const locales = {
       "closing.title": "<span class=\"phrase\"><span>掌控制作，</span></span><br><span class=\"phrase\"><span>交付成片。</span></span>",
       "closing.install": "安装 Director X",
       "closing.star": "在 GitHub Star",
+      "future.index": "08 / 下一件制片工具",
+      "future.kicker": "正在开发 / Video Agent Harness",
+      "future.title": "<span class=\"phrase\"><span>One word.</span></span><br><span class=\"phrase\"><span>One world.</span></span>",
+      "future.body": "我们正在基于 Pi Harness 改造专项 Video Agent Harness，服务需要记忆、节奏、连续性，以及从意图走到最终帧的真实视频生产任务。",
+      "future.capability1": "视频原生记忆",
+      "future.capability1Body": "场景、素材、声音、摄影语法和审片证据会在长制片任务中持续可用。",
+      "future.capability2": "智能体连续性",
+      "future.capability2Body": "专用智能体共同理解时间、帧、转场和交接，而不是各自处理孤立提示词。",
+      "future.capability3": "一个可以工作的世界",
+      "future.capability3Body": "Harness 将一条创意方向变成完整的制作环境，让每一个决定都能最终落到画面上。",
+      "future.manifestLabel": "下一层制片基础设施",
+      "future.manifest": "Pi Harness × Video Intelligence × 一个持久世界",
+      "future.manifestStatus": "正在构建 / mosi",
       "footer.by": "mosi 出品",
       "footer.status": "2026 / 早期版本",
       "language.changed": "语言已切换为中文"
     },
     sceneLabels: { goal: "目标", director: "DX 导演", reference: "参考片", asset: "素材", shot: "分镜", model: "模型路由", editor: "粗剪", review: "审片", final: "最终成片" },
-    chapterNames: { hero: "制片走廊", goal: "原生 Goal", agents: "专用团队", canvas: "实时画布", flow: "持续运行", demos: "审片室", install: "安装", roadmap: "下一阶段", closing: "最终成片" }
+    chapterNames: { hero: "制片走廊", goal: "原生 Goal", agents: "专用团队", canvas: "实时画布", flow: "持续运行", demos: "审片室", install: "安装", roadmap: "下一阶段", closing: "最终成片", future: "One world" }
   }
 };
 
