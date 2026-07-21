@@ -2,6 +2,36 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { join, resolve } from "node:path";
 
+export const DIRECTOR1_OPERATING_PRINCIPLES = Object.freeze([
+  "C1 · Draw then control: establish space, subjects, camera, and anchors before spending attempts.",
+  "C2 · Prompt as directing: write observable story change, action, camera, light, and performance; do not stack abstract adjectives.",
+  "C3 · Asset-first consistency: lock character views, scene anchors, product/props, keyframes, voice, and reference roles before dependent shots.",
+  "C4 · Subtract and retain: use restraint, motivated color, breathing room, and believable imperfections; persist effective rules as reusable skills.",
+  "C5 · CLI/API first: prefer declared provider APIs and local media tools with receipts over GUI imitation; GUI is a bounded fallback.",
+  "C6 · Control compensates for model limits: simplify prompts and strengthen references for weak models; reserve stronger routes for difficult shots."
+]);
+
+export const DIRECTOR1_MAIN_LOOP = Object.freeze([
+  "Step0 · Intent and hook: resolve logline, objective, audience, and one hook (abnormal event, emotional conflict, information gap, healing emotion, or visual spectacle); protect the first three seconds.",
+  "Step1 · Beats and shots: expand the script into purposeful beats and shots with scale, subject position, action, emotion, and duration; keep generated segments within provider limits.",
+  "Step1.5 · Grounding: search named entities, logos, product use, specific actions, foreign text, factual claims, requested styles, and platform patterns; convert evidence into bounded references or deterministic layers.",
+  "Step2 · Assets and continuity: acquire or generate character views, scene anchors, product/prop references, keyframes, audio anchors, and the asset reference table before dependent shots.",
+  "Step3 · Single-shot direction: decide scale, angle, movement, composition, lighting, blocking, performance, audio role, and success criteria.",
+  "Step4 · Prompt compilation: state who is where, what changes, how the camera moves, and how light/performance evolves; references carry stable appearance and layout.",
+  "Step5 · Capability routing: route by capability, reference control, difficulty, cost, and fallback; use evidence-backed provider/model choices within budget.",
+  "Step6 · Bounded generation and eval-select: inspect candidates, score against the shot contract, and repair the smallest upstream cause.",
+  "Step7 · Assembly and continuation: use action overlap, screen-direction continuity, first/last-frame handoff, motivated cuts, J/L bridges, and executable transitions.",
+  "Step8 · Audio: assign voice, music, ambience, SFX, captions, ducking, and loudness targets.",
+  "Step9 · QC and learning: score story, visual integrity, continuity, rights, facts, A/V, budget, and delivery; route failures back to the owning step and retain effective repairs."
+]);
+
+export const DIRECTOR1_SHOT_PLAN_CONTRACT = Object.freeze([
+  "Primary deliverable: project manifest plus one structured shot object per shot (shots.jsonl).",
+  "Every shot carries purpose, duration, subject, scene, scale, camera, composition, lighting, color, action, performance, audio, capability requirements, asset references, continuity constraints, success criteria, and a repair surface.",
+  "Every asset reference declares one control role (identity, product geometry, layout, pose, style, palette, lighting, first frame, or last frame).",
+  "Every downstream artifact inherits the active Director fingerprint and directive IDs."
+]);
+
 export async function writeIntentResolution({ projectPath, runId, resolution }) {
   const dir = runArtifactDir(projectPath, runId);
   await mkdir(dir, { recursive: true });
@@ -47,7 +77,27 @@ export async function writeDirectorDocument({ projectPath, runId, director }) {
   const lines = [
     "# Director.md",
     "",
-    "> Director X project-level creative source of truth. Derived from the Director1.md main loop, asset-first consistency, director-language prompt compilation, eval-select, and Grounding principles.",
+    "> Director X project-level creative operating system. It is the executable Director Agent contract derived from Director1.md: intent becomes a controllable shot pipeline, not a decorative prompt or planning report.",
+    "",
+    "## Director Agent Role",
+    "",
+    "Act as director, producer, and storyboard lead. Translate audience response and business intent into beats, shots, assets, prompts, model requirements, candidate evaluation, continuity, audio, editing, and QC. The project Director.md is the source of truth for creative intent and production rules; downstream artifacts must cite its contract fingerprint.",
+    "",
+    "## Input Contract",
+    "",
+    "Required: logline and script or beats. Recommended: style, aspect ratio, duration, platform, available models, assets, constraints, and references. Missing optional values must be explicit safe inferences. Long scripts are split by episode or chapter; a single model request never carries the whole long-form script.",
+    "",
+    "## Output Contract",
+    "",
+    ...DIRECTOR1_SHOT_PLAN_CONTRACT,
+    "",
+    "## Operating Principles",
+    "",
+    ...DIRECTOR1_OPERATING_PRINCIPLES.flatMap((item) => [`- ${item}`]),
+    "",
+    "## Director Main Loop",
+    "",
+    ...DIRECTOR1_MAIN_LOOP.map((item, index) => `${index + 1}. ${item}`),
     "",
     "## Production Intent",
     "",
@@ -81,11 +131,25 @@ export async function writeDirectorDocument({ projectPath, runId, director }) {
     "",
     "## Director-Level Prompt Strategy", "", text(director.promptStrategy),
     "",
+    "## Capability Routing",
+    "",
+    field("Image route", director.modelRoutes?.image),
+    field("Video route", director.modelRoutes?.video),
+    field("Voice route", director.modelRoutes?.tts),
+    field("Batch / CLI route", director.modelRoutes?.cli),
+    "Route by capability, reference control, shot difficulty, cost, and fallback. Provider choices require official capability or pricing evidence before paid generation.",
+    "",
     "## Web Research And Reference Plan", "", text(director.researchPlan),
+    "",
+    "## Candidate Eval And Repair",
+    "",
+    "Generate bounded candidates, inspect first/middle/last states and relevant technical evidence, score against the shot contract, and change one causal variable per repair. A local defect must not trigger a full-project restart.",
     "",
     "## Negative Rules", "", bullets(director.negativeRules),
     "",
-    "## Review Bar", "", bullets(director.reviewCriteria),
+    "## QC Gate And Rollback", "", bullets(director.reviewCriteria),
+    "",
+    "A shot passes only when story purpose, action completion, identity/geometry, composition, continuity, technical playability, rights, and audio/caption requirements are evidenced. Asset or continuity failures return to Step2; prompt failures return to Step4; candidate failures return to Step6; provider failures return to Step5. Known defects cannot be carried forward merely to preserve schedule.",
     "",
     "## Approval Boundaries", "", bullets(director.approvalBoundaries),
     ""
@@ -97,6 +161,11 @@ export async function writeDirectorDocument({ projectPath, runId, director }) {
 
 export function compileDirectorContract(runId, director) {
   const directives = [
+    directive("DIR-ROLE", "director", "Director.md is the operating system for a director, producer, and storyboard lead; it produces a controllable shot pipeline, not decorative prompt prose."),
+    directive("DIR-INPUT", "contract", "Required input is a logline plus script or beats; missing optional values are explicit safe inferences and long scripts are split."),
+    directive("DIR-OUTPUT", "contract", DIRECTOR1_SHOT_PLAN_CONTRACT.join(" ")),
+    ...listDirectives("DIR-PRINCIPLE", "director", DIRECTOR1_OPERATING_PRINCIPLES),
+    ...listDirectives("DIR-LOOP", "pipeline", DIRECTOR1_MAIN_LOOP),
     directive("DIR-HOOK", "story", director.hook),
     directive("DIR-BEATS", "story", director.beatProgression),
     directive("DIR-VISUAL", "style", director.visualLanguage),
@@ -108,6 +177,9 @@ export function compileDirectorContract(runId, director) {
     directive("DIR-MUSIC", "audio", director.musicDirection),
     directive("DIR-EDIT", "edit", director.editRhythm),
     directive("DIR-PROMPT", "generation", director.promptStrategy),
+    directive("DIR-ROUTING", "generation", "Route by capability, reference control, difficulty, cost, and fallback with official capability and pricing evidence."),
+    directive("DIR-EVAL", "review", "Generate bounded candidates, inspect evidence, score against the shot contract, and repair one causal variable at a time."),
+    directive("DIR-QC", "review", "QC is closed by default; failures return to the owning step and known defects cannot be carried forward."),
     ...listDirectives("DIR-CONTINUITY", "continuity", director.continuityAnchors),
     ...listDirectives("DIR-NEGATIVE", "negative", director.negativeRules),
     ...listDirectives("DIR-REVIEW", "review", director.reviewCriteria)

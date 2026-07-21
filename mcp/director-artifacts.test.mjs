@@ -20,7 +20,10 @@ test("writes resolved intent and project Director.md artifacts", async () => {
     } });
     assert.equal(director.artifactRef, "Director.md");
     const content = await readFile(director.path, "utf8");
-    assert.match(content, /Director1\.md main loop/);
+    assert.match(content, /Director1\.md/);
+    assert.match(content, /## Director Main Loop/);
+    assert.match(content, /C3 · Asset-first consistency/);
+    assert.match(content, /shots\.jsonl/);
     assert.match(content, /克制的未来现实主义/);
     assert.match(content, /Shot Inheritance Contract/);
     const contract = JSON.parse(await readFile(director.contractPath, "utf8"));

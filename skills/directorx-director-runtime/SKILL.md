@@ -11,10 +11,10 @@ Use this skill when work touches the director core: `Director.md`, video type st
 
 ## Workflow
 
-1. Read `references/director1-core-contract.md`, then create the project-level `Director.md`; when the source repository contains `Director1.md`, use its full director main loop, asset-first consistency, prompt compilation, eval-select, and Grounding rules as additional guidance.
+1. Read `references/director1-core-contract.md`, then create the project-level `Director.md`. The generated document must carry the Director Agent role, input/output contract, C1–C6 operating principles, Step0–Step9 main loop, shot-plan contract, routing, Grounding, eval-select, continuity, audio, QC rollback, and approval rules defined by `Director1.md`.
 2. Classify the requested video type and production objective.
 3. If strategy-changing fields are ambiguous, ask up to three necessary structured questions. Translate the resolved language into audience response, hook, beats, shot scale, movement, composition, light, palette, performance, sound, rhythm, continuity, and negative rules.
-4. Call `directorx_record_intent_resolution`, then `directorx_write_director_document`. Treat the returned `Director.md`, `director_contract.json`, and fingerprint as required intake evidence.
+4. Call `directorx_record_intent_resolution`, then `directorx_write_director_document`. Treat the returned `Director.md`, `director_contract.json`, and fingerprint as required intake evidence. Do not reduce Director.md to a brief, moodboard, or generic prompt strategy.
 5. Invoke `directorx-style-playbook` after research. Style operationalizes Director intent and may not contradict it without an approved override record.
 6. Require every downstream artifact to cite the active Director fingerprint and inherited directive IDs.
 7. Version each model-facing prompt as a prompt contract with a stable ID and SHA-256. Runtime generation lineage must bind that prompt contract and the active Director fingerprint before execution telemetry is accepted.

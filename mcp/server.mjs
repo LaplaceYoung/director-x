@@ -540,6 +540,7 @@ const rawTools = [
         title: stringSchema(), logline: stringSchema(), audience: stringSchema(), platform: stringSchema(), duration: stringSchema(), aspectRatio: stringSchema(), objective: stringSchema(),
         directorInterpretation: stringSchema(), hook: stringSchema(), beatProgression: stringSchema(), visualLanguage: stringSchema(), cameraGrammar: stringSchema(), composition: stringSchema(), lightingColor: stringSchema(), performanceDirection: stringSchema(), audioDirection: stringSchema(), musicDirection: stringSchema(), editRhythm: stringSchema(), promptStrategy: stringSchema(), researchPlan: stringSchema(),
         styleThesis: { type: "string" }, worldBehavior: { type: "string" }, textureMaterial: { type: "string" }, typographyGraphics: { type: "string" }, temporalGrammar: { type: "string" },
+        modelRoutes: objectSchema({ image: { type: "string" }, video: { type: "string" }, tts: { type: "string" }, cli: { type: "string" } }, []),
         continuityAnchors: { type: "array", items: stringSchema() }, negativeRules: { type: "array", items: stringSchema() }, reviewCriteria: { type: "array", items: stringSchema() }, approvalBoundaries: { type: "array", items: stringSchema() }
       }, ["title", "logline", "audience", "platform", "duration", "aspectRatio", "objective", "directorInterpretation", "hook", "beatProgression", "visualLanguage", "cameraGrammar", "composition", "lightingColor", "performanceDirection", "audioDirection", "musicDirection", "editRhythm", "promptStrategy", "researchPlan", "continuityAnchors", "negativeRules", "reviewCriteria", "approvalBoundaries"]),
       production: objectSchema({
@@ -769,11 +770,12 @@ const rawTools = [
   },
   {
     name: "directorx_write_director_document",
-    description: "Generate or update the project-level Director.md source of truth. For reference-replication, call only after the authorized video/audio bundle and replication plan are complete; bind the replacement strategy, shot blueprint, continuity, audio, and review rules.",
+    description: "Generate or update the project-level Director.md operating system derived from Director1.md. It binds the Director Agent role, input/output contract, C1-C6 principles, Step0-Step9 main loop, project decisions, routing, grounding, shot prompt rules, candidate eval/repair, continuity, audio, QC rollback, and approval boundaries. For reference-replication, call only after the authorized video/audio bundle and replication plan are complete.",
     inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema(), director: objectSchema({
       title: stringSchema(), logline: stringSchema(), audience: stringSchema(), platform: stringSchema(), duration: stringSchema(), aspectRatio: stringSchema(), objective: stringSchema(),
       directorInterpretation: stringSchema(), hook: stringSchema(), beatProgression: stringSchema(), visualLanguage: stringSchema(), cameraGrammar: stringSchema(), composition: stringSchema(), lightingColor: stringSchema(), performanceDirection: stringSchema(), audioDirection: stringSchema(), musicDirection: stringSchema(), editRhythm: stringSchema(), promptStrategy: stringSchema(), researchPlan: stringSchema(),
       styleThesis: { type: "string" }, worldBehavior: { type: "string" }, textureMaterial: { type: "string" }, typographyGraphics: { type: "string" }, temporalGrammar: { type: "string" },
+      modelRoutes: objectSchema({ image: { type: "string" }, video: { type: "string" }, tts: { type: "string" }, cli: { type: "string" } }, []),
       continuityAnchors: { type: "array", items: stringSchema() }, negativeRules: { type: "array", items: stringSchema() }, reviewCriteria: { type: "array", items: stringSchema() }, approvalBoundaries: { type: "array", items: stringSchema() }
     }, ["title", "logline", "audience", "platform", "duration", "aspectRatio", "objective", "directorInterpretation", "hook", "beatProgression", "visualLanguage", "cameraGrammar", "composition", "lightingColor", "performanceDirection", "audioDirection", "musicDirection", "editRhythm", "promptStrategy", "researchPlan", "continuityAnchors", "negativeRules", "reviewCriteria", "approvalBoundaries"]) }, ["projectPath", "runId", "director"]),
     annotations: writeAnnotations()
