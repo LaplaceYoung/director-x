@@ -92,6 +92,7 @@ import { compileReferenceLearningCandidate, promoteReferenceLearningCandidate, r
 import { compileDirectorXGoalBootProtocol, compilePendingInteractionBatch } from "./host-action-protocol.mjs";
 import { persistPreflightTransaction, projectPreflightBootTransaction, readPreflightTransaction } from "./preflight-transaction.mjs";
 import { detectCodexHostCapabilities } from "./codex-host-capabilities.mjs";
+import { assertDirectorXToolSafetyPolicy } from "./tool-safety-policy.mjs";
 
 const CANVAS_URI = "ui://directorx/production-canvas-v1.html";
 const SCENE_CONFORMANCE_INSTRUCTIONS = "After directorx_verify_final_media, require scene_coverage_conformance_report.json to pass all non-waivable shot identity, order, duration, source-handle, full-frame, and PTS checks. Dispatch DX-Quality-Reviewer to inspect every planned shot's first/middle/last identity-bound frame, then call directorx_record_scene_coverage_review before final frame-finding acceptance. Metadata cannot prove camera, blocking, composition, lighting, movement, proof, reaction, or narrative fulfillment.";
@@ -1904,7 +1905,7 @@ const rawTools = [
   }
 ];
 
-const tools = applyToolContracts(rawTools);
+const tools = assertDirectorXToolSafetyPolicy(applyToolContracts(rawTools));
 
 for (const tool of tools) {
   const title = friendlyToolTitle(tool.name);

@@ -16,6 +16,7 @@ All notable public changes to Director X are recorded here.
 - Added bounded review-only evidence clip materialization with source-hash verification, playable MP4 output, human-review receipts, retrieval lineage, and canvas media projection; derivatives remain ineligible for delivery.
 - Added durable, timecoded side-canvas review notes with idempotent capture, explicit non-approval semantics, Run projection, ownership acknowledgement, and evidence-required resolution.
 - Added bounded MCP Resource Templates for SHA-verified, Run-scoped document and media previews without exposing mutable filesystem access.
+- Centralized MCP safety annotations so Codex can distinguish read-only queries, runtime mutations, external provider calls, idempotent submissions, and destructive cancellation or revocation actions.
 
 ## [0.1.0] - 2026-07-21
 
