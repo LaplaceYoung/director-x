@@ -242,6 +242,24 @@ function updateDomMotion() {
   document.querySelectorAll("[data-focus]").forEach((item, index) => item.classList.toggle("active", index === focusIndex));
   document.querySelector("[data-canvas-time]").textContent = timecode(canvasProgress * 31);
 
+  const atlas = document.querySelector(".capability-atlas");
+  const atlasProgress = sectionTravel(atlas);
+  atlas.style.setProperty("--atlas-progress", atlasProgress.toFixed(3));
+  const atlasCards = [...document.querySelectorAll(".atlas-card")];
+  const atlasIndex = Math.min(atlasCards.length - 1, Math.floor(clamp((atlasProgress - .08) * 1.15) * atlasCards.length));
+  atlasCards.forEach((card, index) => {
+    const cardProgress = clamp(atlasProgress * 2.2 - index * .12);
+    card.style.setProperty("--atlas-in", cardProgress.toFixed(3));
+    card.classList.toggle("active", index === atlasIndex);
+  });
+  const activeAtlasCard = atlasCards[atlasIndex];
+  if (activeAtlasCard) {
+    const status = document.querySelector("[data-atlas-status]");
+    const progress = document.querySelector("[data-atlas-progress]");
+    status.textContent = `${String(atlasIndex + 1).padStart(2, "0")} / ${activeAtlasCard.querySelector("h3").textContent.toUpperCase()}`;
+    progress.textContent = `${String(Math.round(atlasProgress * 100)).padStart(2, "0")}%`;
+  }
+
   const demos = document.querySelector(".demo-section");
   const demoProgress = sectionTravel(demos);
   const demoMonitors = document.querySelectorAll(".demo-monitor");
@@ -275,8 +293,9 @@ function updateDomMotion() {
   document.querySelector("[data-scene-name]").textContent = track.current.dataset.chapterName;
   const canvasVisible = canvasProgress > .08 && canvasProgress < .92;
   const demosVisible = demoProgress > .08 && demoProgress < .92;
+  const atlasVisible = atlasProgress > .08 && atlasProgress < .92;
   const futureVisible = futureProgress > .08 && futureProgress < .92;
-  document.documentElement.style.setProperty("--scene-opacity", canvasVisible || demosVisible || futureVisible ? ".08" : "1");
+  document.documentElement.style.setProperty("--scene-opacity", canvasVisible || demosVisible || atlasVisible || futureVisible ? ".08" : "1");
   requestAnimationFrame(updateDomMotion);
 }
 
@@ -341,6 +360,7 @@ const sceneStates = {
   canvas: { camera: [5.7, -.2, 9.3], target: [4.25, -.7, 0], spread: .78, roll: .02 },
   flow: { camera: [1.6, 5.6, 14.8], target: [1.5, -.1, 0], spread: .57, roll: -.025 },
   demos: { camera: [7.6, .2, 10.6], target: [6.2, -.3, 0], spread: .88, roll: 0 },
+  atlas: { camera: [-.8, 4.5, 16.5], target: [1.8, .2, 0], spread: .58, roll: -.03 },
   install: { camera: [2.4, 4.8, 16], target: [2.5, 0, 0], spread: .5, roll: 0 },
   roadmap: { camera: [0, .7, 19], target: [2, 0, 0], spread: 1.42, roll: .02 },
   closing: { camera: [5.8, 0, 13], target: [5.8, 0, 0], spread: .72, roll: 0 },
@@ -365,6 +385,9 @@ const layouts = {
   },
   demos: {
     goal: [-2.5, 3.4, -3], director: [-1.2, 2.4, -2], reference: [1, 3.2, -2], asset: [2, 1.8, -1.4], shot: [3, .5, -1], model: [4.1, -.6, -.8], editor: [4.9, -1.8, -.2], review: [5.8, -2.2, .5], final: [6.5, 0, 2]
+  },
+  atlas: {
+    goal: [-4.6, 2.4, -1.2], director: [-2.5, 3.4, -.4], reference: [-.4, 2.4, -1], asset: [2.1, 3.3, -.4], shot: [4.2, 1.1, .4], model: [-.2, -.9, 1], editor: [2.6, -.6, -.2], review: [4.4, -2.3, .5], final: [7.1, 0, 1.4]
   },
   install: {
     goal: [-3.8, 0, -2], director: [-2.3, 0, -1.8], reference: [-.7, 0, -1.6], asset: [.9, 0, -1.4], shot: [2.5, 0, -1.2], model: [4.1, 0, -1], editor: [5.7, 0, -.8], review: [7.3, 0, -.6], final: [9.1, 0, 0]
@@ -602,7 +625,7 @@ function renderFrame(time = 0) {
   const nextLayout = layouts[nextId] ?? currentLayout;
   const seconds = time * .001;
     const modeIds = sceneMode === "media" ? ["reference", "asset", "shot", "editor"] : sceneMode === "crew" ? ["director", "model", "review"] : null;
-    const activeIds = modeIds ?? (currentId === "goal" ? ["goal"] : currentId === "agents" ? [highlightedAgent] : currentId === "canvas" ? ["reference", "asset", "shot", "editor"] : currentId === "demos" ? ["review", "final"] : currentId === "closing" ? ["final"] : currentId === "future" ? ["director", "model", "final"] : []);
+    const activeIds = modeIds ?? (currentId === "goal" ? ["goal"] : currentId === "agents" ? [highlightedAgent] : currentId === "canvas" ? ["reference", "asset", "shot", "editor"] : currentId === "atlas" ? ["goal", "reference", "asset", "model", "editor", "review", "final"] : currentId === "demos" ? ["review", "final"] : currentId === "closing" ? ["final"] : currentId === "future" ? ["director", "model", "final"] : []);
   for (const [id, mesh] of nodes) {
     const from = currentLayout[id] ?? layouts.hero[id];
     const to = nextLayout[id] ?? from;
