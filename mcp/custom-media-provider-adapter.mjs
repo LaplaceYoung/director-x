@@ -49,6 +49,15 @@ export function customProviderIntake(mediaType) {
             { label: "供应商推荐模型", description: "允许 Codex根据官方文档推荐一个当前可用模型，之后仍需再次确认。" },
             { label: "供应商默认模型", description: "仅在官方 API 明确支持省略 model 字段时使用。" }
           ]
+        },
+        {
+          header: "官方 API 文档",
+          id: `${mediaType}_official_api_url`,
+          question: "请粘贴该供应商的官方 API 文档或官网地址，Director X 将只读取官方来源来完成适配。",
+          options: [
+            { label: "提供官方 API 地址 (Recommended)", description: "在其他选项中粘贴 HTTPS 官方文档或官网地址，禁止使用猜测的接口地址。" },
+            { label: "稍后提供", description: "保留模型 intake，官方资料补齐前不会注册可执行适配器。" }
+          ]
         }
       ]
     },

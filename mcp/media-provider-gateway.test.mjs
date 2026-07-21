@@ -28,6 +28,10 @@ test("returns setup guidance and resolves only current-process credentials", () 
   const setup = mediaProviderSetup("openai", "sora-2", "text_to_video", false);
   assert.equal(setup.credentialPolicy, "session_only_not_persisted");
   assert.equal(setup.nextAction, "ask_user_for_key_then_call_directorx_set_session_credential");
+  assert.equal(setup.keySetupRequired, true);
+  assert.equal(setup.keySetupInteraction.kind, "provider_input");
+  assert.equal(setup.keySetupInteraction.questions[0].id, "openai_key_setup");
+  assert.equal(setup.keySetupAnswerActions["我已有 Key (Recommended)"][0].type, "focus_canvas_credential");
   const resolved = resolveMediaCredential("openai", new Map([["openai", { envName: "OPENAI_API_KEY" }]]), { OPENAI_API_KEY: "test-secret" });
   assert.deepEqual(resolved, { value: "test-secret", envName: "OPENAI_API_KEY", credentialRef: "session-env:OPENAI_API_KEY" });
   assert.throws(() => resolveMediaCredential("runway", new Map(), {}), /current-session credential/);

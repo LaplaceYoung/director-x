@@ -74,9 +74,11 @@ function adapter(overrides = {}) {
 test("returns native provider and exact-model intake before custom adaptation", () => {
   const intake = customProviderIntake("video");
   assert.equal(intake.interaction.kind, "provider_input");
-  assert.equal(intake.interaction.questions.length, 2);
+  assert.equal(intake.interaction.questions.length, 3);
   assert.equal(intake.interaction.questions[0].id, "video_provider_name");
   assert.equal(intake.interaction.questions[1].id, "video_model_name");
+  assert.equal(intake.interaction.questions[2].id, "video_official_api_url");
+  assert.match(intake.interaction.questions[2].question, /官方 API 文档或官网地址/);
   assert.equal(intake.researchContract.sourcePolicy, "official_api_docs_only");
   assert.deepEqual(intake.researchContract.requiredHostActions, ["web.search_query", "web.open"]);
 });

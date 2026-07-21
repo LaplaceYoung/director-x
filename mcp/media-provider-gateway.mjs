@@ -82,6 +82,7 @@ export function getMediaProvider(providerId) {
 export function mediaProviderSetup(providerId, modelId, mode, credentialConfigured = false) {
   const profile = getMediaProvider(providerId);
   const model = selectModel(profile, modelId, mode, false);
+  const keySetup = providerKeySetup(profile, model, credentialConfigured);
   return {
     providerId,
     providerKind: profile.providerKind,
@@ -94,6 +95,9 @@ export function mediaProviderSetup(providerId, modelId, mode, credentialConfigur
     docsUrl: profile.docsUrl,
     pollingIntervalMs: profile.pollingIntervalMs,
     credentialPolicy: "session_only_not_persisted",
+    keySetupRequired: keySetup.keySetupRequired,
+    keySetupInteraction: keySetup.keySetupInteraction,
+    keySetupAnswerActions: keySetup.keySetupAnswerActions,
     nextAction: credentialConfigured ? "confirm_budget_then_generate" : "ask_user_for_key_then_call_directorx_set_session_credential"
   };
 }
@@ -325,6 +329,34 @@ function provider(providerId, displayName, providerKind, baseUrl, authScheme, cr
 function mediaModel(modelId, displayName, mediaType, modes, isDefault, supports) { return { modelId, displayName, mediaType, modes, isDefault, supports }; }
 function publicModel(model) { return { ...model, modes: [...model.modes], supports: { ...model.supports } }; }
 function publicProvider(profile) { return { providerId: profile.providerId, displayName: profile.displayName, providerKind: profile.providerKind, credentialEnv: profile.credentialEnv, credentialAliases: [...profile.credentialAliases], setupUrl: profile.setupUrl, docsUrl: profile.docsUrl, pollingIntervalMs: profile.pollingIntervalMs, supportsCustomModels: profile.supportsCustomModels, models: profile.models.map(publicModel) }; }
+
+function providerKeySetup(profile, model, credentialConfigured) {
+  const keyId = `${profile.providerId.replace(/[^a-z0-9]/gi, "_")}_key_setup`;
+  const focusCredentialPanel = { type: "focus_canvas_credential", providerId: profile.providerId, envName: profile.credentialEnv, persistence: "handoff", secretPolicy: "session_only_not_persisted" };
+  return {
+    keySetupRequired: !credentialConfigured,
+    keySetupInteraction: {
+      kind: "provider_input",
+      gateKey: `${profile.providerId}-key-setup`,
+      reason: `${profile.displayName}/${model.displayName} 已确认，但当前 Director X MCP 会话尚未配置 ${profile.credentialEnv}。`,
+      questions: [{
+        header: "API Key",
+        id: keyId,
+        question: `是否为 ${profile.displayName}/${model.displayName} 配置 API Key？`,
+        options: [
+          { label: "我已有 Key (Recommended)", description: "在 Director X 画布安全密码框输入；Key 只注入当前 MCP 会话且不会保存。" },
+          { label: "前往供应商控制台", description: "在侧边 Browser 新标签打开官方控制台，创建 Key 后回到画布安全注入。" },
+          { label: "暂不配置", description: "保留模型选择，暂停依赖该 Provider 的生成阶段。" }
+        ]
+      }]
+    },
+    keySetupAnswerActions: {
+      "我已有 Key (Recommended)": [focusCredentialPanel],
+      "前往供应商控制台": [{ type: "open_url", url: profile.setupUrl, browser: "iab", target: "new_tab", visibility: true, persistence: "handoff", keepProductionCanvas: true }, { ...focusCredentialPanel, after: "api_key_created" }],
+      "暂不配置": [{ type: "block_dependent_stage", capability: model.mediaType, reason: `${profile.credentialEnv} is not configured.` }]
+    }
+  };
+}
 
 function selectModel(profile, modelId, mode, allowUnlisted) {
   const selected = modelId ? profile.models.find((item) => item.modelId === modelId) : profile.models.find((item) => item.isDefault && item.modes.includes(mode)) ?? profile.models.find((item) => item.modes.includes(mode));
