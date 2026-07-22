@@ -122,9 +122,14 @@
     .media-stat { border: 1px solid #343434; background: #181818; padding: 7px 9px; color: #aaa; font-size: 9px; }
     .media-stat strong { color: #eee; margin-right: 4px; font-size: 12px; }
     .media-preview { position: absolute; top: 14px; right: 14px; bottom: 74px; width: 306px; display: flex; flex-direction: column; gap: 0; border: 1px solid #303030; border-radius: 12px; background: #161616; overflow: auto; pointer-events: auto; box-shadow: 0 18px 44px rgba(0,0,0,.32); }
+    .media-preview.collapsed { top: 14px; bottom: auto; height: auto; overflow: hidden; }
     .media-preview-panel, .media-relations-panel { padding: 13px; }
     .media-relations-panel { border-top: 1px solid #2d2d2d; }
-    .media-preview-panel h3, .media-relations-panel h3 { margin: 0 0 9px; font-size: 11px; color: #bbb; }
+    .media-preview-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 9px; }
+    .media-preview-panel h3, .media-relations-panel h3 { margin: 0; font-size: 11px; color: #bbb; }
+    .media-preview-toggle { border: 1px solid #383838; border-radius: 7px; background: #202020; color: #aaa; padding: 5px 8px; font-size: 9px; cursor: pointer; }
+    .media-preview-toggle:hover { border-color: #555; color: #fff; }
+    .media-preview.collapsed .media-preview-content, .media-preview.collapsed .media-relations-panel { display: none; }
     .media-preview-frame { min-height: 172px; display: grid; place-items: center; background: #090909; border: 1px solid #292929; border-radius: 8px; overflow: hidden; }
     .media-preview-frame video, .media-preview-frame img { max-width: 100%; max-height: 42vh; display: block; }
     .media-preview-frame audio { width: 100%; }
@@ -282,6 +287,7 @@
       .media-head { right: 14px; }
       .media-head p, .media > .production-pulse { display: none; }
       .media-preview { top: 82px; }
+      .media-preview.collapsed { top: 82px; }
       .storyboard-board { grid-template-columns: 240px minmax(340px, 1fr) minmax(320px, 1fr); }
     }
     @media (max-width: 820px) { .view-switch button { padding: 8px 11px; } .shell { grid-template-columns: 230px 1fr; } .rail { width: 230px; } .inspector { width: min(290px, calc(100% - 24px)); } }
@@ -300,6 +306,7 @@
       .activity-grid { grid-template-columns: 1fr; }
       .media-head { left: 10px; right: 10px; top: 10px; }
       .media-preview { left: 10px; right: 10px; top: auto; bottom: 66px; width: auto; height: min(250px, 42vh); }
+      .media-preview.collapsed { top: 82px; bottom: auto; height: auto; }
       .storyboard-head { height: auto; min-height: 70px; align-items: flex-start; }
       .storyboard-counts { display: none; }
       .storyboard-board { height: calc(100% - 78px); grid-template-columns: minmax(260px, 1fr) minmax(300px, 1fr) minmax(300px, 1fr); }
@@ -340,7 +347,7 @@
     const claimToken = params.get("claim");
     const isFileDemo = location.protocol === "file:" && !session;
     const legacyViewportStorageKey = `directorx:viewport:${session ?? "preflight"}`;
-    const state = { data: null, selectedId: null, compareIds: [], syncLocked: true, syncLeader: null, reviewTransport: { currentTime: 0, playing: false, playbackRate: 1, direction: 1, loopRange: null, activeArtifactRef: null }, reviewSessionRevision: null, storySignature: null, reviewSignature: null, mediaSignature: null, timelineRevision: null, timelineViewport: null, waveformWindow: null, waveformLoading: false, waveformError: null, waveformRequest: 0, view: "media", filter: "asset", query: "", railCollapsed: window.innerWidth <= 520, transform: { x: 0, y: 0, zoom: .72 }, uiStateInitialized: false, uiPersistTimer: null, pendingUiState: null, viewportInitialized: false, viewportRestored: false, dragging: false, pointer: null, refreshInFlight: false, lastSuccessfulSyncAt: null };
+    const state = { data: null, selectedId: null, compareIds: [], syncLocked: true, syncLeader: null, reviewTransport: { currentTime: 0, playing: false, playbackRate: 1, direction: 1, loopRange: null, activeArtifactRef: null }, reviewSessionRevision: null, storySignature: null, reviewSignature: null, mediaSignature: null, mediaPreviewCollapsed: false, timelineRevision: null, timelineViewport: null, waveformWindow: null, waveformLoading: false, waveformError: null, waveformRequest: 0, view: "media", filter: "asset", query: "", railCollapsed: window.innerWidth <= 520, transform: { x: 0, y: 0, zoom: .72 }, uiStateInitialized: false, uiPersistTimer: null, pendingUiState: null, viewportInitialized: false, viewportRestored: false, dragging: false, pointer: null, refreshInFlight: false, lastSuccessfulSyncAt: null };
     const $ = (selector) => document.querySelector(selector);
     const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[char]);
     const surfaceUrl = (path, values = {}) => { const query = new URLSearchParams({ session, claim: claimToken }); for (const [key, value] of Object.entries(values)) if (value !== undefined && value !== null) query.set(key, String(value)); return `${path}?${query}`; };
@@ -439,7 +446,7 @@
       const creativeSla = canvas.summary.creativeProgressSla;
       const pulse = $("#production-pulse");
       if (pulse) pulse.outerHTML = renderProductionPulse(creativeSla);
-      const signature = JSON.stringify({ nodes: graph.nodes.map((node) => [node.id, node.status, node.previewUri, node.updatedAt]), edges: graph.edges.map((edge) => [edge.id, edge.kind]), selectedId: state.selectedId });
+      const signature = JSON.stringify({ nodes: graph.nodes.map((node) => [node.id, node.status, node.previewUri, node.updatedAt]), edges: graph.edges.map((edge) => [edge.id, edge.kind]), selectedId: state.selectedId, collapsed: state.mediaPreviewCollapsed });
       if (signature === state.mediaSignature) return;
       state.mediaSignature = signature;
       const selected = graph.nodes.find((node) => node.id === state.selectedId) ?? graph.nodes.find((node) => node.type === "video") ?? graph.nodes.find((node) => ["image", "audio"].includes(node.type)) ?? graph.nodes[0];
@@ -448,7 +455,7 @@
       const selectedEdges = selected ? graph.edges.filter((edge) => edge.source === selected.id || edge.target === selected.id) : [];
       const relations = selectedEdges.length ? selectedEdges.map((edge) => { const otherId = edge.source === selected.id ? edge.target : edge.source; const other = graph.nodes.find((node) => node.id === otherId); return `<button class="media-relation" data-node-id="${escapeHtml(otherId)}"><span>${escapeHtml(other?.label ?? otherId)}</span><em>${escapeHtml(relationLabel(edge.kind))}</em></button>`; }).join("") : '<span class="empty">这个对象还没有登记直接来源或去向。</span>';
       const demoBadge = canvas.summary.demoMode ? '<span class="demo-badge">真实本地文件演示</span>' : "";
-      $("#media").innerHTML = `<div class="media-head"><div><h2>生产画布${demoBadge}</h2><p>真实素材、生成结果和剪辑产物会沿来源关系持续流转。</p></div><div class="media-stats">${stats}<span class="media-stat"><strong>${graph.edges.length}</strong>关系</span></div></div>${renderProductionPulse(creativeSla)}<div class="media-preview"><section class="media-preview-panel"><h3>${escapeHtml(shortType(selected?.type))}预览</h3><div class="media-preview-frame">${renderPlayablePreview(selected)}</div><div class="media-preview-copy"><strong>${escapeHtml(selected?.label ?? "尚未选择")}</strong><br>${escapeHtml(selected?.detail ?? "选择画布对象查看内容和来源。")}</div>${selected ? mediaFactsMarkup(selected, "story-meta") : ""}</section><section class="media-relations-panel"><h3>直接关系 · ${selectedEdges.length}</h3><div class="media-relations">${relations}</div></section></div>`;
+      $("#media").innerHTML = `<div class="media-head"><div><h2>生产画布${demoBadge}</h2><p>真实素材、生成结果和剪辑产物会沿来源关系持续流转。</p></div><div class="media-stats">${stats}<span class="media-stat"><strong>${graph.edges.length}</strong>关系</span></div></div>${renderProductionPulse(creativeSla)}<div class="media-preview ${state.mediaPreviewCollapsed ? "collapsed" : ""}"><section class="media-preview-panel"><div class="media-preview-head"><h3>${escapeHtml(shortType(selected?.type))}预览</h3><button class="media-preview-toggle" id="media-preview-toggle" type="button" aria-expanded="${String(!state.mediaPreviewCollapsed)}">${state.mediaPreviewCollapsed ? "展开预览" : "收起预览"}</button></div><div class="media-preview-content"><div class="media-preview-frame">${renderPlayablePreview(selected)}</div><div class="media-preview-copy"><strong>${escapeHtml(selected?.label ?? "尚未选择")}</strong><br>${escapeHtml(selected?.detail ?? "选择画布对象查看内容和来源。")}</div>${selected ? mediaFactsMarkup(selected, "story-meta") : ""}</div></section><section class="media-relations-panel"><h3>直接关系 · ${selectedEdges.length}</h3><div class="media-relations">${relations}</div></section></div>`;
     }
     function renderProductionPulse(sla) {
       const status = sla?.status ?? "awaiting_fast_start";
@@ -651,6 +658,7 @@
     async function selectNode(id) {
       const canvas = state.data?.productionCanvas;
       const node = [...(canvas?.workflow?.nodes ?? []), ...(canvas?.sceneCoverage?.shots ?? []), ...(canvas?.cameraContinuity?.nodes ?? []), ...(canvas?.assets ?? []), ...(canvas?.nodes ?? [])].find((item) => item.id === id); if (!node) return;
+      if (state.view === "media") state.mediaPreviewCollapsed = false;
       state.selectedId = id; state.mediaSignature = null; persistUiState(); renderObjectList(); renderGraph(); renderMediaBoard();
       $("#inspector-title").textContent = node.label;
       $("#inspector-body").innerHTML = `${mediaMarkup(node, "node-preview")}<div class="section"><h3>制作状态</h3><div class="kv"><span>类型</span><span>${escapeHtml(shortType(node.type))}</span><span>环节</span><span>${escapeHtml(stageLabel(node.stage))}</span><span>状态</span><span>${escapeHtml(statusLabel(node.status))}</span></div></div><div class="section"><h3>内容</h3><div class="status-copy">${escapeHtml(node.detail ?? "暂无补充说明")}</div><div id="document-preview"></div></div>${advancedDetails("制作详情", { artifactRef: node.artifactRef ?? null, stage: node.stage, status: node.status, metadata: node.metadata ?? {} })}`;
@@ -691,6 +699,7 @@
         if (["all", "asset"].includes(saved?.filter)) state.filter = saved.filter;
         if (typeof saved?.query === "string") state.query = saved.query.slice(0, 200);
         if (typeof saved?.railCollapsed === "boolean") state.railCollapsed = saved.railCollapsed;
+        if (typeof saved?.mediaPreviewCollapsed === "boolean") state.mediaPreviewCollapsed = saved.mediaPreviewCollapsed;
         if (typeof saved?.syncLocked === "boolean") state.syncLocked = saved.syncLocked;
         if (Number.isFinite(saved?.reviewCurrentTime) && saved.reviewCurrentTime >= 0) state.reviewTransport.currentTime = saved.reviewCurrentTime;
         if (saved?.timelineViewport && Number.isFinite(saved.timelineViewport.start) && Number.isFinite(saved.timelineViewport.duration) && saved.timelineViewport.start >= 0 && saved.timelineViewport.duration > 0) state.timelineViewport = saved.timelineViewport;
@@ -709,7 +718,7 @@
     function persistUiState() {
       state.viewportRestored = true;
       if (!state.uiStateInitialized) return;
-      const value = { version: 1, transform: state.transform, view: state.view, filter: state.filter, query: state.query, railCollapsed: state.railCollapsed, selectedId: state.selectedId, compareIds: state.compareIds, syncLocked: state.syncLocked, timelineViewport: state.timelineViewport, reviewCurrentTime: state.reviewTransport.currentTime, updatedAt: new Date().toISOString() };
+      const value = { version: 1, transform: state.transform, view: state.view, filter: state.filter, query: state.query, railCollapsed: state.railCollapsed, mediaPreviewCollapsed: state.mediaPreviewCollapsed, selectedId: state.selectedId, compareIds: state.compareIds, syncLocked: state.syncLocked, timelineViewport: state.timelineViewport, reviewCurrentTime: state.reviewTransport.currentTime, updatedAt: new Date().toISOString() };
       state.pendingUiState = value;
       try { localStorage.setItem(uiStorageKey(), JSON.stringify(value)); } catch {}
       clearTimeout(state.uiPersistTimer); state.uiPersistTimer = setTimeout(() => void flushUiState(), 120);
@@ -736,6 +745,7 @@
       $("#rail-toggle").setAttribute("aria-expanded", String(!state.railCollapsed));
     }
     function toggleRail() { state.railCollapsed = !state.railCollapsed; applyRailState(); persistUiState(); }
+    function toggleMediaPreview() { state.mediaPreviewCollapsed = !state.mediaPreviewCollapsed; state.mediaSignature = null; persistUiState(); renderMediaBoard(); }
     function updateTransform() { $("#plane").style.transform = `translate(${state.transform.x}px, ${state.transform.y}px) scale(${state.transform.zoom})`; $("#zoom-label").textContent = `${Math.round(state.transform.zoom * 100)}%`; }
     function zoomAroundPoint(nextZoom, clientX, clientY) {
       const rect = $("#viewport").getBoundingClientRect(), pointX = clientX - rect.left, pointY = clientY - rect.top;
@@ -838,6 +848,7 @@ Show how a video-production Run turns source material into reviewable media. The
       }
     }
     document.addEventListener("click", (event) => {
+      if (event.target.closest("#media-preview-toggle")) { toggleMediaPreview(); return; }
       const compare = event.target.closest("[data-compare-id]"); if (compare) { event.stopPropagation(); toggleCompare(compare.dataset.compareId); return; }
       const jump = event.target.closest("[data-jump-time]"); if (jump) { seekReviewTransport(Number(jump.dataset.jumpTime)); return; }
       const timeline = event.target.closest("[data-timeline-time]"); if (timeline) { seekReviewTransport(Number(timeline.dataset.timelineTime)); return; }

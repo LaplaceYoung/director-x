@@ -104,6 +104,17 @@ test("supports a durable collapsible object rail", async () => {
   assert.match(html, /dataset\.rail = state\.railCollapsed/);
 });
 
+test("lets the user collapse and reopen the selected media preview", async () => {
+  const html = await readFile(new URL("../app/browser-canvas.html", import.meta.url), "utf8");
+  assert.match(html, /id="media-preview-toggle"/);
+  assert.match(html, /收起预览/);
+  assert.match(html, /展开预览/);
+  assert.match(html, /function toggleMediaPreview/);
+  assert.match(html, /mediaPreviewCollapsed: state\.mediaPreviewCollapsed/);
+  assert.match(html, /if \(state\.view === "media"\) state\.mediaPreviewCollapsed = false/);
+  assert.match(html, /media-preview\.collapsed \.media-preview-content/);
+});
+
 test("fills the direct file preview with real local image, video, audio, and text files", async () => {
   const html = await readFile(new URL("../app/browser-canvas.html", import.meta.url), "utf8");
   assert.match(html, /const isFileDemo = location\.protocol === "file:"/);
