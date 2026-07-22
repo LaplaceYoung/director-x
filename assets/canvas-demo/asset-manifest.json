@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "purpose": "Local browser-canvas UI demonstration with real repository files",
+  "rights_status": "project_local",
+  "assets": [
+    {
+      "type": "document",
+      "path": "assets/canvas-demo/creative-brief.md",
+      "sha256": "8376ea94acdd877385166f474f862ea56ec231babcca20f9d2c60ebf6a248c28"
+    },
+    {
+      "type": "image",
+      "path": "assets/brand/directorx-logo.png",
+      "sha256": "a9ef8cd171ca583708a362fdccbed875069becee7ab8a69c4d1f5882f63f6e07"
+    },
+    {
+      "type": "image",
+      "path": "site/assets/demos/directorx-waic-moss-promo-v2-poster.jpg",
+      "sha256": "47cd1dd2d7a945ea983cf666723970bad916d2545bfdf0c791e902a9867f9684"
+    },
+    {
+      "type": "image",
+      "path": "site/assets/demos/directorx-waic-moss-promo-v4-poster.jpg",
+      "sha256": "3fe11ead728bbfb0e60d97b2efab6cfcb445e1b7d7b3bc766c306bc2a38b076f"
+    },
+    {
+      "type": "audio",
+      "path": "assets/canvas-demo/directorx-waic-moss-promo-audio.m4a",
+      "sha256": "c3bb1347dff47ab4422a1a463d64e6b45b06362d7bb2c99aaf5389ae0d28bfcb"
+    },
+    {
+      "type": "video",
+      "path": "site/assets/demos/directorx-waic-moss-promo-v2.mp4",
+      "sha256": "27a3ae8cb501ad784f53991d139fd449815f04cf76bbe1da0d8f51b20f5988b2"
+    },
+    {
+      "type": "video",
+      "path": "site/assets/demos/directorx-waic-moss-promo-v4.mp4",
+      "sha256": "2edfcf48458e6e05eb9d66396a786e195418473f3bc70dc0060f2950f15dd928"
+    }
+  ]
+}

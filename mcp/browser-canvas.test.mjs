@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
 test("browser canvas ships local-only A/B playback and timecoded evidence navigation", async () => {
@@ -101,6 +102,35 @@ test("supports a durable collapsible object rail", async () => {
   assert.match(html, /railCollapsed: state\.railCollapsed/);
   assert.match(html, /function toggleRail/);
   assert.match(html, /dataset\.rail = state\.railCollapsed/);
+});
+
+test("fills the direct file preview with real local image, video, audio, and text files", async () => {
+  const html = await readFile(new URL("../app/browser-canvas.html", import.meta.url), "utf8");
+  assert.match(html, /const isFileDemo = location\.protocol === "file:"/);
+  assert.match(html, /function createFileDemoState/);
+  assert.match(html, /真实本地文件演示/);
+  assert.match(html, /directorx-waic-moss-promo-v2\.mp4/);
+  assert.match(html, /directorx-waic-moss-promo-v4\.mp4/);
+  assert.match(html, /directorx-waic-moss-promo-audio\.m4a/);
+  assert.match(html, /creative-brief\.md/);
+  const [video, audio, poster, logo, brief] = await Promise.all([
+    readFile(new URL("../site/assets/demos/directorx-waic-moss-promo-v2.mp4", import.meta.url)),
+    readFile(new URL("../assets/canvas-demo/directorx-waic-moss-promo-audio.m4a", import.meta.url)),
+    readFile(new URL("../site/assets/demos/directorx-waic-moss-promo-v4-poster.jpg", import.meta.url)),
+    readFile(new URL("../assets/brand/directorx-logo.png", import.meta.url)),
+    readFile(new URL("../assets/canvas-demo/creative-brief.md", import.meta.url), "utf8")
+  ]);
+  assert.equal(video.subarray(4, 8).toString("ascii"), "ftyp");
+  assert.equal(audio.subarray(4, 8).toString("ascii"), "ftyp");
+  assert.deepEqual([...poster.subarray(0, 2)], [0xff, 0xd8]);
+  assert.equal(logo.subarray(1, 4).toString("ascii"), "PNG");
+  assert.match(brief, /Creative intent/);
+  const manifest = JSON.parse(await readFile(new URL("../assets/canvas-demo/asset-manifest.json", import.meta.url), "utf8"));
+  assert.equal(manifest.assets.length, 7);
+  for (const asset of manifest.assets) {
+    const bytes = await readFile(new URL(`../${asset.path}`, import.meta.url));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), asset.sha256);
+  }
 });
 
 test("keeps the side-browser surface alive without treating a hidden tab as disconnected", async () => {

@@ -9,7 +9,7 @@
 ## Implementation under review
 
 - Page: `app/browser-canvas.html`
-- State: local file preview without a durable Run query
+- State: explicit local-file demo projection with seven real repository files; production mode still requires a durable Run query
 - Viewport: unavailable from the in-app Browser
 - Implementation screenshot: unavailable
 
@@ -18,17 +18,18 @@
 | Area | Intended behavior | Verification |
 | --- | --- | --- |
 | Left rail | Expand and collapse while preserving the active view and selection | Covered by state/unit tests; rendered interaction not verified |
-| Production canvas | Media-first spatial graph with playable previews, lineage edges, focus and dimming | Structure and fixtures covered by tests; rendered comparison blocked |
-| Storyboard | Audio/text, image and video columns with media metadata and relationships | Structure covered by tests; rendered comparison blocked |
+| Production canvas | Media-first spatial graph with playable previews, lineage edges, focus and dimming | Seven real image/video/audio/text assets and seven relationships covered by tests; rendered comparison blocked |
+| Storyboard | Audio/text, image and video columns with media metadata and relationships | Real local media paths and four library types covered by tests; rendered comparison blocked |
 | Typography | Dense Chinese-first hierarchy with compact metadata labels | Code-reviewed only |
 | Spacing and responsive layout | Desktop split workspace plus mobile rail and preview sheet | Code-reviewed only |
 | Color and imagery | Dark production surface, semantic status color, real media thumbnails | Code-reviewed only |
 | Copy | Production objects and media relationships remain the primary language | Covered by fixture assertions |
+| Media files | Images decode as PNG/JPEG, video/audio use ISO media containers, and the text source is readable | File signatures, script parsing and FFprobe metadata verified locally |
 | Console | No runtime errors while switching views, selecting media or collapsing the rail | Not verified |
 
 ## Blocker
 
-The in-app Browser rejected DOM and screenshot access for the current `file://` page under its navigation security policy. No alternate browser or local-server workaround was used. A normal plugin loopback canvas URL is required for rendered comparison, interaction checks and console inspection.
+The in-app Browser rejected DOM and screenshot access for the current `file://` page under its navigation security policy. No alternate browser or local-server workaround was used. Reloading the file manually will show the real-file demo, but a normal plugin loopback canvas URL is still required for automated rendered comparison, interaction checks and console inspection.
 
 ## Final result
 

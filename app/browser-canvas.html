@@ -107,6 +107,7 @@
     .media-head { position: absolute; top: 14px; left: 14px; right: 334px; min-height: 54px; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 10px 12px; border: 1px solid #303030; border-radius: 10px; background: rgba(20,20,20,.94); pointer-events: auto; box-shadow: 0 14px 34px rgba(0,0,0,.24); }
     .media-head h2 { margin: 0; font-size: 15px; }
     .media-head p { margin: 5px 0 0; color: #888; font-size: 10px; }
+    .demo-badge { display: inline-flex; align-items: center; margin-left: 8px; border: 1px solid #5d4539; border-radius: 999px; padding: 3px 7px; color: #e69a7f; font-size: 8px; font-weight: 500; vertical-align: 2px; }
     .production-pulse { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 11px; align-items: center; margin-bottom: 14px; padding: 11px 13px; border: 1px solid #303030; border-radius: 9px; background: #151515; }
     .media > .production-pulse { position: absolute; left: 14px; top: 82px; width: min(560px, calc(100% - 362px)); pointer-events: auto; }
     .production-pulse .pulse-mark { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 4px rgba(111,182,138,.1); }
@@ -337,11 +338,13 @@
     const params = new URLSearchParams(location.search);
     const session = params.get("session");
     const claimToken = params.get("claim");
+    const isFileDemo = location.protocol === "file:" && !session;
     const legacyViewportStorageKey = `directorx:viewport:${session ?? "preflight"}`;
     const state = { data: null, selectedId: null, compareIds: [], syncLocked: true, syncLeader: null, reviewTransport: { currentTime: 0, playing: false, playbackRate: 1, direction: 1, loopRange: null, activeArtifactRef: null }, reviewSessionRevision: null, storySignature: null, reviewSignature: null, mediaSignature: null, timelineRevision: null, timelineViewport: null, waveformWindow: null, waveformLoading: false, waveformError: null, waveformRequest: 0, view: "media", filter: "asset", query: "", railCollapsed: window.innerWidth <= 520, transform: { x: 0, y: 0, zoom: .72 }, uiStateInitialized: false, uiPersistTimer: null, pendingUiState: null, viewportInitialized: false, viewportRestored: false, dragging: false, pointer: null, refreshInFlight: false, lastSuccessfulSyncAt: null };
     const $ = (selector) => document.querySelector(selector);
     const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[char]);
     const surfaceUrl = (path, values = {}) => { const query = new URLSearchParams({ session, claim: claimToken }); for (const [key, value] of Object.entries(values)) if (value !== undefined && value !== null) query.set(key, String(value)); return `${path}?${query}`; };
+    const resolvedMediaUri = (rawUri) => isFileDemo && /^\.\.\//.test(rawUri) ? rawUri : /^https?:|^data:/.test(rawUri) ? rawUri : surfaceUrl("/directorx/api/media", { path: rawUri });
     const claimHeaders = (headers = {}) => ({ ...headers, "X-DirectorX-Claim": claimToken });
     const stageLabel = (stage) => ({ intake: "明确方向", research: "收集资料", script: "打磨脚本", storyboard: "设计镜头", generation: "生成素材", edit: "剪辑合成", review: "检查成片", delivery: "准备交付" })[stage] ?? "制作中";
     const statusLabel = (status) => ({ pending: "等待开始", active: "正在进行", ready: "正在进行", production_in_progress: "正在进行", blocked: "等待确认", complete: "已完成", failed: "需要处理", awaiting_approval: "等待确认" })[status] ?? "制作中";
@@ -364,7 +367,7 @@
     const mediaMarkup = (node, className = "") => {
       const rawUri = node.previewUri || (node.artifactRef && node.metadata?.path ? node.metadata.path : "");
       if (!rawUri) return "";
-      const uri = escapeHtml(/^https?:|^data:/.test(rawUri) ? rawUri : surfaceUrl("/directorx/api/media", { path: rawUri }));
+      const uri = escapeHtml(resolvedMediaUri(rawUri));
       if (node.type === "video") return `<video class="${className}" src="${uri}" muted playsinline preload="metadata"></video>`;
       if (node.type === "image" || node.type === "shot") return `<img class="${className}" src="${uri}" alt="${escapeHtml(node.label)}" />`;
       if (node.type === "audio") return `<audio class="${className}" src="${uri}" controls preload="metadata"></audio>`;
@@ -408,13 +411,13 @@
       if (activeSelectedId) graph.edges.forEach((edge) => { if (edge.source === activeSelectedId || edge.target === activeSelectedId) { connectedIds.add(edge.source); connectedIds.add(edge.target); } });
       const mediaMode = state.view === "media";
       $("#nodes").innerHTML = graph.nodes.map((node) => `<button class="node ${mediaMode ? "media-object" : ""} ${escapeHtml(node.status)} ${activeSelectedId === node.id ? "selected" : ""} ${activeSelectedId && !connectedIds.has(node.id) ? "dimmed" : ""}" data-node-id="${escapeHtml(node.id)}" style="left:${Number(node.x)}px;top:${Number(node.y)}px">${mediaMarkup(node, "node-preview")}<span class="node-head"><span class="node-type">${escapeHtml(shortType(node.type))}</span><span class="node-state">${escapeHtml(statusLabel(node.status))}</span></span><strong>${escapeHtml(node.label)}</strong><p>${escapeHtml(node.detail ?? "等待制作")}</p>${mediaMode ? mediaFactsMarkup(node) : ""}</button>`).join("");
-      const maxX = Math.max(2200, ...graph.nodes.map((node) => Number(node.x) + 260)), maxY = Math.max(900, ...graph.nodes.map((node) => Number(node.y) + 180));
+      const maxX = Math.max(2200, ...graph.nodes.map((node) => Number(node.x) + 260)), maxY = Math.max(900, ...graph.nodes.map((node) => Number(node.y) + (mediaMode ? 260 : 180)));
       $("#plane").style.width = `${maxX}px`; $("#plane").style.height = `${maxY}px`;
       const byId = new Map(graph.nodes.map((node) => [node.id, node]));
       $("#edges").innerHTML = graph.edges.map((edge) => {
         const source = byId.get(edge.source), target = byId.get(edge.target); if (!source || !target) return "";
         const edgeDimmed = activeSelectedId && edge.source !== activeSelectedId && edge.target !== activeSelectedId ? " dimmed" : "";
-        const nodeWidth = mediaMode ? 220 : 190, nodeHeight = mediaMode ? 124 : 92;
+        const nodeWidth = mediaMode ? 220 : 190, nodeHeight = mediaMode ? 230 : 92;
         const vertical = Math.abs(target.x - source.x) < 80;
         if (vertical) { const x = source.x + nodeWidth / 2, y1 = source.y + nodeHeight, y2 = target.y, mid = (y1 + y2) / 2; return `<path class="edge ${escapeHtml(edge.kind)}${edgeDimmed}" d="M ${x} ${y1} C ${x} ${mid}, ${x} ${mid}, ${x} ${y2}" />`; }
         const x1 = source.x + nodeWidth, y1 = source.y + nodeHeight / 2, x2 = target.x, y2 = target.y + nodeHeight / 2, mid = (x1 + x2) / 2;
@@ -439,12 +442,13 @@
       const signature = JSON.stringify({ nodes: graph.nodes.map((node) => [node.id, node.status, node.previewUri, node.updatedAt]), edges: graph.edges.map((edge) => [edge.id, edge.kind]), selectedId: state.selectedId });
       if (signature === state.mediaSignature) return;
       state.mediaSignature = signature;
-      const selected = graph.nodes.find((node) => node.id === state.selectedId) ?? graph.nodes.find((node) => ["video", "audio"].includes(node.type)) ?? graph.nodes[0];
+      const selected = graph.nodes.find((node) => node.id === state.selectedId) ?? graph.nodes.find((node) => node.type === "video") ?? graph.nodes.find((node) => ["image", "audio"].includes(node.type)) ?? graph.nodes[0];
       const counts = graph.counts ?? {};
       const stats = [["视频", counts.video ?? 0], ["音频", counts.audio ?? 0], ["图片", counts.image ?? 0], ["文档", counts.document ?? 0]].map(([label, count]) => `<span class="media-stat"><strong>${escapeHtml(count)}</strong>${label}</span>`).join("");
       const selectedEdges = selected ? graph.edges.filter((edge) => edge.source === selected.id || edge.target === selected.id) : [];
       const relations = selectedEdges.length ? selectedEdges.map((edge) => { const otherId = edge.source === selected.id ? edge.target : edge.source; const other = graph.nodes.find((node) => node.id === otherId); return `<button class="media-relation" data-node-id="${escapeHtml(otherId)}"><span>${escapeHtml(other?.label ?? otherId)}</span><em>${escapeHtml(relationLabel(edge.kind))}</em></button>`; }).join("") : '<span class="empty">这个对象还没有登记直接来源或去向。</span>';
-      $("#media").innerHTML = `<div class="media-head"><div><h2>生产画布</h2><p>真实素材、生成结果和剪辑产物会沿来源关系持续流转。</p></div><div class="media-stats">${stats}<span class="media-stat"><strong>${graph.edges.length}</strong>关系</span></div></div>${renderProductionPulse(creativeSla)}<div class="media-preview"><section class="media-preview-panel"><h3>${escapeHtml(shortType(selected?.type))}预览</h3><div class="media-preview-frame">${renderPlayablePreview(selected)}</div><div class="media-preview-copy"><strong>${escapeHtml(selected?.label ?? "尚未选择")}</strong><br>${escapeHtml(selected?.detail ?? "选择画布对象查看内容和来源。")}</div>${selected ? mediaFactsMarkup(selected, "story-meta") : ""}</section><section class="media-relations-panel"><h3>直接关系 · ${selectedEdges.length}</h3><div class="media-relations">${relations}</div></section></div>`;
+      const demoBadge = canvas.summary.demoMode ? '<span class="demo-badge">真实本地文件演示</span>' : "";
+      $("#media").innerHTML = `<div class="media-head"><div><h2>生产画布${demoBadge}</h2><p>真实素材、生成结果和剪辑产物会沿来源关系持续流转。</p></div><div class="media-stats">${stats}<span class="media-stat"><strong>${graph.edges.length}</strong>关系</span></div></div>${renderProductionPulse(creativeSla)}<div class="media-preview"><section class="media-preview-panel"><h3>${escapeHtml(shortType(selected?.type))}预览</h3><div class="media-preview-frame">${renderPlayablePreview(selected)}</div><div class="media-preview-copy"><strong>${escapeHtml(selected?.label ?? "尚未选择")}</strong><br>${escapeHtml(selected?.detail ?? "选择画布对象查看内容和来源。")}</div>${selected ? mediaFactsMarkup(selected, "story-meta") : ""}</section><section class="media-relations-panel"><h3>直接关系 · ${selectedEdges.length}</h3><div class="media-relations">${relations}</div></section></div>`;
     }
     function renderProductionPulse(sla) {
       const status = sla?.status ?? "awaiting_fast_start";
@@ -592,7 +596,7 @@
       if (action === "next") start += duration * .8;
       start = Math.max(0, Math.min(start, timeline.durationSeconds - duration)); state.timelineViewport = { start, duration }; state.waveformWindow = null; state.waveformError = null; state.reviewSignature = null; persistUiState(); renderReview(); void loadWaveformViewport();
     }
-    function mediaUri(node) { const raw = node.previewUri || ""; return escapeHtml(/^https?:|^data:/.test(raw) ? raw : surfaceUrl("/directorx/api/media", { path: raw })); }
+    function mediaUri(node) { return escapeHtml(resolvedMediaUri(node.previewUri || "")); }
     function reviewMarkers(node) {
       const defects = (node.metadata?.defects ?? []).map((item) => ({ time: item.timeSeconds, label: item.label ?? item.description ?? "画面问题", observation: item.description, evidenceRefs: item.evidenceRefs ?? [], disposition: item.detectorDisposition }));
       const evidence = (node.metadata?.evidence ?? []).map((item) => ({ time: item.timeSeconds, label: item.dimension, observation: item.observation }));
@@ -651,7 +655,9 @@
       $("#inspector-title").textContent = node.label;
       $("#inspector-body").innerHTML = `${mediaMarkup(node, "node-preview")}<div class="section"><h3>制作状态</h3><div class="kv"><span>类型</span><span>${escapeHtml(shortType(node.type))}</span><span>环节</span><span>${escapeHtml(stageLabel(node.stage))}</span><span>状态</span><span>${escapeHtml(statusLabel(node.status))}</span></div></div><div class="section"><h3>内容</h3><div class="status-copy">${escapeHtml(node.detail ?? "暂无补充说明")}</div><div id="document-preview"></div></div>${advancedDetails("制作详情", { artifactRef: node.artifactRef ?? null, stage: node.stage, status: node.status, metadata: node.metadata ?? {} })}`;
       $("#inspector").classList.toggle("open", state.view !== "media");
-      if (["document", "artifact"].includes(node.type) && node.metadata?.path && /\.(md|txt|json|srt|vtt)$/i.test(node.metadata.path)) {
+      if (isFileDemo && node.metadata?.demoText) {
+        $("#document-preview").innerHTML = `<pre class="document-preview">${escapeHtml(node.metadata.demoText)}</pre>`;
+      } else if (["document", "artifact"].includes(node.type) && node.metadata?.path && /\.(md|txt|json|srt|vtt)$/i.test(node.metadata.path)) {
         const target = $("#document-preview"); target.innerHTML = '<div class="status-copy">正在读取文档…</div>';
         try { const response = await fetch(surfaceUrl("/directorx/api/media", { path: node.metadata.path }), { cache: "no-store" }); if (!response.ok) throw new Error(`HTTP ${response.status}`); target.innerHTML = `<pre class="document-preview">${escapeHtml(await response.text())}</pre>`; }
         catch (error) { target.innerHTML = `<div class="status-copy">文档预览不可用：${escapeHtml(error.message ?? String(error))}</div>`; }
@@ -739,7 +745,8 @@
     }
     function fitCanvas() {
       const canvas = state.data?.productionCanvas, nodes = state.view === "media" ? canvas?.mediaGraph?.nodes ?? [] : state.view === "continuity" ? canvas?.cameraContinuity?.nodes ?? [] : canvas?.workflow?.nodes ?? canvas?.nodes ?? []; if (!nodes.length) return;
-      const minX = Math.min(...nodes.map((n) => n.x)), minY = Math.min(...nodes.map((n) => n.y)), maxX = Math.max(...nodes.map((n) => n.x + 190)), maxY = Math.max(...nodes.map((n) => n.y + 140));
+      const mediaMode = state.view === "media";
+      const minX = Math.min(...nodes.map((n) => n.x)), minY = Math.min(...nodes.map((n) => n.y)), maxX = Math.max(...nodes.map((n) => n.x + (mediaMode ? 220 : 190))), maxY = Math.max(...nodes.map((n) => n.y + (mediaMode ? 230 : 140)));
       const rect = $("#viewport").getBoundingClientRect(), zoom = Math.min(.95, Math.max(.28, Math.min((rect.width - 100) / (maxX - minX), (rect.height - 100) / (maxY - minY))));
       state.transform = { zoom, x: (rect.width - (maxX - minX) * zoom) / 2 - minX * zoom, y: (rect.height - (maxY - minY) * zoom) / 2 - minY * zoom }; updateTransform(); persistViewport();
     }
@@ -758,10 +765,52 @@
     function updateConnectionState(status, error = null) {
       const stale = status === "stale" || status === "disconnected";
       $(".app").dataset.connection = stale ? "stale" : status;
-      $("#sync").textContent = status === "hidden" ? "后台保持" : stale ? "正在恢复" : "已同步";
+      $("#sync").textContent = status === "demo" ? "本地素材" : status === "hidden" ? "后台保持" : stale ? "正在恢复" : "已同步";
       if (!stale) return;
       const lastSync = state.lastSuccessfulSyncAt ? `上次同步 ${new Date(state.lastSuccessfulSyncAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : "尚未完成首次同步";
       $("#connection-banner").textContent = `画布连接暂时中断，当前内容已保留并正在自动恢复。${lastSync}${error ? "。" : ""}`;
+    }
+    function createFileDemoState() {
+      const briefText = `# Director X local canvas demo
+
+Show how a video-production Run turns source material into reviewable media. The revised cut remains traceable to the brief, brand asset, poster, prior cut, and extracted audio.`;
+      const assets = [
+        { id: "demo:brief", type: "document", label: "Moss 宣传片制作说明", detail: "创作意图、素材角色和审片重点", stage: "script", status: "complete", artifactRef: "demo://creative-brief", previewUri: "", x: 80, y: 100, metadata: { path: "../assets/canvas-demo/creative-brief.md", version: "1", demoText: briefText } },
+        { id: "demo:logo", type: "image", label: "Director X 品牌标识", detail: "本地品牌视觉锚点", stage: "research", status: "complete", artifactRef: "demo://directorx-logo", previewUri: "../assets/brand/directorx-logo.png", x: 80, y: 420, metadata: { width: 2172, height: 724, version: "brand" } },
+        { id: "demo:poster-v2", type: "image", label: "WAIC Moss Promo V2 封面", detail: "首版视频的关键画面", stage: "storyboard", status: "complete", artifactRef: "demo://promo-v2-poster", previewUri: "../site/assets/demos/directorx-waic-moss-promo-v2-poster.jpg", x: 420, y: 100, metadata: { width: 1280, height: 720, shotId: "KEYFRAME-01", version: "V2" } },
+        { id: "demo:audio-v4", type: "audio", label: "Moss Promo 独立音轨", detail: "从 V4 成片提取的 48kHz AAC 双声道音频", stage: "edit", status: "complete", artifactRef: "demo://promo-audio", previewUri: "../assets/canvas-demo/directorx-waic-moss-promo-audio.m4a", x: 420, y: 440, metadata: { durationSeconds: 60.053, model: "AAC 160 kbps", version: "V4" } },
+        { id: "demo:video-v2", type: "video", label: "WAIC Moss Promo V2", detail: "60 秒首版宣传片，可直接播放", stage: "review", status: "complete", artifactRef: "demo://promo-v2", previewUri: "../site/assets/demos/directorx-waic-moss-promo-v2.mp4", x: 760, y: 100, metadata: { width: 1280, height: 720, durationSeconds: 60.053, model: "H.264 + AAC", version: "V2" } },
+        { id: "demo:poster-v4", type: "image", label: "WAIC Moss Promo V4 封面", detail: "修订版视频的关键画面", stage: "storyboard", status: "complete", artifactRef: "demo://promo-v4-poster", previewUri: "../site/assets/demos/directorx-waic-moss-promo-v4-poster.jpg", x: 760, y: 440, metadata: { width: 1280, height: 720, shotId: "KEYFRAME-02", version: "V4" } },
+        { id: "demo:video-v4", type: "video", label: "WAIC Moss Promo V4", detail: "整合品牌、画面和独立音轨后的修订候选", stage: "review", status: "active", artifactRef: "demo://promo-v4", previewUri: "../site/assets/demos/directorx-waic-moss-promo-v4.mp4", x: 1100, y: 260, metadata: { width: 1280, height: 720, durationSeconds: 60.053, model: "H.264 + AAC", version: "V4", repairLineage: { sourceCandidateId: "demo:video-v2" } } }
+      ];
+      const edges = [
+        { id: "demo-edge-1", source: "demo:brief", target: "demo:poster-v2", kind: "derived_from" },
+        { id: "demo-edge-2", source: "demo:logo", target: "demo:poster-v2", kind: "evidence" },
+        { id: "demo-edge-3", source: "demo:poster-v2", target: "demo:video-v2", kind: "derived_from" },
+        { id: "demo-edge-4", source: "demo:video-v2", target: "demo:video-v4", kind: "derived_from" },
+        { id: "demo-edge-5", source: "demo:poster-v4", target: "demo:video-v4", kind: "evidence" },
+        { id: "demo-edge-6", source: "demo:audio-v4", target: "demo:video-v4", kind: "edit" },
+        { id: "demo-edge-7", source: "demo:brief", target: "demo:video-v4", kind: "dependency" }
+      ];
+      return {
+        runId: "directorx-local-media-demo",
+        stage: "review",
+        status: "active",
+        goal: { outcome: "真实媒体画布演示" },
+        canvasSurfaceHealth: { status: "demo" },
+        userFacingSummary: { stageLabel: "本地演示", statusLabel: "7 个真实文件", headline: "图片、视频、音频和文本已经进入画布" },
+        canvas: { uiState: null },
+        productionCanvas: {
+          nodes: assets,
+          assets,
+          assetRelations: edges,
+          mediaGraph: { nodes: assets, edges, counts: { document: 1, image: 3, audio: 1, video: 2 } },
+          summary: { assetCount: assets.length, demoMode: true, creativeProgressSla: { status: "satisfied", creativeArtifactCount: assets.length, elapsedMinutes: 0, latestCreativeArtifactAt: new Date().toISOString() } },
+          activity: { events: [], pendingInteractions: [], missingEvidence: [], agentBatches: [], userReviewNotes: [] },
+          reviewNotes: { items: [], openCount: 0 },
+          viewport: { x: 35, y: 60, zoom: .72 }
+        }
+      };
     }
     async function refresh() {
       if (state.refreshInFlight) return false;
@@ -769,6 +818,11 @@
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 8000);
       try {
+        if (isFileDemo) {
+          state.lastSuccessfulSyncAt = new Date().toISOString();
+          render(createFileDemoState());
+          return true;
+        }
         const response = await fetch(surfaceUrl("/directorx/api/state", { visibility: document.visibilityState }), { cache: "no-store", signal: controller.signal });
         if (!response.ok) throw new Error("state unavailable");
         const data = await response.json();
@@ -812,8 +866,10 @@
     window.addEventListener("pagehide", () => { void flushUiState(); void surfaceHeartbeat("pagehide"); });
     refresh().then(() => { if (!state.viewportRestored) setTimeout(fitCanvas, 60); bindComparePlayers(); });
     void surfaceHeartbeat("boot");
-    setInterval(() => void refresh(), 1200);
-    setInterval(() => void surfaceHeartbeat("heartbeat"), 5000);
+    if (!isFileDemo) {
+      setInterval(() => void refresh(), 1200);
+      setInterval(() => void surfaceHeartbeat("heartbeat"), 5000);
+    }
   </script>
 </body>
 </html>
