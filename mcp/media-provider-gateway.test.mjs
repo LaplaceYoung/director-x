@@ -13,6 +13,7 @@ import {
   resolveGeneratedMedia,
   resolveMediaCredential,
   submitMediaGeneration,
+  mediaSubmissionRetryPolicy,
   writeGeneratedMedia
 } from "./media-provider-gateway.mjs";
 
@@ -35,6 +36,12 @@ test("returns setup guidance and resolves only current-process credentials", () 
   const resolved = resolveMediaCredential("openai", new Map([["openai", { envName: "OPENAI_API_KEY" }]]), { OPENAI_API_KEY: "test-secret" });
   assert.deepEqual(resolved, { value: "test-secret", envName: "OPENAI_API_KEY", credentialRef: "session-env:OPENAI_API_KEY" });
   assert.throws(() => resolveMediaCredential("runway", new Map(), {}), /current-session credential/);
+});
+
+test("only retries remote submission when the provider has a verified idempotency key", () => {
+  assert.equal(mediaSubmissionRetryPolicy("openai"), "provider_idempotency_key");
+  assert.equal(mediaSubmissionRetryPolicy("runway"), "manual_reconciliation");
+  assert.equal(mediaSubmissionRetryPolicy("custom-provider"), "manual_reconciliation");
 });
 
 test("prepares exact first-party and gateway routes", () => {

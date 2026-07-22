@@ -192,6 +192,10 @@ export async function submitMediaGeneration(input, { credential, fetchImpl = fet
     : normalizeMediaJob(input.providerId, raw.json, `sync-${input.attemptId ?? Date.now()}`);
 }
 
+export function mediaSubmissionRetryPolicy(providerId) {
+  return providerId === "openai" ? "provider_idempotency_key" : "manual_reconciliation";
+}
+
 export async function pollMediaGeneration(storedJob, { credential, fetchImpl = fetch, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
   if (TERMINAL.has(storedJob.status)) return storedJob;
   const profile = getMediaProvider(storedJob.providerId);

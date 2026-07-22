@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import process, { stdin, stdout } from "node:process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { extname, resolve } from "node:path";
 import { createRun, publicSnapshot, readRun, updateRun, assertSecretFree } from "./run-store.mjs";
 import { projectCanvas } from "./canvas-projector.mjs";
@@ -29,8 +29,8 @@ import { assertRenderPropsBindSegmentStitch, auditSegmentContinuity, extractSegm
 import { extractChromaLayers, writeLayeredCollagePlan, writeLayeredCollageReview } from "./layered-collage.mjs";
 import { appendRunCheckpoint, approveStage, assertRunModeAllowsStage, configureRunMode, RUN_MODES } from "./run-control.mjs";
 import { recordProviderCapabilityProbe, writeProviderCapabilitySnapshot } from "./provider-capabilities.mjs";
-import { requestProviderJobCancellation, submitProviderJob, updateProviderJob } from "./provider-jobs.mjs";
-import { durableMediaJob, getMediaProvider, listMediaProviders, mediaProviderSetup, pollMediaGeneration, resolveGeneratedMedia, resolveMediaCredential, submitMediaGeneration, writeGeneratedMedia } from "./media-provider-gateway.mjs";
+import { markProviderSubmissionRetry, markProviderSubmissionUncertain, reconcileProviderSubmission, requestProviderJobCancellation, reserveProviderSubmission, submitProviderJob, updateProviderJob } from "./provider-jobs.mjs";
+import { durableMediaJob, getMediaProvider, listMediaProviders, mediaProviderSetup, mediaSubmissionRetryPolicy, pollMediaGeneration, resolveGeneratedMedia, resolveMediaCredential, submitMediaGeneration, writeGeneratedMedia } from "./media-provider-gateway.mjs";
 import { customProviderIntake, customProviderSetup, getCustomMediaProviderAdapter, hydrateCustomMediaProviderAdapters, registerCustomMediaProviderAdapter, writeCustomMediaProviderAdapter } from "./custom-media-provider-adapter.mjs";
 import { completeRepairBranch, createRepairBranch, writeRepairBranches } from "./repair-control.mjs";
 import { negotiateTaskTransport, writeTaskTransport } from "./task-transport.mjs";
@@ -83,6 +83,7 @@ import { bindShotSequenceReviewToShotlist, reviewShotSequence, SHOT_SEQUENCE_FUN
 import { AXIS_TYPES, bindSceneCoveragePlanToShotlist, CAMERA_HEIGHTS, CAMERA_SIDES, compileSceneCoveragePlan, FACING_DIRECTIONS, FOCUS_STRATEGIES, FRAME_REGIONS, LENS_INTENTS, LIGHT_DIRECTIONS, MEDIA_MODES, NEGATIVE_SPACE_PURPOSES, SCENE_COVERAGE_ROLES, writeSceneCoveragePlan } from "./scene-coverage-plan.mjs";
 import { attachSceneCoverageEvidence, compileSceneCoverageConformance, extractSceneCoverageEvidence, recordSceneCoverageConformanceReview, sceneCoverageEvidenceFrameIndices, sceneCoverageReviewDecisions, sceneCoverageReviewerId, sceneCoverageReviewStatuses, writeSceneCoverageConformance } from "./scene-coverage-conformance.mjs";
 import { createToolRegistry } from "./tool-registry.mjs";
+import { assertLegacyToolSurfaceBudget } from "./tool-surface-policy.mjs";
 import { applyToolContracts } from "./tool-contracts.mjs";
 import { CanvasSurfaceHostError, createCanvasSurfaceHost } from "./canvas-surface-host.mjs";
 import { resolveWorkspaceMediaFile } from "./workspace-media-access.mjs";
@@ -1960,6 +1961,8 @@ for (const tool of tools) {
   };
 }
 
+assertLegacyToolSurfaceBudget(tools);
+
 const toolRegistry = createToolRegistry({ definitions: tools, invoke: callTool });
 
 async function callTool(name, args) {
@@ -3614,7 +3617,7 @@ async function executeTool(name, args) {
           kind: "provider_input",
           gateKey: `provider-job:${args.providerJobId}`,
           reason: args.inputRequest?.instruction ?? "外部媒体供应商需要用户补充输入后才能继续。",
-          questions: [{ header: "供应商输入", id: "provider_input_decision", question: args.inputRequest?.instruction ?? "请选择如何处理供应商要求的补充输入。", options: [{ label: "补充信息 (Recommended)", description: "通过 Codex 的回答区域提供所需信息并继续当前幂等任务。" }, { label: "取消任务", description: "停止当前供应商任务并保留已有证据。" }] }]
+          questions: [{ header: "供应商阻断", id: "provider_input_decision", question: args.inputRequest?.instruction ?? "供应商要求当前适配器无法原子提交的额外输入，请选择后续路线。", options: [{ label: "切换备用路线 (Recommended)", description: "停止当前任务并由 Director X 使用已批准的备用模型或制作路线。" }, { label: "取消任务", description: "停止当前供应商任务并保留已有证据。" }] }]
         });
         update = { ...args, inputRequest: { ...args.inputRequest, interactionRequestId: interaction.request.requestId } };
       } else if (current.status === "input_required") {
@@ -4864,18 +4867,96 @@ async function mutateGeneration(args, mutate, eventType, detail) {
 }
 
 async function executeDirectMediaSubmission(args) {
-  const current = await readRun(args);
+  let current = await readRun(args);
   hydrateCustomMediaProviderAdapters(current.providerAdapters);
   const existing = current.generation?.providerJobs?.find((job) => job.idempotencyKey === args.idempotencyKey);
   if (existing) {
     if (existing.requestId !== args.requestId || existing.attemptId !== args.attemptId) throw new Error("Idempotency key already belongs to another generation attempt.");
-    return await withBrowserCanvas(publicSnapshot(current), args);
+    if (existing.status !== "submission_pending") {
+      if (existing.providerJobId && !["succeeded", "failed", "cancelled"].includes(existing.status)) return await executeDirectMediaPoll({ ...args, providerJobId: existing.providerJobId });
+      return await withBrowserCanvas(publicSnapshot(current), args);
+    }
+    if (existing.submitRetryPolicy !== "provider_idempotency_key") {
+      throw new Error("Provider submission outcome is unknown and this provider has no verified idempotency-key retry; inspect the provider dashboard before reconciling or retrying.");
+    }
+    current = await mutateGeneration(args, (run) => {
+      markProviderSubmissionRetry(run, existing.submissionId);
+      return run;
+    }, "provider.media.submission_retry_reserved", `${existing.providerId}/${existing.modelId} · ${existing.submissionId}`);
   }
 
   const context = requireDirectMediaContext(current, args, "Media generation submission");
   const credential = resolveMediaCredential(context.providerId, credentialStatus);
   const providerInput = await buildDirectMediaInput(args, context);
-  const normalized = await submitMediaGeneration(providerInput, { credential: credential.value, timeoutMs: args.timeoutMs });
+  const submissionId = existing?.submissionId ?? `submission:${createHash("sha256").update(`${args.runId}:${args.idempotencyKey}`).digest("hex").slice(0, 24)}`;
+  const submitRetryPolicy = mediaSubmissionRetryPolicy(context.providerId);
+  if (!existing) {
+    current = await mutateGeneration(args, (run) => {
+      const fresh = requireDirectMediaContext(run, args, "Media generation submission");
+      const reserved = reserveProviderSubmission(run, {
+        ...args,
+        submissionId,
+        submitRetryPolicy,
+        providerId: fresh.providerId,
+        modelId: fresh.modelId,
+        mediaType: fresh.mediaType,
+        mode: fresh.mode,
+        candidateId: args.candidateId,
+        accountedCost: fresh.attempt.estimatedCost,
+        credentialRef: credential.credentialRef
+      });
+      upsertExecutionCanvasNode(run, {
+        id: `job:${submissionId}`,
+        type: "artifact",
+        label: `${fresh.providerId} · ${fresh.modelId}`,
+        detail: "提交已持久化 · 等待供应商确认",
+        stage: "generation",
+        status: "active",
+        artifactRef: "provider_jobs.json",
+        metadata: { ...reserved.job }
+      }, `attempt:${args.attemptId}`);
+      return run;
+    }, "provider.media.submission_reserved", `${context.providerId}/${context.modelId} · ${submissionId}`);
+  }
+
+  let normalized;
+  try {
+    normalized = await submitMediaGeneration(providerInput, { credential: credential.value, timeoutMs: args.timeoutMs });
+  } catch (submissionError) {
+    await mutateGeneration(args, (run) => {
+      markProviderSubmissionUncertain(run, submissionId, submissionError);
+      return run;
+    }, "provider.media.submission_uncertain", `${context.providerId}/${context.modelId} · ${submissionId}`);
+    if (submitRetryPolicy !== "provider_idempotency_key") {
+      throw new Error(`Provider submission outcome is unknown and automatic retry is disabled to prevent duplicate billing. ${submissionError instanceof Error ? submissionError.message : String(submissionError)}`);
+    }
+    throw submissionError;
+  }
+
+  const durable = durableMediaJob(normalized);
+  current = await mutateGeneration(args, (run) => {
+    const reconciled = reconcileProviderSubmission(run, {
+      submissionId,
+      providerJobId: normalized.providerJobId,
+      providerState: durable.providerState,
+      resultUrls: durable.resultUrls
+    });
+    const node = run.canvas.nodes.find((item) => item.id === `job:${submissionId}`);
+    if (node) {
+      const previousNodeId = node.id;
+      node.id = `job:${normalized.providerJobId}`;
+      node.detail = `供应商已确认 · ${Math.round((durable.progress ?? 0) * 100)}%`;
+      node.metadata = { ...reconciled.job };
+      node.updatedAt = new Date().toISOString();
+      for (const edge of run.canvas.edges ?? []) if (edge.source === previousNodeId || edge.target === previousNodeId) {
+        if (edge.source === previousNodeId) edge.source = node.id;
+        if (edge.target === previousNodeId) edge.target = node.id;
+        edge.id = `object-edge:${edge.source}:${edge.target}`;
+      }
+    }
+    return run;
+  }, "provider.media.submission_confirmed", `${context.providerId}/${context.modelId} · ${normalized.providerJobId}`);
+
   let materialized;
   let mediaRecord;
   if (normalized.status === "succeeded") {
@@ -4884,33 +4965,12 @@ async function executeDirectMediaSubmission(args) {
     mediaRecord = await inspectArtifact({ ...args, artifactRef: `candidate:${args.candidateId}`, path: materialized.path, stage: "generation", mediaKind: context.mediaType, metadata: generationArtifactMetadata(current, args.requestId) });
   }
 
-  const durable = durableMediaJob(normalized);
   return await mutateGeneration(args, (run) => {
     const fresh = requireDirectMediaContext(run, args, "Media generation submission");
-    const submitted = submitProviderJob(run, {
-      ...args,
-      providerJobId: normalized.providerJobId,
-      providerId: fresh.providerId,
-      modelId: fresh.modelId,
-      mediaType: fresh.mediaType,
-      mode: fresh.mode,
-      candidateId: args.candidateId,
-      accountedCost: fresh.attempt.estimatedCost,
-      providerState: durable.providerState,
-      resultUrls: durable.resultUrls,
-      credentialRef: credential.credentialRef
-    });
-    upsertExecutionCanvasNode(run, {
-      id: `job:${submitted.job.providerJobId}`,
-      type: "artifact",
-      label: `${fresh.providerId} · ${fresh.modelId}`,
-      detail: "submitted · 0%",
-      stage: "generation",
-      status: "active",
-      artifactRef: "provider_jobs.json",
-      metadata: { ...submitted.job }
-    }, `attempt:${args.attemptId}`);
-    reconcileDirectProviderJob(run, submitted.job, durable, mediaRecord, materialized);
+    const submitted = run.generation.providerJobs.find((job) => job.submissionId === submissionId);
+    if (!submitted) throw new Error(`Unknown durable provider submission: ${submissionId}`);
+    if (submitted.providerId !== fresh.providerId || submitted.modelId !== fresh.modelId) throw new Error("Durable provider submission route no longer matches the approved generation route.");
+    reconcileDirectProviderJob(run, submitted, durable, mediaRecord, materialized);
     return run;
   }, `provider.media.${durable.status}`, `${context.providerId}/${context.modelId} · ${normalized.providerJobId}`);
 }
@@ -4922,6 +4982,17 @@ async function executeDirectMediaPoll(args) {
   if (!stored) throw new Error(`Unknown provider job: ${args.providerJobId}`);
   if (!stored.providerId || !stored.modelId || !stored.candidateId) throw new Error("This job was registered manually and has no executable Director X media-provider route.");
   if (["succeeded", "failed", "cancelled"].includes(stored.status)) return await withBrowserCanvas(publicSnapshot(current), args);
+  if (stored.status === "input_required") {
+    const decision = requireResolvedInteraction(current, stored.inputRequest?.interactionRequestId, "provider_input");
+    const choice = String(decision.answers?.provider_input_decision ?? "");
+    if (!/切换备用路线|取消任务/.test(choice)) throw new Error("Provider input decision must switch to an approved fallback route or cancel the blocked job.");
+    return await mutateGeneration(args, (run) => {
+      const job = requestProviderJobCancellation(run, args.providerJobId);
+      job.inputResolution = { decision: /切换备用路线/.test(choice) ? "fallback" : "cancel", interactionRequestId: decision.requestId, resolvedAt: decision.resolvedAt };
+      updateProviderJobNode(run, job);
+      return run;
+    }, "provider.media.input_required_resolved", `${args.providerJobId} · ${/切换备用路线/.test(choice) ? "fallback" : "cancel"}`);
+  }
   const context = requireDirectMediaContext(current, { ...args, requestId: stored.requestId, attemptId: stored.attemptId, directMode: stored.mode }, "Media generation polling");
   const credential = resolveMediaCredential(stored.providerId, credentialStatus);
   const normalized = await pollMediaGeneration(stored, { credential: credential.value, timeoutMs: args.timeoutMs });
@@ -4958,7 +5029,7 @@ function reconcileDirectProviderJob(run, job, durable, mediaRecord, materialized
       kind: "provider_input",
       gateKey: `provider-job:${job.providerJobId}`,
       reason: instruction,
-      questions: [{ header: "供应商输入", id: "provider_input_decision", question: "请选择如何处理供应商要求的补充输入。", options: [{ label: "补充信息 (Recommended)", description: "通过 Codex 回答区域提供所需信息并继续当前幂等任务。" }, { label: "取消任务", description: "停止当前供应商任务并保留已有证据。" }] }]
+      questions: [{ header: "供应商阻断", id: "provider_input_decision", question: "供应商要求当前适配器无法原子提交的额外输入，请选择后续路线。", options: [{ label: "切换备用路线 (Recommended)", description: "停止当前任务并由 Director X 使用已批准的备用模型或制作路线。" }, { label: "取消任务", description: "停止当前供应商任务并保留已有证据。" }] }]
     });
     update.inputRequest = { instruction, interactionRequestId: interaction.request.requestId };
   }

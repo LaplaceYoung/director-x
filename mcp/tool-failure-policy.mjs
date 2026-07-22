@@ -81,6 +81,9 @@ export function toolFailurePayload(error) {
 
 function classifyFailure(toolName, args, cause) {
   const message = String(cause?.message ?? cause);
+  if (/provider submission outcome is unknown|automatic retry is disabled to prevent duplicate billing/i.test(message)) {
+    return { code: "provider_submission_unknown", retryable: false, stop: true, nextRequiredAction: "inspect_provider_dashboard_then_reconcile_submission" };
+  }
   if (/request_user_input|native interaction|raw request_user_input answer envelope|confirmed through Codex/i.test(message)) {
     return { code: "native_interaction_required", retryable: false, stop: true, nextRequiredAction: "directorx_create_and_ask_native_question" };
   }
@@ -236,6 +239,7 @@ function sanitize(value) {
 }
 
 function userFacingMessage(failure, attempts) {
+  if (failure.code === "provider_submission_unknown") return "供应商提交结果不明确。为避免重复扣费，已停止自动重试，请先核对供应商任务记录。";
   if (failure.code === "native_interaction_required") return "这一步需要通过 Codex 原生确认完成，我已暂停重复尝试，等确认后继续。";
   if (failure.code === "native_reference_consent_required") return "参考素材需要先完成一次原生授权确认，我已暂停下载和分析。";
   if (failure.code === "workflow_state_invalid") return "当前制作状态与这一步不一致，我已暂停，恢复后会从最近检查点继续。";

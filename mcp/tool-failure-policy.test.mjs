@@ -230,3 +230,24 @@ test("keeps checkpoint and resume available while a generic recovery gate is act
     await rm(projectPath, { recursive: true, force: true });
   }
 });
+
+test("never retries an ambiguous paid provider submission automatically", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-provider-unknown-"));
+  try {
+    const run = await createRun({ projectPath, outcome: "Protect a paid generation attempt" });
+    await assert.rejects(
+      () => withToolFailureGuard("directorx_submit_media_generation", { projectPath, runId: run.runId, idempotencyKey: "unsafe-provider" }, async () => {
+        throw new Error("Provider submission outcome is unknown and automatic retry is disabled to prevent duplicate billing.");
+      }),
+      (error) => {
+        assert.equal(error.details.code, "provider_submission_unknown");
+        assert.equal(error.details.retryable, false);
+        assert.equal(error.details.stop, true);
+        assert.equal(error.details.nextRequiredAction, "inspect_provider_dashboard_then_reconcile_submission");
+        return true;
+      }
+    );
+  } finally {
+    await rm(projectPath, { recursive: true, force: true });
+  }
+});
