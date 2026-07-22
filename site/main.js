@@ -288,6 +288,8 @@ function initializeScene() {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(34, 1, .1, 100);
+  camera.position.set(...sceneStates.hero.camera);
+  camera.lookAt(new THREE.Vector3(...sceneStates.hero.target));
   scene.add(new THREE.AmbientLight(0xffffff, 2));
   const key = new THREE.DirectionalLight(0xffffff, 4.5);
   key.position.set(4, 8, 11);
@@ -324,6 +326,13 @@ function buildProductionWorld() {
     ["final", [2.35, 1.34, .34], 0x11110f, "final"]
   ];
   for (const [id, scale, color, type] of definitions) createNode(id, scale, color, type);
+  const mediaPreviews = {
+    reference: "assets/native-goal-and-input.jpg",
+    asset: "assets/live-production-canvas.jpg",
+    editor: "assets/demos/directorx-waic-moss-promo-v2-poster.jpg",
+    final: "assets/demos/directorx-waic-moss-promo-v4-poster.jpg"
+  };
+  for (const [id, source] of Object.entries(mediaPreviews)) addMediaPreview(id, source);
   [
     ["goal", "director"], ["goal", "shot"], ["director", "reference"], ["director", "asset"],
     ["reference", "shot"], ["asset", "shot"], ["shot", "model"], ["model", "editor"],
@@ -377,6 +386,23 @@ function createNode(id, size, color, type) {
   nodes.set(id, mesh);
 }
 
+function addMediaPreview(id, source) {
+  const mesh = nodes.get(id);
+  if (!mesh) return;
+  new THREE.TextureLoader().load(source, texture => {
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = Math.min(renderer?.capabilities.getMaxAnisotropy?.() ?? 1, 4);
+    const preview = new THREE.Mesh(
+      new THREE.PlaneGeometry(mesh.userData.size[0] * .82, mesh.userData.size[1] * .58),
+      new THREE.MeshBasicMaterial({ map: texture, toneMapped: false })
+    );
+    preview.position.set(0, -.08, mesh.userData.size[2] / 2 + .014);
+    mesh.add(preview);
+    mesh.userData.hasMediaPreview = true;
+    updateSceneLabels();
+  });
+}
+
 function updateSceneLabels() {
   if (!THREE || !nodes.size) return;
   const labels = locales[locale].sceneLabels;
@@ -390,10 +416,10 @@ function updateSceneLabels() {
     const darkText = mesh.userData.color === 0xf2f0e9;
     const texture = textTexture(labels[id], darkText ? "#11110f" : "#f4f1e9");
     const label = new THREE.Mesh(
-      new THREE.PlaneGeometry(mesh.userData.size[0] * .82, mesh.userData.size[1] * .36),
+      new THREE.PlaneGeometry(mesh.userData.size[0] * .82, mesh.userData.size[1] * (mesh.userData.hasMediaPreview ? .2 : .36)),
       new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false })
     );
-    label.position.z = mesh.userData.size[2] / 2 + .012;
+    label.position.set(0, mesh.userData.hasMediaPreview ? mesh.userData.size[1] * .34 : 0, mesh.userData.size[2] / 2 + .018);
     mesh.add(label);
     mesh.userData.labelMesh = label;
   }
@@ -502,8 +528,7 @@ function renderFrame(time = 0) {
   const currentLayout = layouts[currentId] ?? layouts.hero;
   const nextLayout = layouts[nextId] ?? currentLayout;
   const seconds = time * .001;
-    const modeIds = null;
-    const activeIds = modeIds ?? (currentId === "goal" ? ["goal"] : currentId === "agents" ? [highlightedAgent] : currentId === "canvas" ? ["reference", "asset", "shot", "editor"] : currentId === "atlas" ? ["goal", "reference", "asset", "model", "editor", "review", "final"] : currentId === "demos" ? ["review", "final"] : currentId === "closing" ? ["final"] : currentId === "future" ? ["director", "model", "final"] : []);
+    const activeIds = currentId === "goal" ? ["goal"] : currentId === "agents" ? [highlightedAgent] : currentId === "canvas" ? ["reference", "asset", "shot", "editor"] : currentId === "atlas" ? ["goal", "reference", "asset", "model", "editor", "review", "final"] : currentId === "demos" ? ["review", "final"] : currentId === "closing" ? ["final"] : currentId === "future" ? ["director", "model", "final"] : [];
   for (const [id, mesh] of nodes) {
     const from = currentLayout[id] ?? layouts.hero[id];
     const to = nextLayout[id] ?? from;

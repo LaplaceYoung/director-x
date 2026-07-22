@@ -55,3 +55,7 @@ Pointer replacement, magnetic buttons, generic tilt, character-by-character entr
 - The page is still long and contains three large dark chapters; the next pass should tune pacing after real browser review.
 - The Three.js graph is semantic at a concept level but still uses abstract geometry. A later pass can map node materials to actual media thumbnails.
 - The future-harness section intentionally retains a stronger speculative language; it needs to remain clearly separated from currently shipped plugin capabilities.
+
+## Round 2
+
+The second pass turns the capability wall into three staggered production acts, binds real product media into the Three.js graph, fixes the first-frame camera position, balances the canvas headline, and removes roughly 17% of the total scroll travel. The normalized comparison is stored in `09-round2-comparison.png`.
