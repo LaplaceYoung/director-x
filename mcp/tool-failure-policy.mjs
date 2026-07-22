@@ -135,6 +135,7 @@ async function recordFailure(args, key, failure) {
           // The original failure remains the source of truth if checkpointing fails.
         }
         run.recoveryGate = {
+          recoveryGateId: `DXR-${randomUUID()}`,
           status: "blocked",
           kind: "tool_failure",
           toolName: key.split(":", 1)[0],
@@ -166,12 +167,26 @@ async function recordFailure(args, key, failure) {
 
 export function projectRecoveryAction(gate = {}) {
   return {
+    recoveryGateId: gate.recoveryGateId ?? null,
+    recoveryCheckpointId: gate.recoveryCheckpointId ?? null,
+    failedInputKey: gate.failedInputKey ?? null,
     blockedOperation: gate.toolName ?? null,
     rootCause: gate.technicalMessage ?? gate.code ?? "unknown_failure",
     correctedExample: correctedExample(gate.code),
     resumeWith: gate.nextRequiredAction ?? "directorx_get_run_snapshot",
     preservesCompletedArtifacts: true
   };
+}
+
+export function assertRecoveryRequest(gate, input) {
+  if (!gate || gate.status !== "blocked") return;
+  if (input.recoveryGateId !== gate.recoveryGateId || input.recoveryCheckpointId !== gate.recoveryCheckpointId || input.failedInputKey !== gate.failedInputKey) {
+    throw new Error("Recovery request is stale or does not match the active failure gate.");
+  }
+  const expectedAction = gate.code === "execution_failure" ? "retry_corrected_arguments" : "write_checkpoint_and_retry";
+  if (input.recoveryAction !== expectedAction) {
+    throw new Error(`Recovery action ${input.recoveryAction} does not match ${gate.code}; use ${expectedAction}.`);
+  }
 }
 
 function correctedExample(code) {

@@ -15,7 +15,7 @@ import { assertPromptBoundSubmission, compilePromptBoundGenerationPlan } from ".
 import { compileGenerationRepairPlan, generationRepairDefectTypes, writeGenerationRepairArtifacts } from "./generation-repair-compiler.mjs";
 import { confirmDxSubagentHostClosed, DX_SUBAGENT_CATALOG, dxIdentityInstruction, registerDxSubagent, updateDxSubagent } from "./subagent-registry.mjs";
 import { inspectCodexAgentRoles, installCodexAgentRoles } from "./codex-agent-roles.mjs";
-import { projectRecoveryAction, toolFailurePayload, withToolFailureGuard } from "./tool-failure-policy.mjs";
+import { assertRecoveryRequest, projectRecoveryAction, toolFailurePayload, withToolFailureGuard } from "./tool-failure-policy.mjs";
 import { evaluateRunCompletion } from "./completion-policy.mjs";
 import { assertIntakeReady, confirmIntake } from "./intake-gate.mjs";
 import { analyzeMediaWaveform, executeHyperframesRender, executeMosiTts, executeMossTtsNano, executeRemotionRender, executeWhisperTranscription, inspectAudioSource, inspectMediaDelivery, writeExecutionReceipt } from "./media-execution.mjs";
@@ -100,7 +100,7 @@ import { assertDirectorXToolSafetyPolicy } from "./tool-safety-policy.mjs";
 const CANVAS_URI = "ui://directorx/production-canvas-v1.html";
 const SCENE_CONFORMANCE_INSTRUCTIONS = "After directorx_verify_final_media, require scene_coverage_conformance_report.json to pass all non-waivable shot identity, order, duration, source-handle, full-frame, and PTS checks. Dispatch DX-Quality-Reviewer to inspect every planned shot's first/middle/last identity-bound frame, then call directorx_record_scene_coverage_review before final frame-finding acceptance. Metadata cannot prove camera, blocking, composition, lighting, movement, proof, reaction, or narrative fulfillment.";
 const SERVER_INSTRUCTIONS = "Use a concise consumer-facing Director X voice. In the Codex conversation, never narrate tool calls, file registration, JSON artifacts, schemas, MCP/runtime details, IDs, paths, test counts, or subagent plumbing unless the user asks for technical details or a failure requires diagnosis. Do not use Current Problem / Plan / Risks / Changed / Verified templates during production. Send one short start message, then only tangible stage milestones, blockers, native questions, preview availability, and final delivery. A normal update is at most two short sentences and should reuse userFacingSummary.suggestedUpdate. Do not duplicate a request_user_input question in chat. A returned native interaction may batch up to three independent image, video, voice, or music route questions; execute it once, then execute every afterAnswer resolution action with the same answer map before continuing. Never batch Goal, budget, credential, rights, stage, edit, or delivery approvals. Keep technical execution in collapsed tool results and the canvas Activity details. A delegated DX child must never call directorx_plan_production_team or create another background delegation plan. " +
-  "For every Director X trigger, call directorx_capability_preflight before all other work. Use directorx_create_and_ask_native_question as the single model-visible native interaction entry. At production start, confirm exact image, video, and voice routes through Codex request_user_input. For built-in routes, call directorx_get_media_provider_setup, resolve its native keySetupInteraction, and inject the secret only through the secure canvas credential field before recording the decision. For an unknown supplier/model, call directorx_get_custom_media_provider_intake and require the user to provide the exact model plus an official HTTPS API documentation or homepage URL; the parent DX-Director must read only verified official sources before registering a declarative adapter. The parent Director owns model routing, capability selection, provider fallback, and budget quotes directly; do not dispatch a separate routing or budget agent. After Goal, run mode, any required Intake answer, and the minimum Intake contract are resolved, use directorx_prepare_fast_start_intake when available, then call directorx_begin_reference_research immediately. Reference download, audio extraction, video reading, asset search, and the first script must proceed in parallel while provider docs and Keys are being configured. Provider, budget, and Key approvals remain hard gates for Generation, not for Research. Use directorx_begin_creative_work only as an idempotent compatibility path after research has started. The canvas is a projection of the durable Run and must prioritize growing real image, video, audio, research, script, storyboard, keyframe, and preview assets. If the five-minute creative-output SLA breaches, stop adding configuration work and dispatch the creative tracks immediately. Record music_strategy before research, then music_asset_selection only after search, local acquisition, rights proof, and quality audit. Research and generation must register the audio_responsibility_plan.json route before final review. For a reference-replication run, ingest the video and audio bundle first, compile the replication plan, then call directorx_score_reference_replication after exhaustive audit to choose pass_export, needs_edit, or regenerate. Never start an auxiliary Director X MCP runtime; one active runtime owns each Run. Preserve all existing provider, rights, pricing, continuity, render, exhaustive review, and delivery gates.";
+  "For every Director X trigger, call directorx_capability_preflight before all other work. Use directorx_create_and_ask_native_question as the single model-visible native interaction entry. After Goal, run mode, any required Intake answer, and the minimum Intake contract are resolved, use directorx_prepare_fast_start_intake when available, then call directorx_begin_reference_research immediately and execute its returned fast-start spawn wave. Reference download, audio extraction, video reading, asset search, and the first script must proceed while provider docs and Keys are being configured. Provider, budget, and Key approvals remain hard gates for Generation, never for Research. Before Generation, confirm exact image, video, and voice routes through Codex request_user_input. For built-in routes, call directorx_get_media_provider_setup, resolve its native keySetupInteraction, and inject the secret only through the secure canvas credential field before recording the decision. For an unknown supplier/model, call directorx_get_custom_media_provider_intake and require the user to provide the exact model plus an official HTTPS API documentation or homepage URL; the parent DX-Director must read only verified official sources before registering a declarative adapter. The parent Director owns model routing, capability selection, provider fallback, and budget quotes directly; do not dispatch a separate routing or budget agent. Use directorx_begin_creative_work only as an idempotent compatibility path after research has started. The canvas is a projection of the durable Run and must prioritize growing real image, video, audio, research, script, storyboard, keyframe, and preview assets. If any first-content, first-visual, or first-preview SLA breaches, stop adding configuration work and execute the returned production action. Record music_strategy during research, then music_asset_selection only after search, local acquisition, rights proof, and quality audit. Research and generation must register the audio_responsibility_plan.json route before final review. For a reference-replication run, ingest the video and audio bundle first, compile the replication plan, then call directorx_score_reference_replication after exhaustive audit to choose pass_export, needs_edit, or regenerate. Never start an auxiliary Director X MCP runtime; one active runtime owns each Run. Preserve all existing provider, rights, pricing, continuity, render, exhaustive review, and delivery gates.";
 const FAILURE_POLICY_INSTRUCTIONS = "When a tool fails, inspect retryable, attempts, stop, recovery, and nextRequiredAction. Retry a transient semantic operation at most once. Use directorx_get_recovery_action for the minimal blocked operation, root cause, corrected example, and unique resume action; completed artifacts remain available. For deterministic failures, call directorx_recover_run and retry only corrected arguments. Use directorx_create_and_ask_native_question for native gates; a chat message such as ‘继续’ cannot satisfy them. Never create a replacement Run or auxiliary MCP runtime.";
 const credentialStatus = new Map();
 const preflightSessions = new Map();
@@ -707,14 +707,14 @@ const rawTools = [
   {
     name: "directorx_recover_run",
     description: "Clear a deterministic Director X recovery gate after writing a durable checkpoint, so the corrected failed operation can be retried without creating a replacement Run.",
-    inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema(), recoveryAction: { enum: ["write_checkpoint_and_retry", "retry_corrected_arguments"], type: "string" }, detail: stringSchema() }, ["projectPath", "runId", "recoveryAction", "detail"]),
+    inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema(), recoveryGateId: stringSchema(), recoveryCheckpointId: stringSchema(), failedInputKey: stringSchema(), recoveryAction: { enum: ["write_checkpoint_and_retry", "retry_corrected_arguments"], type: "string" }, detail: stringSchema() }, ["projectPath", "runId", "recoveryGateId", "recoveryCheckpointId", "failedInputKey", "recoveryAction", "detail"]),
     annotations: writeAnnotations()
   },
   {
     name: "directorx_resume_run",
-    description: "Resume a durable Director X Run from its latest checkpoint and return the exact stage, blockers, approvals, artifacts, and event cursor.",
+    description: "Idempotently read a durable Director X Run from its latest checkpoint without changing status or writing another checkpoint, then return the exact recovery and host action plan.",
     inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema() }, ["projectPath", "runId"]),
-    annotations: writeAnnotations()
+    annotations: readOnlyAnnotations()
   },
   {
     name: "directorx_select_pipeline",
@@ -2172,6 +2172,7 @@ async function executeTool(name, args) {
     const createdRun = await createRun(args);
     const run = await updateRun({ ...args, runId: createdRun.runId, mutate(current) {
       current.hostCapabilities = preflight.hostCapabilities ?? null;
+      current.subagentNamingStatus = preflight.subagentNamingStatus ?? null;
       current.events.push(event(current, "host.capabilities.negotiated", "intake", preflight.hostCapabilities?.observed ? `${preflight.hostCapabilities.observedToolCount} Codex host tools observed` : "Codex host inventory not supplied; capability-specific checks remain unknown"));
       return current;
     } });
@@ -4230,6 +4231,7 @@ async function executeTool(name, args) {
     return await withBrowserCanvas(publicSnapshot(await updateRun({ ...args, async mutate(run) {
       const gate = run.recoveryGate;
       if (gate?.status !== "blocked") return run;
+      assertRecoveryRequest(gate, args);
       const written = await appendRunCheckpoint({
         ...args,
         run,
@@ -4252,15 +4254,9 @@ async function executeTool(name, args) {
     } })), args);
   }
   if (name === "directorx_resume_run") {
-    return await withBrowserCanvas(publicSnapshot(await updateRun({ ...args, mutate: async (run) => {
-      if (!run.checkpoints?.length) throw new Error("This Run has no durable checkpoint to resume from.");
-      run.status = run.status === "complete" ? "complete" : "production_in_progress";
-      const latest = run.checkpoints.at(-1);
-      run.events.push(event(run, "run.resumed", latest.stage, `Resumed from ${latest.checkpointId} at event ${latest.eventCursor}`));
-      const written = await appendRunCheckpoint({ ...args, run, reason: "run.resumed", detail: latest.checkpointId });
-      run.artifacts[written.artifactRef] = artifactRecord({ ...written, stage: run.stage });
-      return run;
-    } })), args);
+    const run = await readRun(args);
+    if (!run.checkpoints?.length) throw new Error("This Run has no durable checkpoint to resume from.");
+    return await withBrowserCanvas(publicSnapshot(run), args);
   }
   if (name === "directorx_prepare_fast_start_intake") {
     const snapshot = await updateRun({ ...args, mutate: async (run) => {
@@ -4377,6 +4373,9 @@ async function executeTool(name, args) {
   if (name === "directorx_begin_reference_research") {
     return await withRunResumeActions(await updateRun({ ...args, mutate(run) {
       const fastStart = beginReferenceResearch(run);
+      if (!fastStart.dispatchPlan && !run.subagentOrchestrationPlan) {
+        fastStart.dispatchPlan = compileFastStartResearchPlan(run, args);
+      }
       run.events.push(event(run, "reference.research.started", "research", `Reference-first lane started · generation blockers ${fastStart.generationBlockers.join(", ") || "none"}`));
       return run;
     } }), args);
@@ -5232,6 +5231,49 @@ async function persistSubagentOrchestrationArtifacts(run, args) {
   for (const artifact of written) run.artifacts[artifact.artifactRef] = await inspectArtifact({ ...args, artifactRef: artifact.artifactRef, path: artifact.path, stage: "intake", mediaKind: "document", metadata: { canvasEssential: false, diagnosticsSurface: "activity" } });
 }
 
+function compileFastStartResearchPlan(run, args) {
+  const availableAgentTypes = run.subagentNamingStatus?.availableAgentTypes
+    ?? run.hostCapabilities?.capabilities?.typed_agent_schema?.availableAgentTypes
+    ?? [];
+  const common = {
+    stage: "research",
+    dependsOnTaskIds: [],
+    restrictedTools: ["credential_access", "unapproved_paid_generation", "scope_expansion"],
+    maxAttempts: 2,
+    maxCost: 0,
+    currency: "CNY",
+    approvalBoundary: "Do not ask the user directly or cross rights, credential, provider, model, budget, generation, edit, or delivery gates; escalate to the parent Director X agent."
+  };
+  return planParallelSubagents(run, {
+    projectPath: args.projectPath,
+    planId: "fast-start-research",
+    objective: `Produce source-backed research and real local assets immediately for: ${run.goal?.outcome ?? "the active Director X production"}`,
+    availableAgentTypes,
+    hostConcurrencyLimit: Math.min(2, run.productionComplexityPlan?.settings?.maxConcurrency ?? 2),
+    tasks: [{
+      ...common,
+      taskId: "fast-reference-analysis",
+      roleId: "reference_analyst",
+      mission: "Start reference and category research immediately. If an authorized reference exists, download/read its real video and audio before compiling the evidence-bound replication plan; otherwise produce official-source research that directly informs the first script.",
+      inputArtifactRefs: ["intake_confirmation.json", "intent_resolution.json"],
+      outputArtifactRefs: ["reference_manifest.json", "reference_analysis.json"],
+      allowedTools: ["directorx_get_run_snapshot", "web_search", "web_open", "directorx_ingest_reference_video", "directorx_read_video", "directorx_compile_reference_replication_plan", "directorx_register_artifact"],
+      stopCondition: "Real source evidence is registered and the parent can write or revise the first script from the reference analysis.",
+      escalationTriggers: ["reference download requires native user authorization", "source provenance or reuse rights are unclear"]
+    }, {
+      ...common,
+      taskId: "fast-asset-acquisition",
+      roleId: "asset_manager",
+      mission: "Search, acquire, quality-audit, and register the first real local visual assets needed by the production while reference analysis proceeds.",
+      inputArtifactRefs: ["intake_confirmation.json", "intent_resolution.json"],
+      outputArtifactRefs: ["asset_manifest.json", "rights_ledger.json"],
+      allowedTools: ["directorx_get_run_snapshot", "web_search", "web_open", "directorx_register_asset_search_plan", "directorx_acquire_web_image_asset", "directorx_register_asset", "directorx_audit_asset_quality"],
+      stopCondition: "At least one relevant real local asset plus provenance, rights status, and quality evidence is registered, with remaining gaps identified.",
+      escalationTriggers: ["a download needs native authorization", "no rights-safe or quality-acceptable asset can be acquired"]
+    }]
+  });
+}
+
 async function diagnoseSetup(args) {
   const context = {
     projectPath: args.projectPath,
@@ -5484,8 +5526,8 @@ async function preflightStatusPayload(preflight, preflightId) {
     bootTransaction: projectPreflightBootTransaction(preflightId, preflight),
     goalLifecycle: {
       afterAcceptance: goalBootProtocol.afterAcceptance,
-      hostAction: goalAccepted ? goalBootProtocol.createGoalAction : goalBootProtocol.requestUserInputAction,
-      requiredBeforeIntake: true
+      hostAction: goalDeclined ? null : goalAccepted ? goalBootProtocol.createGoalAction : goalBootProtocol.requestUserInputAction,
+      requiredBeforeIntake: !goalDeclined
     }
   };
 }

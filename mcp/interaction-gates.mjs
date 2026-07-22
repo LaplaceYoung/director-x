@@ -8,6 +8,10 @@ export const NATIVE_INTERACTION_KINDS = Object.freeze([
 
 const INTERACTION_KIND_SET = new Set(NATIVE_INTERACTION_KINDS);
 const QUESTION_ID = /^[a-z][a-z0-9_]{1,63}$/;
+const STABLE_DECISION_KINDS = new Set([
+  "run_mode", "intake", "pipeline", "budget", "image_model", "video_model",
+  "voice_model", "music_strategy", "music_asset_selection", "music_route", "provider_input"
+]);
 
 export function requestNativeInteraction(run, input, now = new Date().toISOString()) {
   assertInteractionInput(input);
@@ -20,7 +24,7 @@ export function requestNativeInteraction(run, input, now = new Date().toISOStrin
   // Wording/recommended-label changes must not make the user answer the same
   // supplier/model question again. A caller can intentionally re-open it by
   // using a new gateKey (for example, a new provider job or route revision).
-  if (input.kind === "provider_input") {
+  if (STABLE_DECISION_KINDS.has(input.kind)) {
     const equivalent = [...store.history].reverse().find((item) => item.status === "resolved" && item.kind === input.kind && (item.gateKey ?? item.kind) === gateKey && sameQuestionIds(item.questions, input.questions));
     if (equivalent) return { request: equivalent, hostAction: null, deduplicated: true };
   }
@@ -59,8 +63,11 @@ export function resolveNativeInteraction(run, input, now = new Date().toISOStrin
   const store = interactionStore(run);
   const request = store.pending.find((item) => item.requestId === input.requestId);
   if (!request) {
-    const resolved = store.history.find((item) => item.requestId === input.requestId);
-    if (resolved) return resolved;
+    const historical = store.history.find((item) => item.requestId === input.requestId);
+    if (historical?.status === "resolved") return historical;
+    if (historical?.status === "superseded") {
+      throw new Error(`Native interaction ${input.requestId} was superseded by ${historical.supersededBy}; resolve the replacement request instead.`);
+    }
     throw new Error(`Unknown pending native interaction: ${input.requestId}`);
   }
   assertRawRequestUserInputEnvelope(request.questions, input.answers);

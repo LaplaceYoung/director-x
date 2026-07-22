@@ -89,3 +89,31 @@ test("breaches again when production stops after the first creative asset", () =
   assert.equal(stalled.nextRequiredAction, "dispatch_reference_asset_and_script_work_now");
   assert.match(stalled.userFacingMessage, /最近五分钟/);
 });
+
+test("does not let a research plan satisfy content, visual, or preview SLAs", () => {
+  const run = readyRun();
+  beginCreativeWork(run, "2026-07-20T00:00:00.000Z");
+  run.artifacts["research_plan.json"] = { mediaKind: "document", registeredAt: "2026-07-20T00:01:00.000Z" };
+  const stalled = evaluateCreativeProgressSla(run, "2026-07-20T00:16:00.000Z");
+  assert.equal(stalled.creativeArtifactCount, 0);
+  assert.equal(stalled.lanes.firstContent.status, "breached");
+  assert.equal(stalled.lanes.firstVisual.status, "breached");
+  assert.equal(stalled.lanes.firstPreview.status, "breached");
+  assert.equal(stalled.nextRequiredAction, "produce_playable_preview_now");
+});
+
+test("tracks first visual and playable preview separately from script progress", () => {
+  const run = readyRun();
+  beginCreativeWork(run, "2026-07-20T00:00:00.000Z");
+  run.artifacts["script_or_outline.json"] = { mediaKind: "document", registeredAt: "2026-07-20T00:02:00.000Z" };
+  let progress = evaluateCreativeProgressSla(run, "2026-07-20T00:11:00.000Z");
+  assert.equal(progress.lanes.firstContent.status, "satisfied");
+  assert.equal(progress.lanes.firstVisual.status, "breached");
+  assert.equal(progress.status, "breached");
+  assert.equal(progress.nextRequiredAction, "produce_first_keyframe_now");
+  run.artifacts["keyframe.png"] = { mediaKind: "image", registeredAt: "2026-07-20T00:11:30.000Z" };
+  progress = evaluateCreativeProgressSla(run, "2026-07-20T00:16:00.000Z");
+  assert.equal(progress.lanes.firstVisual.status, "satisfied");
+  assert.equal(progress.lanes.firstPreview.status, "breached");
+  assert.equal(progress.nextRequiredAction, "produce_playable_preview_now");
+});

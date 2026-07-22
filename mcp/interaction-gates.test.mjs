@@ -110,6 +110,27 @@ test("does not repeat equivalent provider intake after a gate-key version refres
   assert.equal(refreshed.deduplicated, true);
 });
 
+test("does not repeat a stable model decision when only prompt wording changes", () => {
+  const run = { runId: "dx-test", interactions: { pending: [], history: [] } };
+  const imageQuestion = { ...question, id: "image_model", header: "图片模型", question: "选择图片模型。" };
+  const first = requestNativeInteraction(run, { kind: "image_model", gateKey: "image-model", reason: "Choose generation route.", questions: [imageQuestion] });
+  resolveNativeInteraction(run, { requestId: first.request.requestId, confirmedBy: "request_user_input", answers: { image_model: { answers: ["零外部预算"] } } });
+  const refreshed = requestNativeInteraction(run, { kind: "image_model", gateKey: "image-model", reason: "Choose the exact image route.", questions: [{ ...imageQuestion, question: "请选择图片模型路线。" }] });
+  assert.equal(refreshed.request.requestId, first.request.requestId);
+  assert.equal(refreshed.deduplicated, true);
+  assert.equal(run.interactions.pending.length, 0);
+});
+
+test("rejects a late answer for a superseded interaction and points to its replacement", () => {
+  const run = { runId: "dx-test", interactions: { pending: [], history: [] } };
+  const first = requestNativeInteraction(run, { kind: "budget", reason: "Budget changes the route.", questions: [question] });
+  const second = requestNativeInteraction(run, { kind: "budget", reason: "Budget changes the route.", questions: [{ ...question, id: "budget_cap", question: "请选择预算上限。" }] });
+  assert.throws(
+    () => resolveNativeInteraction(run, { requestId: first.request.requestId, confirmedBy: "request_user_input", answers: { budget_route: { answers: ["零外部预算"] } } }),
+    new RegExp(`superseded by ${second.request.requestId}`)
+  );
+});
+
 test("does not replay a reference authorization for a different source", () => {
   const run = { runId: "dx-test", interactions: { pending: [], history: [] } };
   const first = requestNativeInteraction(run, {

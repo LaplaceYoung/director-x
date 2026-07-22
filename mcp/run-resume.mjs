@@ -16,7 +16,7 @@ export function buildRunResumeActionPlan(snapshot, context = {}) {
     runId: snapshot.runId,
     requests: snapshot.interactions?.pending ?? []
   });
-  const dispatch = !nativeInteractionBatch && !releaseActions.length ? readyParallelDispatch(snapshot, context) : null;
+  const dispatch = !recovery && !nativeInteractionBatch && !releaseActions.length ? readyParallelDispatch(snapshot, context) : null;
   const finalizeActions = surfaceFinalizeActions(snapshot, context);
   const blockedBy = recovery
     ? `recovery:${recovery.blockedOperation}`
@@ -55,14 +55,17 @@ export function buildRunResumeActionPlan(snapshot, context = {}) {
 }
 
 function productionBootstrapState(snapshot, dispatch) {
-  const plan = snapshot.subagentOrchestrationPlan;
+  const plan = snapshot.subagentOrchestrationPlan ?? snapshot.fastStart?.dispatchPlan;
   const tasks = plan?.tasks ?? [];
   const running = tasks.filter((task) => task.status === "running").length;
   const completed = tasks.filter((task) => task.status === "complete").length;
   let state = "awaiting_goal_binding";
   let nextRequiredAction = "bind_goal";
   if (snapshot.goal?.boundAt) {
-    if (snapshot.fastStart?.startedAt && !snapshot.executionGraph) {
+    if (snapshot.recoveryGate?.status === "blocked") {
+      state = "recovery_blocked";
+      nextRequiredAction = snapshot.recoveryGate.nextRequiredAction ?? "recover_run";
+    } else if (snapshot.fastStart?.startedAt && !snapshot.executionGraph) {
       state = "creative_work_active_governance_deferred";
       nextRequiredAction = snapshot.creativeProgressSla?.breached ? "dispatch_creative_work_now" : "continue_research_asset_and_script_work";
     } else if (!snapshot.productionComplexityPlan) {
@@ -147,7 +150,7 @@ function terminalReleaseActions(snapshot, context) {
 }
 
 function readyParallelDispatch(snapshot, context) {
-  const plan = snapshot.subagentOrchestrationPlan;
+  const plan = snapshot.subagentOrchestrationPlan ?? snapshot.fastStart?.dispatchPlan;
   if (!plan?.tasks?.length || !stageIsActive(snapshot, snapshot.stage)) return null;
   const byId = new Map(plan.tasks.map((task) => [task.taskId, task]));
   const orderedBatches = [...(plan.batches ?? [])].sort((a, b) => a.order - b.order);

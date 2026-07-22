@@ -37,8 +37,9 @@ export function registerDxSubagent(run, input) {
   const hostNicknameMode = classifyDxHostNickname(input.hostNickname, catalogRole.displayName, catalogRole.agentType, hostAgentTypeMode);
   const hostReleaseRequired = plannedTask?.hostReleaseRequired !== false;
   const hostReleaseStrategy = plannedTask?.hostReleaseStrategy ?? "close_agent";
-  const plannedBatch = plannedTask ? batchForTask(run.subagentOrchestrationPlan, plannedTask.taskId) : null;
-  if (plannedBatch) assertPriorBatchesComplete(run.subagentOrchestrationPlan, plannedBatch);
+  const activePlan = activePlanFor(run);
+  const plannedBatch = plannedTask ? batchForTask(activePlan, plannedTask.taskId) : null;
+  if (plannedBatch) assertPriorBatchesComplete(activePlan, plannedBatch);
   if (plannedTask?.hostAgentId && plannedTask.hostAgentId !== input.hostAgentId) throw new Error(`${catalogRole.displayName} task ${plannedTask.taskId} is already dispatched to host agent ${plannedTask.hostAgentId}; create a new plan revision before retrying it.`);
   run.subagents ??= [];
   const duplicateHost = run.subagents.find((item) => item.hostAgentId === input.hostAgentId && item.displayName !== input.displayName);
@@ -70,8 +71,8 @@ export function registerDxSubagent(run, input) {
   if (plannedTask) {
     plannedTask.dispatchedAt ??= now;
     plannedTask.dispatchReceipt ??= {
-      receiptId: `dispatch:${run.subagentOrchestrationPlan.planId}:${plannedTask.taskId}`,
-      planId: run.subagentOrchestrationPlan.planId,
+      receiptId: `dispatch:${activePlan.planId}:${plannedTask.taskId}`,
+      planId: activePlan.planId,
       batchId: plannedBatch.batchId,
       taskId: plannedTask.taskId,
       agentType: plannedTask.agentType,
@@ -94,7 +95,7 @@ export function registerDxSubagent(run, input) {
     plannedTask.updatedAt = now;
     plannedBatch.startedAt ??= now;
     plannedBatch.status = "running";
-    updatePlanStatus(run, now);
+    updatePlanStatus(activePlan, now);
   }
   return run;
 }
@@ -103,7 +104,8 @@ export function updateDxSubagent(run, input) {
   assertDxName(input.displayName);
   const record = run.subagents?.find((item) => item.displayName === input.displayName);
   if (!record) throw new Error(`Register ${input.displayName} before updating it.`);
-  const plannedTask = run.subagentOrchestrationPlan?.tasks?.find((task) => task.roleId === record.roleId && task.stage === record.stage);
+  const activePlan = activePlanFor(run);
+  const plannedTask = activePlan?.tasks?.find((task) => task.roleId === record.roleId && task.stage === record.stage);
   if (plannedTask && input.status === "complete") {
     const declaredHandoff = new Set([...(record.outputArtifactRefs ?? []), ...(input.outputArtifactRefs ?? [])]);
     const missingDeclared = plannedTask.outputArtifactRefs.filter((artifactRef) => !declaredHandoff.has(artifactRef));
@@ -135,7 +137,7 @@ export function updateDxSubagent(run, input) {
       }
     }
     plannedTask.updatedAt = record.updatedAt;
-    updatePlanStatus(run, record.updatedAt);
+    updatePlanStatus(activePlan, record.updatedAt);
   }
   if (input.hostRelease && ["complete", "failed"].includes(input.status)) {
     confirmDxSubagentHostClosed(run, {
@@ -158,7 +160,8 @@ export function confirmDxSubagentHostClosed(run, input, now = new Date().toISOSt
   record.hostLifecycle = "released";
   record.hostReleasedAt = now;
   record.updatedAt = now;
-  const plannedTask = run.subagentOrchestrationPlan?.tasks?.find((task) => task.roleId === record.roleId && task.stage === record.stage);
+  const activePlan = activePlanFor(run);
+  const plannedTask = activePlan?.tasks?.find((task) => task.roleId === record.roleId && task.stage === record.stage);
   if (plannedTask) {
     plannedTask.hostLifecycle = "released";
     plannedTask.hostReleasedAt = now;
@@ -167,7 +170,7 @@ export function confirmDxSubagentHostClosed(run, input, now = new Date().toISOSt
       plannedTask.dispatchReceipt.status = plannedTask.status;
     }
     plannedTask.updatedAt = now;
-    updatePlanStatus(run, now);
+    updatePlanStatus(activePlan, now);
   }
   return run;
 }
@@ -199,7 +202,7 @@ export function assertDxName(value) {
 function role(roleId, agentType, displayName, mission) { return { roleId, agentType, displayName, mission }; }
 
 function plannedTaskFor(run, roleId, stage) {
-  const plan = run.subagentOrchestrationPlan;
+  const plan = activePlanFor(run);
   if (!plan) {
     if (run.orchestrationPolicy?.canonicalDxRequired) throw new Error("Call directorx_plan_parallel_subagents before spawning Director X subagents.");
     return null;
@@ -209,8 +212,7 @@ function plannedTaskFor(run, roleId, stage) {
   return task;
 }
 
-function updatePlanStatus(run, now) {
-  const plan = run.subagentOrchestrationPlan;
+function updatePlanStatus(plan, now) {
   if (!plan) return;
   for (const batch of plan.batches ?? []) {
     const tasks = batch.taskIds.map((taskId) => plan.tasks.find((task) => task.taskId === taskId)).filter(Boolean);
@@ -229,6 +231,10 @@ function updatePlanStatus(run, now) {
         : plan.tasks.some((task) => ["running", "complete"].includes(task.status)) ? "running"
           : "awaiting_host_dispatch";
   plan.updatedAt = now;
+}
+
+function activePlanFor(run) {
+  return run.subagentOrchestrationPlan ?? run.fastStart?.dispatchPlan ?? null;
 }
 
 function batchForTask(plan, taskId) {

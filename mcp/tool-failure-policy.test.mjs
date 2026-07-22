@@ -4,7 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRun, readRun } from "./run-store.mjs";
-import { DirectorXToolExecutionError, withToolFailureGuard } from "./tool-failure-policy.mjs";
+import { assertRecoveryRequest, DirectorXToolExecutionError, projectRecoveryAction, withToolFailureGuard } from "./tool-failure-policy.mjs";
 
 test("stops native interaction resolution errors instead of allowing blind retries", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "directorx-failure-policy-"));
@@ -191,6 +191,20 @@ test("writes a failure checkpoint and allows corrected deterministic arguments",
     assert.equal(stored.recoveryGate.status, "blocked");
     assert.ok(stored.checkpoints.length >= 2, "initial and failure checkpoints should exist");
     assert.ok(stored.recoveryGate.recoveryCheckpointId);
+    assert.ok(stored.recoveryGate.recoveryGateId);
+    const recovery = projectRecoveryAction(stored.recoveryGate);
+    assert.deepEqual({
+      recoveryGateId: recovery.recoveryGateId,
+      recoveryCheckpointId: recovery.recoveryCheckpointId,
+      failedInputKey: recovery.failedInputKey
+    }, {
+      recoveryGateId: stored.recoveryGate.recoveryGateId,
+      recoveryCheckpointId: stored.recoveryGate.recoveryCheckpointId,
+      failedInputKey: stored.recoveryGate.failedInputKey
+    });
+    assert.doesNotThrow(() => assertRecoveryRequest(stored.recoveryGate, { ...recovery, recoveryAction: "retry_corrected_arguments" }));
+    assert.throws(() => assertRecoveryRequest(stored.recoveryGate, { ...recovery, recoveryGateId: "DXR-stale", recoveryAction: "retry_corrected_arguments" }), /stale/);
+    assert.throws(() => assertRecoveryRequest(stored.recoveryGate, { ...recovery, recoveryAction: "write_checkpoint_and_retry" }), /retry_corrected_arguments/);
 
     const correctedArgs = { ...originalArgs, selectedCapabilities: ["web_research", "script_craft"] };
     await withToolFailureGuard("directorx_recover_run", { projectPath, runId: run.runId, recoveryAction: "retry_corrected_arguments", detail: "Add the missing script capability." }, async () => ({ status: "recovered" }));

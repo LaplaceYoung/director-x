@@ -1,7 +1,7 @@
 const ESSENTIAL_APPROVALS = Object.freeze(["budget", "image_model", "video_model", "voice_model"]);
 import { transitionPipelineStage } from "./pipeline-catalog.mjs";
 const CREATIVE_DOCUMENTS = new Set([
-  "research_plan.json", "reference_analysis.json", "reference_learning_report.json", "style_playbook.json",
+  "reference_analysis.json", "reference_learning_report.json", "style_playbook.json",
   "script_or_outline.json", "shotlist.json", "keyframe_storyboard.json", "visual_prompt_pack.json"
 ]);
 
@@ -90,7 +90,9 @@ export function beginCreativeWork(run, now = new Date().toISOString()) {
 
 export function evaluateCreativeProgressSla(run, now = new Date().toISOString()) {
   const creativeArtifacts = Object.entries(run.artifacts ?? {}).filter(([artifactRef, artifact]) => isCreativeArtifact(artifactRef, artifact));
-  if (!run.fastStart?.startedAt) return { status: "awaiting_fast_start", creativeArtifactCount: creativeArtifacts.length, breached: false, nextRequiredAction: "directorx_begin_creative_work" };
+  const visualArtifacts = creativeArtifacts.filter(([artifactRef, artifact]) => isVisualArtifact(artifactRef, artifact));
+  const previewArtifacts = creativeArtifacts.filter(([artifactRef, artifact]) => isPreviewArtifact(artifactRef, artifact));
+  if (!run.fastStart?.startedAt) return { status: "awaiting_fast_start", creativeArtifactCount: creativeArtifacts.length, breached: false, nextRequiredAction: "directorx_begin_reference_research", lanes: {} };
   const nowMs = Date.parse(now);
   const startedAtMs = Date.parse(run.fastStart.startedAt);
   const thresholdMinutes = Number(run.fastStart.creativeAssetSlaMinutes ?? 5);
@@ -103,18 +105,40 @@ export function evaluateCreativeProgressSla(run, now = new Date().toISOString())
   const breached = canMonitorContinuously && elapsedMinutes >= thresholdMinutes;
   const status = breached ? "breached" : hasCreativeArtifacts ? "satisfied" : "on_track";
   const latestCreativeArtifactRefs = latestCreativeAtMs === null ? [] : timestampedArtifacts.filter((item) => item.timestamp === latestCreativeAtMs).map((item) => item.artifactRef);
+  const lanes = {
+    firstContent: firstArtifactLane(creativeArtifacts, startedAtMs, nowMs, thresholdMinutes),
+    firstVisual: firstArtifactLane(visualArtifacts, startedAtMs, nowMs, Number(run.fastStart.firstKeyframeTargetMinutes ?? 10)),
+    firstPreview: firstArtifactLane(previewArtifacts, startedAtMs, nowMs, Number(run.fastStart.firstPreviewTargetMinutes ?? 15))
+  };
+  const breachedLane = ["firstPreview", "firstVisual", "firstContent"].find((lane) => lanes[lane].breached);
+  const anyBreached = breached || Boolean(breachedLane);
   return {
     schemaVersion: "1.0",
-    status,
+    status: anyBreached ? "breached" : status,
     creativeArtifactCount: creativeArtifacts.length,
     creativeArtifactRefs: creativeArtifacts.map(([artifactRef]) => artifactRef),
     latestCreativeArtifactAt: latestCreativeAtMs === null ? null : new Date(latestCreativeAtMs).toISOString(),
     latestCreativeArtifactRefs,
     elapsedMinutes: Number(elapsedMinutes.toFixed(2)),
     thresholdMinutes,
-    breached,
-    nextRequiredAction: breached ? "dispatch_reference_asset_and_script_work_now" : "continue_parallel_creative_work",
-    userFacingMessage: breached ? (hasCreativeArtifacts ? "最近五分钟没有出现新的脚本、图片、视频或音频，已要求立即恢复并行创作。" : "启动创作五分钟后仍没有出现脚本、图片、视频或音频，已要求立即切换到创作产出路线。") : null
+    breached: anyBreached,
+    lanes,
+    visualArtifactRefs: visualArtifacts.map(([artifactRef]) => artifactRef),
+    previewArtifactRefs: previewArtifacts.map(([artifactRef]) => artifactRef),
+    nextRequiredAction: breachedLane === "firstPreview" ? "produce_playable_preview_now" : breachedLane === "firstVisual" ? "produce_first_keyframe_now" : breached ? "dispatch_reference_asset_and_script_work_now" : "continue_parallel_creative_work",
+    userFacingMessage: breachedLane === "firstPreview" ? "首版可播放预览已超过目标时间，已停止追加配置并转入预览产出。" : breachedLane === "firstVisual" ? "首个关键画面已超过目标时间，已停止追加配置并转入视觉产出。" : breached ? (hasCreativeArtifacts ? "最近五分钟没有出现新的脚本、图片、视频或音频，已要求立即恢复并行创作。" : "启动创作五分钟后仍没有出现脚本、图片、视频或音频，已要求立即切换到创作产出路线。") : null
+  };
+}
+
+function firstArtifactLane(artifacts, startedAtMs, nowMs, thresholdMinutes) {
+  const elapsedMinutes = Math.max(0, (nowMs - startedAtMs) / 60000);
+  const satisfied = artifacts.length > 0;
+  return {
+    status: satisfied ? "satisfied" : elapsedMinutes >= thresholdMinutes ? "breached" : "on_track",
+    thresholdMinutes,
+    elapsedMinutes: Number(elapsedMinutes.toFixed(2)),
+    artifactRefs: artifacts.map(([artifactRef]) => artifactRef),
+    breached: !satisfied && elapsedMinutes >= thresholdMinutes
   };
 }
 
@@ -127,6 +151,16 @@ function isCreativeArtifact(artifactRef, artifact = {}) {
   if (["image", "video", "audio"].includes(mediaKind)) return true;
   if (/\.(?:png|jpe?g|webp|gif|mp4|mov|webm|wav|mp3|m4a|aac)$/i.test(artifact.relativePath ?? artifact.path ?? artifactRef)) return true;
   return CREATIVE_DOCUMENTS.has(artifactRef) || /(?:script|storyboard|shotlist|reference_analysis|style_playbook)\.md$/i.test(artifactRef);
+}
+
+function isVisualArtifact(artifactRef, artifact = {}) {
+  const mediaKind = artifact.mediaKind ?? artifact.kind;
+  return ["image", "video"].includes(mediaKind) || /\.(?:png|jpe?g|webp|gif|mp4|mov|webm)$/i.test(artifact.relativePath ?? artifact.path ?? artifactRef);
+}
+
+function isPreviewArtifact(artifactRef, artifact = {}) {
+  const mediaKind = artifact.mediaKind ?? artifact.kind;
+  return mediaKind === "video" || /\.(?:mp4|mov|webm)$/i.test(artifact.relativePath ?? artifact.path ?? artifactRef);
 }
 
 function creativeArtifactTimestamp(artifact = {}) {

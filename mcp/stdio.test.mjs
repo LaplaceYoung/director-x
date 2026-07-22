@@ -229,7 +229,7 @@ test("advertises the mandatory side-Browser startup contract during MCP initiali
     assert.match(initialized.instructions, /afterAnswer/);
     assert.match(initialized.instructions, /directorx_begin_creative_work/);
     assert.match(initialized.instructions, /directorx_prepare_fast_start_intake/);
-    assert.match(initialized.instructions, /five-minute creative-output SLA/);
+    assert.match(initialized.instructions, /first-content, first-visual, or first-preview SLA/);
     assert.match(initialized.instructions, /music_strategy/);
     assert.match(initialized.instructions, /music_asset_selection/);
     assert.match(initialized.instructions, /Never start an auxiliary Director X MCP runtime/);
@@ -248,6 +248,7 @@ test("prepares the complete minimum Intake contract through one MCP tool call", 
   await updateRun({ projectPath, runId: run.runId, mutate(current) {
     current.goal = { ...current.goal, codexGoalId: "goal-fast-start", boundAt: "2026-07-20T00:00:00.000Z" };
     current.runMode = { mode: "guided_autonomy", confirmedAt: "2026-07-20T00:00:00.000Z", confirmedBy: "request_user_input", lowRiskAutoAdvance: true, stageApprovalRequired: false, hardGates: [] };
+    current.subagentNamingStatus = { availableAgentTypes: ["default", "worker", "explorer"] };
     return current;
   } });
   const child = spawn(process.execPath, [new URL("./server.mjs", import.meta.url).pathname], { stdio: ["pipe", "pipe", "pipe"] });
@@ -282,14 +283,15 @@ test("prepares the complete minimum Intake contract through one MCP tool call", 
     const promise = JSON.parse(await readFile(join(projectPath, ".directorx", "plugin-runs", run.runId, "artifacts", "delivery_promise.json"), "utf8"));
     assert.equal(brief.run_mode, "guided_autonomy");
     assert.equal(promise.approved_production_paths[0].path, "ai_generation_plus_web_assets");
-    await updateRun({ projectPath, runId: run.runId, mutate(current) {
-      for (const approval of current.approvals) if (["budget", "image_model", "video_model", "voice_model"].includes(approval.kind)) approval.status = "approved";
-      return current;
-    } });
-    const started = (await send(502, "directorx_begin_creative_work", { projectPath, runId: run.runId })).result.structuredContent;
+    const started = (await send(502, "directorx_begin_reference_research", { projectPath, runId: run.runId })).result.structuredContent;
     assert.equal(started.stage, "research");
     assert.equal(started.pipeline.stageStates.intake.status, "complete");
     assert.equal(started.pipeline.stageStates.research.status, "active");
+    assert.equal(started.fastStart.dispatchPlan.tasks.length, 2);
+    const dispatchActions = started.resumeActionPlan.groups.find((group) => group.phase === "parallel_dispatch").actions;
+    assert.equal(dispatchActions.length, 2);
+    assert.ok(dispatchActions.every((action) => action.tool === "spawn_agent"));
+    assert.deepEqual(started.fastStart.generationBlockers, ["budget", "image_model", "video_model", "voice_model"]);
   } finally {
     child.kill("SIGTERM");
     await rm(projectPath, { recursive: true, force: true });

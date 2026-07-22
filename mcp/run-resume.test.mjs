@@ -155,6 +155,33 @@ test("does not duplicate a running or host-bound DX task", () => {
   assert.equal(plan.groups[3].actions.length, 0);
 });
 
+test("never dispatches a new subagent while a recovery gate is blocked", () => {
+  const plan = buildRunResumeActionPlan(snapshot({
+    recoveryGate: {
+      status: "blocked", toolName: "directorx_render_video", code: "execution_failure",
+      nextRequiredAction: "directorx_recover_run_then_retry_corrected_arguments"
+    },
+    goal: { codexGoalId: "goal-test", boundAt: "2026-07-17T00:00:00.000Z" },
+    productionComplexityPlan: { profile: "quick" },
+    executionGraph: { graphId: "graph-1" }
+  }), { canvasBinding });
+  assert.equal(plan.blockedBy, "recovery:directorx_render_video");
+  assert.equal(plan.groups.find((group) => group.phase === "parallel_dispatch").actions.length, 0);
+  assert.equal(plan.productionBootstrap.state, "recovery_blocked");
+});
+
+test("dispatches the durable fast-start research plan before deferred governance exists", () => {
+  const first = task();
+  const plan = buildRunResumeActionPlan(snapshot({
+    subagentOrchestrationPlan: null,
+    fastStart: {
+      startedAt: "2026-07-17T00:00:00.000Z",
+      dispatchPlan: { planId: "fast-start", tasks: [first], batches: [{ batchId: "fast-start-batch-1", order: 1, taskIds: [first.taskId] }] }
+    }
+  }), { canvasBinding });
+  assert.equal(plan.groups.find((group) => group.phase === "parallel_dispatch").actions[0].tool, "spawn_agent");
+});
+
 test("rebinds an active editor and preserves both side-browser surfaces at turn end", () => {
   const editorBinding = {
     editorHostAction: { type: "in_app_browser", action: "open_or_claim", tabKey: "directorx-cut:dx-test", url: "http://127.0.0.1/editor", visibility: true, required: true },

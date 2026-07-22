@@ -231,6 +231,10 @@ export function planParallelSubagents(run, input, now = new Date().toISOString()
 
 export function assertCanInstallSubagentPlan(run, planId) {
   const existing = run?.subagentOrchestrationPlan;
+  const fastStartPlan = run?.fastStart?.dispatchPlan;
+  if (!existing && fastStartPlan && fastStartPlan.status !== "complete") {
+    throw new Error(`Complete and release the fast-start research wave ${fastStartPlan.planId} before installing the deferred production team.`);
+  }
   if (!existing) return { status: "new_plan" };
   if (existing.planId === planId) return { status: "existing_plan", plan: structuredClone(existing) };
   throw new Error(`Director X Run ${run.runId} already owns subagent plan ${existing.planId}; replacing it with ${planId} would create a nested or conflicting delegation tree.`);
