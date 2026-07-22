@@ -169,11 +169,11 @@ test("ships the public landing page and deployment workflow", async () => {
   await access(join(pluginRoot, "site", "robots.txt"));
   await access(join(pluginRoot, "site", "sitemap.xml"));
   await access(join(pluginRoot, "site", "llms.txt"));
-  assert.match(landing, /Direct the Goal/);
-  assert.match(landing, /Dedicated crew/);
-  assert.match(landing, /Live canvas/);
+  assert.match(landing, /Direct video/);
+  assert.match(landing, /DX-Reference-Analyst/);
+  assert.match(landing, /live media canvas/i);
   assert.match(landing, /data-locale="zh-CN"/);
-  assert.match(landing, /Review theater/);
+  assert.match(landing, /assets\/demos\/directorx-waic-moss-promo-v4\.mp4/);
   assert.match(landing, /One word,.*one world\./);
   assert.match(landing, /Video Agent Harness/);
   assert.match(landing, /video-harness/);
@@ -183,6 +183,10 @@ test("ships the public landing page and deployment workflow", async () => {
   assert.match(motion, /updateSceneLabels/);
   assert.match(landing, /SoftwareApplication/);
   assert.match(landing, /Open-Source AI Video Production Harness for Codex/);
+  assert.doesNotMatch(landing, /pointer-trace|site-loader|chapter-rail|section-index|data-tilt|data-kinetic|data-magnetic/);
+  assert.doesNotMatch(motion, /setupPointerInteractions|startEntrance|sceneMode/);
+  assert.doesNotMatch(locales.en.copy["atlas.body"], /not one model call/i);
+  assert.doesNotMatch(locales["zh-CN"].copy["roadmap.title"], /只是第一步/);
   assert.match(workflow, /actions\/deploy-pages@v4/);
   assert.equal(plugin.homepage, "https://laplaceyoung.github.io/director-x/");
   const translationKeys = [...landing.matchAll(/data-i18n(?:-html|-aria-label)?="([^"]+)"/g)].map((match) => match[1]);
