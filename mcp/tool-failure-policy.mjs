@@ -52,7 +52,7 @@ async function assertRecoveryGateAllows(toolName, args) {
   const gate = run.recoveryGate;
   if (gate?.status !== "blocked") return;
   if (toolName === "directorx_get_run_snapshot" || toolName === "directorx_get_recovery_action") return;
-  if (toolName === "directorx_checkpoint_run" || toolName === "directorx_resume_run" || toolName === "directorx_recover_run") return;
+  if (toolName === "directorx_checkpoint_run" || toolName === "directorx_resume_run" || toolName === "directorx_recover_run" || toolName === "directorx_recover_production") return;
   if (toolName === gate.toolName && gate.code === "transient_execution_failure" && gate.attempts < MAX_RETRIES) return;
   if (toolName === gate.toolName && gate.code === "execution_failure" && gate.failedInputKey && failureKey(toolName, args) !== gate.failedInputKey) return;
   if (gate.nextRequiredAction === "bind_native_goal" && toolName === "directorx_bind_goal") return;
@@ -137,7 +137,7 @@ async function recordFailure(args, key, failure) {
         } catch {
           // The original failure remains the source of truth if checkpointing fails.
         }
-        run.recoveryGate = {
+        const recoveryGate = {
           recoveryGateId: `DXR-${randomUUID()}`,
           status: "blocked",
           kind: "tool_failure",
@@ -147,9 +147,10 @@ async function recordFailure(args, key, failure) {
           failedInputKey: key,
           recoveryCheckpointId: recoveryCheckpoint?.checkpoint?.checkpointId ?? null,
           nextRequiredAction: recoveryActionFor(failure),
-          updatedAt: recorded.lastAt,
-          recovery: projectRecoveryAction({ toolName: key.split(":", 1)[0], code: failure.code, nextRequiredAction: recoveryActionFor(failure) })
+          updatedAt: recorded.lastAt
         };
+        recoveryGate.recovery = projectRecoveryAction(recoveryGate);
+        run.recoveryGate = recoveryGate;
       }
       run.events ??= [];
       run.events.push({
@@ -170,15 +171,31 @@ async function recordFailure(args, key, failure) {
 
 export function projectRecoveryAction(gate = {}) {
   return {
+    recoveryToken: recoveryTokenFor(gate),
     recoveryGateId: gate.recoveryGateId ?? null,
     recoveryCheckpointId: gate.recoveryCheckpointId ?? null,
     failedInputKey: gate.failedInputKey ?? null,
     blockedOperation: gate.toolName ?? null,
     rootCause: gate.technicalMessage ?? gate.code ?? "unknown_failure",
     correctedExample: correctedExample(gate.code),
+    requiredAction: expectedRecoveryAction(gate),
     resumeWith: gate.nextRequiredAction ?? "directorx_get_run_snapshot",
     preservesCompletedArtifacts: true
   };
+}
+
+export function recoveryTokenFor(gate = {}) {
+  if (!gate.toolName && !gate.failedInputKey) return null;
+  return `dxr_${createHash("sha256").update([gate.recoveryGateId ?? "legacy", gate.recoveryCheckpointId ?? "", gate.failedInputKey ?? gate.toolName, gate.code ?? ""].join(":"), "utf8").digest("hex").slice(0, 32)}`;
+}
+
+export function assertRecoveryToken(gate, token) {
+  const expected = recoveryTokenFor(gate);
+  if (!expected || token !== expected) throw new Error("Recovery token is stale or does not match the active failure gate.");
+}
+
+export function expectedRecoveryAction(gate = {}) {
+  return gate.code === "execution_failure" ? "retry_corrected_arguments" : "write_checkpoint_and_retry";
 }
 
 export function assertRecoveryRequest(gate, input) {
@@ -186,7 +203,7 @@ export function assertRecoveryRequest(gate, input) {
   if (input.recoveryGateId !== gate.recoveryGateId || input.recoveryCheckpointId !== gate.recoveryCheckpointId || input.failedInputKey !== gate.failedInputKey) {
     throw new Error("Recovery request is stale or does not match the active failure gate.");
   }
-  const expectedAction = gate.code === "execution_failure" ? "retry_corrected_arguments" : "write_checkpoint_and_retry";
+  const expectedAction = expectedRecoveryAction(gate);
   if (input.recoveryAction !== expectedAction) {
     throw new Error(`Recovery action ${input.recoveryAction} does not match ${gate.code}; use ${expectedAction}.`);
   }

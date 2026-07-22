@@ -52,7 +52,7 @@ function requiredPolicyDefinitions(excludedName) {
   const names = [
     "directorx_list_subagent_roles", "directorx_get_subagent_naming_status", "directorx_list_video_capabilities",
     "directorx_list_benchmark_verifiers", "directorx_list_benchmark_fixture_templates", "directorx_get_benchmark_baselines",
-    "directorx_get_fast_start_status", "directorx_get_recovery_action", "directorx_query_director_knowledge",
+    "directorx_get_fast_start_status", "directorx_query_director_knowledge",
     "directorx_query_cinematic_references", "directorx_get_opencut_editor_status", "directorx_validate_research_package",
     "directorx_get_stage_requirements", "directorx_list_media_providers", "directorx_get_media_provider_setup",
     "directorx_get_custom_media_provider_intake", "directorx_get_custom_media_provider_setup", "directorx_get_mosi_voice_setup",
@@ -62,7 +62,7 @@ function requiredPolicyDefinitions(excludedName) {
     "directorx_record_provider_api_research", "directorx_acquire_web_image_asset", "directorx_submit_media_generation",
     "directorx_poll_media_generation", "directorx_generate_mosi_voiceover", "directorx_install_builtin_media_runtime",
     "directorx_revoke_model_knowledge_patch", "directorx_cancel_benchmark_schedule", "directorx_revoke_benchmark_baseline",
-    "directorx_cancel_provider_job", "directorx_submit_provider_job"
+    "directorx_cancel_provider_job", "directorx_submit_provider_job", "directorx_recover_production"
   ];
   return names.filter((name) => name !== excludedName).map((name) => ({ name }));
 }

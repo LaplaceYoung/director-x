@@ -64,7 +64,7 @@ function productionBootstrapState(snapshot, dispatch) {
   if (snapshot.goal?.boundAt) {
     if (snapshot.recoveryGate?.status === "blocked") {
       state = "recovery_blocked";
-      nextRequiredAction = snapshot.recoveryGate.nextRequiredAction ?? "recover_run";
+      nextRequiredAction = "directorx_recover_production";
     } else if (snapshot.fastStart?.startedAt && !snapshot.executionGraph) {
       state = "creative_work_active_governance_deferred";
       nextRequiredAction = snapshot.creativeProgressSla?.breached ? "dispatch_creative_work_now" : "continue_research_asset_and_script_work";

@@ -147,7 +147,11 @@ test("serves MCP tools over newline-delimited stdio", async () => {
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_prepare_fast_start_intake"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_get_fast_start_status"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_begin_creative_work"));
-    assert.ok(message.result.tools.some((tool) => tool.name === "directorx_get_recovery_action"));
+    const recoveryFacade = message.result.tools.find((tool) => tool.name === "directorx_recover_production");
+    assert.ok(recoveryFacade);
+    assert.equal(recoveryFacade._meta["directorx/legacyLooseContract"], false);
+    assert.ok(recoveryFacade.inputSchema.oneOf);
+    assert.equal(message.result.tools.some((tool) => tool.name === "directorx_get_recovery_action"), false);
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_query_director_knowledge"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_query_cinematic_references"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_compile_cinematic_reference_selection"));

@@ -4,6 +4,7 @@ const IDEMPOTENT_WRITES = new Set([
   "directorx_set_session_credential",
   "directorx_submit_provider_job",
   "directorx_submit_media_generation",
+  "directorx_recover_production",
   "directorx_update_provider_job",
   "directorx_upsert_canvas_object",
   "directorx_register_media_evidence_index"

@@ -15,7 +15,8 @@ import { assertPromptBoundSubmission, compilePromptBoundGenerationPlan } from ".
 import { compileGenerationRepairPlan, generationRepairDefectTypes, writeGenerationRepairArtifacts } from "./generation-repair-compiler.mjs";
 import { confirmDxSubagentHostClosed, DX_SUBAGENT_CATALOG, dxIdentityInstruction, registerDxSubagent, updateDxSubagent } from "./subagent-registry.mjs";
 import { inspectCodexAgentRoles, installCodexAgentRoles } from "./codex-agent-roles.mjs";
-import { assertRecoveryRequest, projectRecoveryAction, toolFailurePayload, withToolFailureGuard } from "./tool-failure-policy.mjs";
+import { assertRecoveryRequest, toolFailurePayload, withToolFailureGuard } from "./tool-failure-policy.mjs";
+import { completeProductionRecovery, inspectProductionRecovery, prepareProductionRecovery } from "./production-recovery.mjs";
 import { evaluateRunCompletion } from "./completion-policy.mjs";
 import { assertIntakeReady, confirmIntake } from "./intake-gate.mjs";
 import { analyzeMediaWaveform, executeHyperframesRender, executeMosiTts, executeMossTtsNano, executeRemotionRender, executeWhisperTranscription, inspectAudioSource, inspectMediaDelivery, writeExecutionReceipt } from "./media-execution.mjs";
@@ -102,7 +103,7 @@ const CANVAS_URI = "ui://directorx/production-canvas-v1.html";
 const SCENE_CONFORMANCE_INSTRUCTIONS = "After directorx_verify_final_media, require scene_coverage_conformance_report.json to pass all non-waivable shot identity, order, duration, source-handle, full-frame, and PTS checks. Dispatch DX-Quality-Reviewer to inspect every planned shot's first/middle/last identity-bound frame, then call directorx_record_scene_coverage_review before final frame-finding acceptance. Metadata cannot prove camera, blocking, composition, lighting, movement, proof, reaction, or narrative fulfillment.";
 const SERVER_INSTRUCTIONS = "Use a concise consumer-facing Director X voice. In the Codex conversation, never narrate tool calls, file registration, JSON artifacts, schemas, MCP/runtime details, IDs, paths, test counts, or subagent plumbing unless the user asks for technical details or a failure requires diagnosis. Do not use Current Problem / Plan / Risks / Changed / Verified templates during production. Send one short start message, then only tangible stage milestones, blockers, native questions, preview availability, and final delivery. A normal update is at most two short sentences and should reuse userFacingSummary.suggestedUpdate. Do not duplicate a request_user_input question in chat. A returned native interaction may batch up to three independent image, video, voice, or music route questions; execute it once, then execute every afterAnswer resolution action with the same answer map before continuing. Never batch Goal, budget, credential, rights, stage, edit, or delivery approvals. Keep technical execution in collapsed tool results and the canvas Activity details. A delegated DX child must never call directorx_plan_production_team or create another background delegation plan. " +
   "For every Director X trigger, call directorx_capability_preflight before all other work. Use directorx_create_and_ask_native_question as the single model-visible native interaction entry. After Goal, run mode, any required Intake answer, and the minimum Intake contract are resolved, use directorx_prepare_fast_start_intake when available, then call directorx_begin_reference_research immediately and execute its returned fast-start spawn wave. Reference download, audio extraction, video reading, asset search, and the first script must proceed while provider docs and Keys are being configured. Provider, budget, and Key approvals remain hard gates for Generation, never for Research. Before Generation, confirm exact image, video, and voice routes through Codex request_user_input. For built-in routes, call directorx_get_media_provider_setup, resolve its native keySetupInteraction, and inject the secret only through the secure canvas credential field before recording the decision. For an unknown supplier/model, call directorx_get_custom_media_provider_intake and require the user to provide the exact model plus an official HTTPS API documentation or homepage URL; the parent DX-Director must read only verified official sources before registering a declarative adapter. The parent Director owns model routing, capability selection, provider fallback, and budget quotes directly; do not dispatch a separate routing or budget agent. Use directorx_begin_creative_work only as an idempotent compatibility path after research has started. The canvas is a projection of the durable Run and must prioritize growing real image, video, audio, research, script, storyboard, keyframe, and preview assets. If any first-content, first-visual, or first-preview SLA breaches, stop adding configuration work and execute the returned production action. Record music_strategy during research, then music_asset_selection only after search, local acquisition, rights proof, and quality audit. Research and generation must register the audio_responsibility_plan.json route before final review. For a reference-replication run, ingest the video and audio bundle first, compile the replication plan, then call directorx_score_reference_replication after exhaustive audit to choose pass_export, needs_edit, or regenerate. Never start an auxiliary Director X MCP runtime; one active runtime owns each Run. Preserve all existing provider, rights, pricing, continuity, render, exhaustive review, and delivery gates.";
-const FAILURE_POLICY_INSTRUCTIONS = "When a tool fails, inspect retryable, attempts, stop, recovery, and nextRequiredAction. Retry a transient semantic operation at most once. Use directorx_get_recovery_action for the minimal blocked operation, root cause, corrected example, and unique resume action; completed artifacts remain available. For deterministic failures, call directorx_recover_run and retry only corrected arguments. Use directorx_create_and_ask_native_question for native gates; a chat message such as ‘继续’ cannot satisfy them. Never create a replacement Run or auxiliary MCP runtime.";
+const FAILURE_POLICY_INSTRUCTIONS = "When a tool fails, inspect retryable, attempts, stop, recovery, and nextRequiredAction. Retry a transient semantic operation at most once. Use directorx_recover_production with action inspect for the minimal blocked operation and opaque recovery token, then action apply exactly once; completed artifacts remain available. Keep directorx_recover_run only for legacy compatibility. Use directorx_create_and_ask_native_question for native gates; a chat message such as ‘继续’ cannot satisfy them. Never create a replacement Run or auxiliary MCP runtime.";
 const credentialStatus = new Map();
 const preflightSessions = new Map();
 const setupRepairRegistry = createPluginRepairRegistry();
@@ -569,10 +570,14 @@ const rawTools = [
     annotations: writeAnnotations()
   },
   {
-    name: "directorx_get_recovery_action",
-    description: "Return only the blocked operation, root cause, corrected example, unique resume action, and artifact-preservation guarantee.",
-    inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema() }, ["projectPath", "runId"]),
-    annotations: readOnlyAnnotations()
+    name: "directorx_recover_production",
+    description: "Inspect or atomically apply one Director X recovery intent. Inspect returns a compact opaque token; apply binds that token to the exact active failure, writes one checkpoint, clears the gate once, and returns the same result on replay.",
+    inputSchema: { oneOf: [
+      objectSchema({ projectPath: stringSchema(), runId: stringSchema(), action: { const: "inspect", type: "string" } }, ["projectPath", "runId", "action"]),
+      objectSchema({ projectPath: stringSchema(), runId: stringSchema(), action: { const: "apply", type: "string" }, recoveryToken: stringSchema(), recoveryAction: { enum: ["write_checkpoint_and_retry", "retry_corrected_arguments"], type: "string" }, detail: stringSchema() }, ["projectPath", "runId", "action", "recoveryToken", "recoveryAction", "detail"])
+    ] },
+    outputSchema: productionRecoveryOutputSchema(),
+    annotations: writeAnnotations()
   },
   {
     name: "directorx_begin_creative_work",
@@ -4349,10 +4354,7 @@ async function executeTool(name, args) {
     const run = await readRun(args);
     return { readiness: evaluateFastStartReadiness(run), researchReadiness: evaluateReferenceResearchReadiness(run), creativeProgressSla: evaluateCreativeProgressSla(run) };
   }
-  if (name === "directorx_get_recovery_action") {
-    const run = await readRun(args);
-    return { recovery: run.recoveryGate?.recovery ?? projectRecoveryAction(run.recoveryGate ?? {}) };
-  }
+  if (name === "directorx_recover_production") return await executeProductionRecovery(args);
   if (name === "directorx_begin_creative_work") {
     const current = await readRun(args);
     if (current.stage === "research" && current.fastStart?.status === "reference_research_started") {
@@ -4849,6 +4851,27 @@ async function executeTool(name, args) {
 
 function event(run, type, stage, detail) {
   return { id: randomUUID(), sequence: (run.events.at(-1)?.sequence ?? 0) + 1, type, stage, at: new Date().toISOString(), detail };
+}
+
+async function executeProductionRecovery(args) {
+  if (args.action === "inspect") return inspectProductionRecovery(await readRun(args));
+  if (args.action !== "apply") throw new Error(`Unsupported production recovery action: ${args.action}`);
+  let result;
+  await updateRun({ ...args, async mutate(run) {
+    const prepared = prepareProductionRecovery(run, args);
+    if (prepared.idempotent) {
+      result = prepared.result;
+      return run;
+    }
+    const written = await appendRunCheckpoint({ ...args, run, reason: "recovery.facade.applied", detail: args.detail });
+    run.artifacts ??= {};
+    run.artifacts[written.artifactRef] = artifactRecord({ ...written, stage: run.stage });
+    const recoveredAt = new Date().toISOString();
+    run.events.push(event(run, "run.recovery.applied", run.stage, `${args.recoveryAction} · ${prepared.gate.toolName}`));
+    result = completeProductionRecovery(run, { recoveryToken: args.recoveryToken, gate: prepared.gate, checkpointId: written.checkpoint.checkpointId, recoveredAt });
+    return run;
+  } });
+  return result;
 }
 
 async function mutateGeneration(args, mutate, eventType, detail) {
@@ -5416,6 +5439,24 @@ function pluginRepairEnvelopeSchema() {
   return objectSchema({
     schemaVersion: stringSchema(), plan: looseObjectSchema(), execution: looseObjectSchema(), verificationRequired: { type: "boolean" }, security: looseObjectSchema()
   }, ["schemaVersion", "plan", "execution", "verificationRequired", "security"]);
+}
+function productionRecoveryOutputSchema() {
+  const recovery = objectSchema({
+    recoveryToken: stringSchema(),
+    blockedOperation: stringSchema(),
+    rootCause: stringSchema(),
+    correctedExample: looseObjectSchema(),
+    requiredAction: { enum: ["write_checkpoint_and_retry", "retry_corrected_arguments"], type: "string" },
+    preservesCompletedArtifacts: { const: true, type: "boolean" }
+  }, ["recoveryToken", "blockedOperation", "rootCause", "correctedExample", "requiredAction", "preservesCompletedArtifacts"]);
+  return objectSchema({
+    schemaVersion: { const: "1.0", type: "string" },
+    runId: stringSchema(),
+    status: { enum: ["clear", "blocked", "recovered"], type: "string" },
+    recovery: { anyOf: [recovery, { type: "null" }] },
+    checkpointId: { anyOf: [stringSchema(), { type: "null" }] },
+    nextRequiredAction: stringSchema()
+  }, ["schemaVersion", "runId", "status", "recovery", "checkpointId", "nextRequiredAction"]);
 }
 function nativeQuestionSchema() {
   return objectSchema({

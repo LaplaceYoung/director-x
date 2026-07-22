@@ -7,7 +7,6 @@ const READ_ONLY_TOOLS = new Set([
   "directorx_list_benchmark_fixture_templates",
   "directorx_get_benchmark_baselines",
   "directorx_get_fast_start_status",
-  "directorx_get_recovery_action",
   "directorx_query_director_knowledge",
   "directorx_query_cinematic_references",
   "directorx_get_opencut_editor_status",
@@ -46,6 +45,7 @@ const DESTRUCTIVE_TOOLS = new Set([
 ]);
 
 const IDEMPOTENT_WRITE_TOOLS = new Set([
+  "directorx_recover_production",
   "directorx_submit_provider_job",
   "directorx_submit_media_generation",
   "directorx_install_builtin_media_runtime"

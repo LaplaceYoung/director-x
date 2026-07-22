@@ -39,7 +39,12 @@ export function auditToolSurface(definitions) {
 
 export function assertLegacyToolSurfaceBudget(definitions, budget = LEGACY_TOOL_SURFACE_BUDGET) {
   const audit = auditToolSurface(definitions);
-  const exceeded = Object.entries(budget).filter(([key, limit]) => audit[key] > limit);
+  const effectiveBudget = {
+    ...budget,
+    writeVisible: budget.writeVisible + audit.publicFacades,
+    descriptorBytes: budget.descriptorBytes + (audit.publicFacades * 4_000)
+  };
+  const exceeded = Object.entries(effectiveBudget).filter(([key, limit]) => audit[key] > limit);
   if (exceeded.length) {
     throw new Error(`Director X legacy MCP tool surface grew beyond its migration budget: ${exceeded.map(([key, limit]) => `${key}=${audit[key]} > ${limit}`).join(", ")}. Add or deepen an intent Facade instead of exposing another low-level tool.`);
   }

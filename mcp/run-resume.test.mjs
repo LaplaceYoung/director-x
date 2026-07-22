@@ -168,6 +168,7 @@ test("never dispatches a new subagent while a recovery gate is blocked", () => {
   assert.equal(plan.blockedBy, "recovery:directorx_render_video");
   assert.equal(plan.groups.find((group) => group.phase === "parallel_dispatch").actions.length, 0);
   assert.equal(plan.productionBootstrap.state, "recovery_blocked");
+  assert.equal(plan.productionBootstrap.nextRequiredAction, "directorx_recover_production");
 });
 
 test("dispatches the durable fast-start research plan before deferred governance exists", () => {
