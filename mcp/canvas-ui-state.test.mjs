@@ -3,8 +3,9 @@ import assert from "node:assert/strict";
 import { normalizeCanvasUiState } from "./canvas-ui-state.mjs";
 
 test("normalizes bounded canvas inspection state for durable Run storage", () => {
-  const value = normalizeCanvasUiState({ version: 1, transform: { x: 10, y: -20, zoom: .8 }, view: "review", filter: "asset", query: "logo", selectedId: "asset:logo", compareIds: ["video:a", "video:b", "video:c"], syncLocked: true, timelineViewport: { start: 5, duration: 20 }, reviewCurrentTime: 8.5, updatedAt: "2026-07-16T00:00:00.000Z" });
+  const value = normalizeCanvasUiState({ version: 1, transform: { x: 10, y: -20, zoom: .8 }, view: "review", filter: "asset", query: "logo", railCollapsed: true, selectedId: "asset:logo", compareIds: ["video:a", "video:b", "video:c"], syncLocked: true, timelineViewport: { start: 5, duration: 20 }, reviewCurrentTime: 8.5, updatedAt: "2026-07-16T00:00:00.000Z" });
   assert.deepEqual(value.compareIds, ["video:a", "video:b"]);
+  assert.equal(value.railCollapsed, true);
   assert.equal(value.updatedAt, "2026-07-16T00:00:00.000Z");
 });
 

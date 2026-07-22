@@ -10,33 +10,41 @@
     html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
     button, input, select, textarea { font: inherit; }
     button { color: inherit; }
-    .app { height: 100vh; display: grid; grid-template-rows: 52px minmax(0, 1fr); background: #111; }
-    header { display: grid; grid-template-columns: 280px 1fr 280px; align-items: center; border-bottom: 1px solid var(--line); background: #151515; padding: 0 14px; }
+    .app { height: 100vh; display: grid; grid-template-rows: 56px minmax(0, 1fr); background: #111; }
+    header { display: grid; grid-template-columns: minmax(260px, 1fr) auto minmax(260px, 1fr); align-items: center; border-bottom: 1px solid var(--line); background: #151515; padding: 0 14px; }
     .brand, .header-status { display: flex; align-items: center; gap: 10px; min-width: 0; }
     .brand strong { font-size: 14px; letter-spacing: .01em; white-space: nowrap; }
     .run-label, .header-status { color: var(--muted); font-size: 11px; }
     .header-status { justify-content: flex-end; }
-    .view-switch { justify-self: center; display: flex; border: 1px solid #343434; border-radius: 8px; padding: 3px; background: #101010; }
-    .view-switch button { border: 0; background: transparent; padding: 7px 14px; border-radius: 6px; color: #8f8f8f; cursor: pointer; font-size: 12px; }
+    .view-switch { justify-self: center; display: flex; border: 1px solid #343434; border-radius: 11px; padding: 3px; background: #101010; }
+    .view-switch button { border: 0; background: transparent; padding: 8px 16px; border-radius: 8px; color: #8f8f8f; cursor: pointer; font-size: 12px; transition: background .16s ease, color .16s ease; }
     .view-switch button[aria-pressed="true"] { background: #303030; color: #f5f5f5; }
-    .rail-toggle { display: none; border: 1px solid #353535; background: #202020; border-radius: 5px; padding: 6px 8px; font-size: 10px; cursor: pointer; }
-    .shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 0; }
-    .rail { border-right: 1px solid var(--line); background: #151515; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; min-height: 0; }
-    .rail-title { display: flex; justify-content: space-between; align-items: center; padding: 15px 14px 11px; font-size: 12px; }
+    .rail-toggle, .rail-collapse { border: 1px solid #353535; background: #202020; border-radius: 7px; padding: 6px 9px; font-size: 10px; cursor: pointer; color: #aaa; white-space: nowrap; }
+    .rail-toggle:hover, .rail-collapse:hover { color: #fff; border-color: #555; }
+    .shell { display: grid; grid-template-columns: 276px minmax(0, 1fr); min-height: 0; transition: grid-template-columns .22s cubic-bezier(.2,.8,.2,1); }
+    .app[data-rail="collapsed"] .shell { grid-template-columns: 0 minmax(0, 1fr); }
+    .rail { width: 276px; border-right: 1px solid var(--line); background: #151515; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; min-height: 0; overflow: hidden; transition: opacity .16s ease, transform .22s cubic-bezier(.2,.8,.2,1); }
+    .app[data-rail="collapsed"] .rail { opacity: 0; transform: translateX(-100%); pointer-events: none; }
+    .rail-title { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 15px 12px 11px; font-size: 12px; }
+    .rail-title-actions { display: flex; align-items: center; gap: 8px; color: #777; font-size: 10px; }
     .rail-tabs { display: flex; gap: 16px; color: var(--muted); }
     .rail-tabs button { border: 0; padding: 0 0 8px; background: transparent; color: inherit; cursor: pointer; }
     .rail-tabs button.active { color: #eee; border-bottom: 1px solid #eee; }
     .search { margin: 0 12px 10px; border: 1px solid #333; background: #1d1d1d; color: #ddd; width: calc(100% - 24px); padding: 8px 10px; border-radius: 5px; font-size: 11px; outline: none; }
     .search:focus { border-color: #777; }
     .object-list { overflow: auto; padding: 0 7px 12px; }
-    .object-item { width: 100%; display: grid; grid-template-columns: 38px minmax(0,1fr); gap: 9px; align-items: center; border: 0; background: transparent; padding: 7px; border-radius: 5px; text-align: left; cursor: pointer; }
+    .object-item { width: 100%; display: grid; grid-template-columns: 42px minmax(0,1fr) auto; gap: 10px; align-items: center; border: 0; background: transparent; padding: 7px; border-radius: 8px; text-align: left; cursor: pointer; transition: background .14s ease; }
     .object-item:hover, .object-item.selected { background: #252525; }
-    .object-thumb { width: 38px; height: 38px; border: 1px solid #373737; border-radius: 6px; background: #1d1d1d; display: grid; place-items: center; color: #9a9a9a; font-size: 9px; overflow: hidden; }
+    .object-thumb { width: 42px; height: 42px; border: 1px solid #373737; border-radius: 9px; background: #1d1d1d; display: grid; place-items: center; color: #9a9a9a; font-size: 9px; overflow: hidden; }
     .object-thumb img, .object-thumb video { width: 100%; height: 100%; object-fit: cover; }
     .object-thumb audio { width: 36px; height: 30px; }
     .object-copy { min-width: 0; }
     .object-copy strong { display: block; font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .object-copy small { display: block; color: #777; margin-top: 3px; font-size: 9px; }
+    .object-status { width: 7px; height: 7px; border-radius: 50%; background: #5b5b5b; }
+    .object-status.complete { background: var(--good); }
+    .object-status.active, .object-status.production_in_progress { background: var(--accent); box-shadow: 0 0 0 3px rgba(239,101,72,.12); }
+    .object-status.blocked, .object-status.awaiting_approval { background: var(--warn); }
     .rail-foot { border-top: 1px solid var(--line); color: #777; font-size: 10px; padding: 10px 14px; }
     .workspace { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #101010; }
     .connection-banner { position: absolute; z-index: 8; top: 10px; left: 50%; transform: translate(-50%, -12px); max-width: min(620px, calc(100% - 28px)); padding: 7px 11px; border: 1px solid #674336; background: #211713; color: #efb09d; font-size: 9px; line-height: 1.45; opacity: 0; pointer-events: none; transition: opacity .16s ease, transform .16s ease; }
@@ -47,11 +55,18 @@
     .canvas-plane { position: absolute; width: 2200px; height: 1000px; transform-origin: 0 0; }
     .edge-layer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
     .edge { fill: none; stroke: #3f3f3f; stroke-width: 1.2; }
+    .edge.dimmed { opacity: .12; }
+    .edge.derived_from, .edge.evidence { stroke: #69584d; }
+    .edge.candidate { stroke: #75654a; stroke-dasharray: 5 4; }
+    .edge.edit { stroke: #6f887e; stroke-width: 1.7; }
     .edge.approval { stroke-dasharray: 5 5; stroke: #694c3f; }
     .edge.frame_handoff { stroke: #ba7b48; stroke-width: 2; }
     .edge.agent { stroke-dasharray: 3 4; stroke: #526b62; }
-    .node { position: absolute; width: 190px; min-height: 92px; border: 1px solid #343434; background: #1a1a1a; border-radius: 7px; padding: 11px; text-align: left; cursor: pointer; box-shadow: 0 10px 26px rgba(0,0,0,.16); }
-    .node:hover, .node.selected { border-color: #777; }
+    .node { position: absolute; width: 190px; min-height: 92px; border: 1px solid #343434; background: #1a1a1a; border-radius: 10px; padding: 11px; text-align: left; cursor: pointer; box-shadow: 0 10px 26px rgba(0,0,0,.16); transition: opacity .16s ease, border-color .16s ease, transform .16s ease; }
+    .node:hover, .node.selected { border-color: #777; transform: translateY(-1px); }
+    .node.dimmed { opacity: .22; }
+    .node.media-object { width: 220px; min-height: 124px; padding: 10px; border-color: #393939; background: #191919; }
+    .node.media-object.selected { border-color: var(--accent); box-shadow: 0 16px 42px rgba(0,0,0,.32); }
     .node.active { border-color: var(--accent); }
     .node.blocked { border-color: #6b4b31; }
     .node.complete .node-state { color: var(--good); }
@@ -62,7 +77,10 @@
     .node-state { color: #777; font-size: 9px; }
     .node strong { display: block; margin-top: 8px; font-size: 12px; font-weight: 560; }
     .node p { margin: 6px 0 0; color: #909090; font-size: 10px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .node-preview { width: calc(100% + 22px); height: 110px; margin: -11px -11px 10px; object-fit: cover; border-radius: 7px 7px 0 0; border-bottom: 1px solid #333; background: #151515; }
+    .node-preview { width: calc(100% + 22px); height: 110px; margin: -11px -11px 10px; object-fit: cover; border-radius: 10px 10px 0 0; border-bottom: 1px solid #333; background: #151515; }
+    .media-object .node-preview { width: calc(100% + 20px); height: 124px; margin: -10px -10px 10px; border-radius: 10px 10px 0 0; }
+    .node-meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+    .node-meta span { color: #818181; border: 1px solid #303030; border-radius: 999px; padding: 2px 5px; font-size: 8px; }
     .toolbar { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 5px; padding: 5px; border: 1px solid #353535; border-radius: 9px; background: #1b1b1b; box-shadow: 0 10px 28px rgba(0,0,0,.28); }
     .toolbar button { border: 0; background: transparent; padding: 7px 10px; border-radius: 5px; color: #aaa; cursor: pointer; font-size: 10px; }
     .toolbar button:hover { background: #303030; color: #fff; }
@@ -84,12 +102,13 @@
     .storyboard, .review { position: absolute; inset: 0; overflow: auto; padding: 22px; display: none; }
     .storyboard.open { display: block; }
     .review.open { display: block; }
-    .media { position: absolute; inset: 0; overflow: auto; padding: 18px; display: none; }
+    .media { position: absolute; inset: 0; overflow: hidden; padding: 0; display: none; pointer-events: none; z-index: 2; }
     .media.open { display: block; }
-    .media-head { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 14px; }
+    .media-head { position: absolute; top: 14px; left: 14px; right: 334px; min-height: 54px; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 10px 12px; border: 1px solid #303030; border-radius: 10px; background: rgba(20,20,20,.94); pointer-events: auto; box-shadow: 0 14px 34px rgba(0,0,0,.24); }
     .media-head h2 { margin: 0; font-size: 15px; }
     .media-head p { margin: 5px 0 0; color: #888; font-size: 10px; }
-    .production-pulse { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 11px; align-items: center; margin-bottom: 14px; padding: 11px 13px; border: 1px solid #303030; background: #151515; }
+    .production-pulse { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 11px; align-items: center; margin-bottom: 14px; padding: 11px 13px; border: 1px solid #303030; border-radius: 9px; background: #151515; }
+    .media > .production-pulse { position: absolute; left: 14px; top: 82px; width: min(560px, calc(100% - 362px)); pointer-events: auto; }
     .production-pulse .pulse-mark { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 4px rgba(111,182,138,.1); }
     .production-pulse strong { display: block; font-size: 11px; font-weight: 560; }
     .production-pulse p { margin: 3px 0 0; color: #858585; font-size: 9px; line-height: 1.45; }
@@ -101,10 +120,11 @@
     .media-stats { display: flex; gap: 6px; flex-wrap: wrap; }
     .media-stat { border: 1px solid #343434; background: #181818; padding: 7px 9px; color: #aaa; font-size: 9px; }
     .media-stat strong { color: #eee; margin-right: 4px; font-size: 12px; }
-    .media-preview { display: grid; grid-template-columns: minmax(260px, .9fr) minmax(300px, 1.1fr); gap: 14px; margin-bottom: 16px; }
-    .media-preview-panel, .media-relations-panel { border: 1px solid #303030; background: #141414; padding: 13px; }
+    .media-preview { position: absolute; top: 14px; right: 14px; bottom: 74px; width: 306px; display: flex; flex-direction: column; gap: 0; border: 1px solid #303030; border-radius: 12px; background: #161616; overflow: auto; pointer-events: auto; box-shadow: 0 18px 44px rgba(0,0,0,.32); }
+    .media-preview-panel, .media-relations-panel { padding: 13px; }
+    .media-relations-panel { border-top: 1px solid #2d2d2d; }
     .media-preview-panel h3, .media-relations-panel h3 { margin: 0 0 9px; font-size: 11px; color: #bbb; }
-    .media-preview-frame { min-height: 180px; display: grid; place-items: center; background: #090909; border: 1px solid #292929; }
+    .media-preview-frame { min-height: 172px; display: grid; place-items: center; background: #090909; border: 1px solid #292929; border-radius: 8px; overflow: hidden; }
     .media-preview-frame video, .media-preview-frame img { max-width: 100%; max-height: 42vh; display: block; }
     .media-preview-frame audio { width: 100%; }
     .media-preview-copy { margin-top: 9px; color: #888; font-size: 10px; line-height: 1.5; }
@@ -117,18 +137,33 @@
     .media-node .node-preview { width: 100%; height: 78px; margin: 0 0 8px; border-radius: 4px; }
     .media-node strong { display: block; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .media-node small { display: block; margin-top: 4px; color: #777; font-size: 9px; }
-    .media-relations { display: flex; flex-wrap: wrap; gap: 6px; max-height: 150px; overflow: auto; }
-    .media-relation { border: 1px solid #3c3430; background: #1b1816; color: #bbb; padding: 6px 8px; font-size: 9px; cursor: pointer; }
+    .media-relations { display: grid; gap: 6px; }
+    .media-relation { width: 100%; border: 1px solid #343434; border-radius: 7px; background: #1b1b1b; color: #bbb; padding: 7px 8px; font-size: 9px; cursor: pointer; text-align: left; }
     .media-relation em { color: var(--accent); font-style: normal; margin: 0 4px; }
     @media (max-width: 760px) { .media-preview { grid-template-columns: 1fr; } .media-head { align-items: start; flex-direction: column; } }
-    .story-group { border-top: 1px solid #303030; padding: 15px 0 24px; }
+    .storyboard { padding: 0; overflow: hidden; background: #111; }
+    .storyboard-head { height: 70px; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 18px; border-bottom: 1px solid #2b2b2b; background: #141414; }
+    .storyboard-head h1 { margin: 0; font-size: 15px; font-weight: 580; }
+    .storyboard-head p { margin: 5px 0 0; color: #7d7d7d; font-size: 10px; }
+    .storyboard-counts { display: flex; gap: 6px; }
+    .storyboard-board { height: calc(100% - 70px); display: grid; grid-template-columns: minmax(230px,.72fr) minmax(360px,1.22fr) minmax(340px,1.06fr); gap: 12px; padding: 12px; overflow-x: auto; }
+    .story-column { min-width: 0; overflow-y: auto; padding: 0 4px 20px; }
+    .story-column + .story-column { border-left: 1px solid #292929; padding-left: 12px; }
+    .story-group { padding: 0 0 22px; }
     .story-group h2 { margin: 0 0 13px; font-size: 12px; font-weight: 560; }
-    .story-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
-    .story-card { min-height: 150px; border: 1px solid #323232; border-radius: 7px; background: #191919; overflow: hidden; text-align: left; padding: 0; cursor: pointer; }
+    .story-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    .story-card { min-height: 118px; border: 1px solid #323232; border-radius: 10px; background: #191919; overflow: hidden; text-align: left; padding: 0; cursor: pointer; transition: border-color .15s ease, transform .15s ease; }
+    .story-card:hover { border-color: #555; transform: translateY(-1px); }
     .story-card .copy { padding: 11px; }
     .story-card strong { display: block; font-size: 11px; }
     .story-card p { color: #858585; font-size: 10px; line-height: 1.45; }
-    .story-card img, .story-card video { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #131313; }
+    .story-card img, .story-card video { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #131313; display: block; }
+    .story-card audio { width: calc(100% - 18px); margin: 10px 9px 0; }
+    .story-card.compact { min-height: 0; display: grid; grid-template-columns: 42px minmax(0,1fr); align-items: center; padding: 9px; }
+    .story-card.compact .copy { padding: 0 0 0 9px; }
+    .story-doc-mark { width: 42px; height: 52px; display: grid; place-items: center; border: 1px solid #383838; border-radius: 7px; color: #8b8b8b; font-size: 9px; }
+    .story-meta { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+    .story-meta span { border: 1px solid #343434; border-radius: 999px; padding: 3px 6px; color: #858585; font-size: 8px; }
     .asset-relations { margin: 14px 0 20px; border-top: 1px solid #303030; border-bottom: 1px solid #303030; padding: 12px 0; }
     .asset-relations h2 { margin: 0 0 8px; font-size: 11px; color: #aaa; }
     .relation-list { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -240,34 +275,47 @@
     .advanced-details pre { white-space: pre-wrap; word-break: break-word; color: #888; line-height: 1.45; }
     .activity-item > .advanced-details { grid-column: 2; }
     .edit-operation > .advanced-details { grid-column: 1 / -1; }
-    @media (max-width: 820px) { header { grid-template-columns: 1fr auto; } .view-switch { justify-self: end; } .header-status { display: none; } .shell { grid-template-columns: 210px 1fr; } .inspector { width: min(290px, calc(100% - 24px)); } }
+    @media (max-width: 1060px) {
+      header { grid-template-columns: minmax(210px, 1fr) auto; }
+      .header-status { display: none; }
+      .media-head { right: 14px; }
+      .media-head p, .media > .production-pulse { display: none; }
+      .media-preview { top: 82px; }
+      .storyboard-board { grid-template-columns: 240px minmax(340px, 1fr) minmax(320px, 1fr); }
+    }
+    @media (max-width: 820px) { .view-switch button { padding: 8px 11px; } .shell { grid-template-columns: 230px 1fr; } .rail { width: 230px; } .inspector { width: min(290px, calc(100% - 24px)); } }
     @media (max-width: 520px) {
-      header { grid-template-columns: auto minmax(0,1fr) auto; gap: 7px; padding: 0 8px; }
+      header { grid-template-columns: auto minmax(0,1fr); gap: 7px; padding: 0 8px; }
       .brand { min-width: 0; } .brand strong { font-size: 12px; } .run-label { display: none; }
-      .rail-toggle { display: block; }
       .view-switch { justify-self: stretch; } .view-switch button { flex: 1; padding: 6px 8px; }
       .shell { display: block; position: relative; }
-      .rail { position: absolute; z-index: 5; top: 0; bottom: 0; left: 0; width: min(260px, calc(100vw - 48px)); transform: translateX(-100%); transition: transform .18s ease; box-shadow: 14px 0 32px rgba(0,0,0,.35); }
-      .rail.open { transform: translateX(0); }
+      .rail { position: absolute; z-index: 9; top: 0; bottom: 0; left: 0; width: min(276px, calc(100vw - 48px)); box-shadow: 14px 0 32px rgba(0,0,0,.35); }
+      .app[data-rail="expanded"] .rail { opacity: 1; transform: translateX(0); pointer-events: auto; }
+      .app[data-rail="collapsed"] .rail { opacity: 0; transform: translateX(-100%); pointer-events: none; }
       .workspace { width: 100%; height: 100%; }
       .toolbar { left: 10px; transform: none; bottom: 12px; max-width: calc(100% - 20px); }
       .toolbar button { padding: 7px 8px; }
       .credential-toggle { right: 10px; bottom: 58px; }
       .activity-grid { grid-template-columns: 1fr; }
+      .media-head { left: 10px; right: 10px; top: 10px; }
+      .media-preview { left: 10px; right: 10px; top: auto; bottom: 66px; width: auto; height: min(250px, 42vh); }
+      .storyboard-head { height: auto; min-height: 70px; align-items: flex-start; }
+      .storyboard-counts { display: none; }
+      .storyboard-board { height: calc(100% - 78px); grid-template-columns: minmax(260px, 1fr) minmax(300px, 1fr) minmax(300px, 1fr); }
     }
   </style>
 </head>
 <body>
-  <div class="app">
+  <div class="app" data-rail="expanded">
     <header>
-      <button class="rail-toggle" id="rail-toggle">内容</button><div class="brand"><strong>Director X</strong><span class="run-label" id="run-label">正在打开制作空间…</span></div>
-      <nav class="view-switch" aria-label="画布视图"><button data-view="media" aria-pressed="true">媒体关系</button><button data-view="review" aria-pressed="false">审片</button><button data-view="activity" aria-pressed="false">活动</button></nav>
+      <div class="brand"><button class="rail-toggle" id="rail-toggle" aria-controls="object-rail" aria-expanded="true">收起侧栏</button><strong>Director X</strong><span class="run-label" id="run-label">正在打开制作空间…</span></div>
+      <nav class="view-switch" aria-label="画布视图"><button data-view="media" aria-pressed="true">画布</button><button data-view="storyboard" aria-pressed="false">故事板</button><button data-view="review" aria-pressed="false">审片</button><button data-view="activity" aria-pressed="false">活动</button></nav>
       <div class="header-status"><span id="mode">Director X Goal</span><span id="sync">同步中</span></div>
     </header>
     <div class="shell">
-      <aside class="rail">
-        <div class="rail-title"><div class="rail-tabs"><button class="active" data-filter="all">流程</button><button data-filter="asset">资产</button></div><span id="asset-count">0</span></div>
-        <input class="search" id="search" type="search" placeholder="搜索制作对象" />
+      <aside class="rail" id="object-rail">
+        <div class="rail-title"><div class="rail-tabs"><button class="active" data-filter="all">画布元素</button><button data-filter="asset">资产</button></div><div class="rail-title-actions"><span><span id="asset-count">0</span> 项</span><button class="rail-collapse" id="rail-collapse">收起</button></div></div>
+        <input class="search" id="search" type="search" placeholder="搜索镜头、素材或文档" aria-label="搜索制作对象" />
         <div class="object-list" id="object-list"><div class="empty">正在读取制作对象…</div></div>
         <div class="rail-foot" id="rail-foot">正在准备制作内容</div>
       </aside>
@@ -290,7 +338,7 @@
     const session = params.get("session");
     const claimToken = params.get("claim");
     const legacyViewportStorageKey = `directorx:viewport:${session ?? "preflight"}`;
-    const state = { data: null, selectedId: null, compareIds: [], syncLocked: true, syncLeader: null, reviewTransport: { currentTime: 0, playing: false, playbackRate: 1, direction: 1, loopRange: null, activeArtifactRef: null }, reviewSessionRevision: null, storySignature: null, reviewSignature: null, mediaSignature: null, timelineRevision: null, timelineViewport: null, waveformWindow: null, waveformLoading: false, waveformError: null, waveformRequest: 0, view: "media", filter: "asset", query: "", transform: { x: 0, y: 0, zoom: .72 }, uiStateInitialized: false, uiPersistTimer: null, pendingUiState: null, viewportInitialized: false, viewportRestored: false, dragging: false, pointer: null, refreshInFlight: false, lastSuccessfulSyncAt: null };
+    const state = { data: null, selectedId: null, compareIds: [], syncLocked: true, syncLeader: null, reviewTransport: { currentTime: 0, playing: false, playbackRate: 1, direction: 1, loopRange: null, activeArtifactRef: null }, reviewSessionRevision: null, storySignature: null, reviewSignature: null, mediaSignature: null, timelineRevision: null, timelineViewport: null, waveformWindow: null, waveformLoading: false, waveformError: null, waveformRequest: 0, view: "media", filter: "asset", query: "", railCollapsed: window.innerWidth <= 520, transform: { x: 0, y: 0, zoom: .72 }, uiStateInitialized: false, uiPersistTimer: null, pendingUiState: null, viewportInitialized: false, viewportRestored: false, dragging: false, pointer: null, refreshInFlight: false, lastSuccessfulSyncAt: null };
     const $ = (selector) => document.querySelector(selector);
     const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[char]);
     const surfaceUrl = (path, values = {}) => { const query = new URLSearchParams({ session, claim: claimToken }); for (const [key, value] of Object.entries(values)) if (value !== undefined && value !== null) query.set(key, String(value)); return `${path}?${query}`; };
@@ -298,6 +346,21 @@
     const stageLabel = (stage) => ({ intake: "明确方向", research: "收集资料", script: "打磨脚本", storyboard: "设计镜头", generation: "生成素材", edit: "剪辑合成", review: "检查成片", delivery: "准备交付" })[stage] ?? "制作中";
     const statusLabel = (status) => ({ pending: "等待开始", active: "正在进行", ready: "正在进行", production_in_progress: "正在进行", blocked: "等待确认", complete: "已完成", failed: "需要处理", awaiting_approval: "等待确认" })[status] ?? "制作中";
     const advancedDetails = (summary, value) => `<details class="advanced-details"><summary>${escapeHtml(summary)}</summary><pre>${escapeHtml(typeof value === "string" ? value : JSON.stringify(value ?? {}, null, 2))}</pre></details>`;
+    function mediaFacts(node) {
+      const meta = node?.metadata ?? {};
+      const dimensions = meta.dimensions ?? meta.resolution ?? null;
+      const width = Number(meta.width ?? dimensions?.width), height = Number(meta.height ?? dimensions?.height);
+      const duration = Number(meta.durationSeconds ?? meta.duration);
+      const model = meta.modelId ?? meta.model ?? meta.providerModel ?? null;
+      const facts = [];
+      if (model) facts.push(String(model));
+      if (Number.isFinite(width) && Number.isFinite(height)) facts.push(`${width} × ${height}`);
+      if (Number.isFinite(duration)) facts.push(`${duration.toFixed(duration < 10 ? 1 : 0)} 秒`);
+      if (meta.shotId) facts.push(String(meta.shotId));
+      if (meta.version || meta.revision) facts.push(`版本 ${meta.version ?? meta.revision}`);
+      return facts.slice(0, 4);
+    }
+    const mediaFactsMarkup = (node, className = "node-meta") => { const facts = mediaFacts(node); return facts.length ? `<span class="${className}">${facts.map((fact) => `<span>${escapeHtml(fact)}</span>`).join("")}</span>` : ""; };
     const mediaMarkup = (node, className = "") => {
       const rawUri = node.previewUri || (node.artifactRef && node.metadata?.path ? node.metadata.path : "");
       if (!rawUri) return "";
@@ -335,21 +398,27 @@
     }
     function renderObjectList() {
       const nodes = visibleNodes();
-      $("#object-list").innerHTML = nodes.length ? nodes.map((node) => `<button class="object-item ${state.selectedId === node.id ? "selected" : ""}" data-node-id="${escapeHtml(node.id)}"><span class="object-thumb">${mediaMarkup(node) || escapeHtml(shortType(node.type))}</span><span class="object-copy"><strong>${escapeHtml(node.label)}</strong><small>${escapeHtml(stageLabel(node.stage))} · ${escapeHtml(statusLabel(node.status))}</small></span></button>`).join("") : '<div class="empty">当前没有需要查看的内容。</div>';
+      $("#object-list").innerHTML = nodes.length ? nodes.map((node) => `<button class="object-item ${state.selectedId === node.id ? "selected" : ""}" data-node-id="${escapeHtml(node.id)}"><span class="object-thumb">${mediaMarkup(node) || escapeHtml(shortType(node.type))}</span><span class="object-copy"><strong>${escapeHtml(node.label)}</strong><small>${escapeHtml(shortType(node.type))} · ${escapeHtml(statusLabel(node.status))}</small></span><span class="object-status ${escapeHtml(node.status)}" aria-label="${escapeHtml(statusLabel(node.status))}"></span></button>`).join("") : '<div class="empty">当前没有需要查看的内容。</div>';
     }
     function renderGraph() {
       const canvas = state.data.productionCanvas;
       const graph = state.view === "media" ? canvas.mediaGraph ?? { nodes: [], edges: [] } : state.view === "continuity" ? canvas.cameraContinuity ?? { nodes: [], edges: [] } : canvas.workflow ?? { nodes: canvas.nodes, edges: [] };
-      $("#nodes").innerHTML = graph.nodes.map((node) => `<button class="node ${escapeHtml(node.status)} ${state.selectedId === node.id ? "selected" : ""}" data-node-id="${escapeHtml(node.id)}" style="left:${Number(node.x)}px;top:${Number(node.y)}px">${mediaMarkup(node, "node-preview")}<span class="node-head"><span class="node-type">${escapeHtml(shortType(node.type))}</span><span class="node-state">${escapeHtml(statusLabel(node.status))}</span></span><strong>${escapeHtml(node.label)}</strong><p>${escapeHtml(node.detail ?? "等待制作")}</p></button>`).join("");
+      const activeSelectedId = graph.nodes.some((node) => node.id === state.selectedId) ? state.selectedId : null;
+      const connectedIds = new Set([activeSelectedId]);
+      if (activeSelectedId) graph.edges.forEach((edge) => { if (edge.source === activeSelectedId || edge.target === activeSelectedId) { connectedIds.add(edge.source); connectedIds.add(edge.target); } });
+      const mediaMode = state.view === "media";
+      $("#nodes").innerHTML = graph.nodes.map((node) => `<button class="node ${mediaMode ? "media-object" : ""} ${escapeHtml(node.status)} ${activeSelectedId === node.id ? "selected" : ""} ${activeSelectedId && !connectedIds.has(node.id) ? "dimmed" : ""}" data-node-id="${escapeHtml(node.id)}" style="left:${Number(node.x)}px;top:${Number(node.y)}px">${mediaMarkup(node, "node-preview")}<span class="node-head"><span class="node-type">${escapeHtml(shortType(node.type))}</span><span class="node-state">${escapeHtml(statusLabel(node.status))}</span></span><strong>${escapeHtml(node.label)}</strong><p>${escapeHtml(node.detail ?? "等待制作")}</p>${mediaMode ? mediaFactsMarkup(node) : ""}</button>`).join("");
       const maxX = Math.max(2200, ...graph.nodes.map((node) => Number(node.x) + 260)), maxY = Math.max(900, ...graph.nodes.map((node) => Number(node.y) + 180));
       $("#plane").style.width = `${maxX}px`; $("#plane").style.height = `${maxY}px`;
       const byId = new Map(graph.nodes.map((node) => [node.id, node]));
       $("#edges").innerHTML = graph.edges.map((edge) => {
         const source = byId.get(edge.source), target = byId.get(edge.target); if (!source || !target) return "";
+        const edgeDimmed = activeSelectedId && edge.source !== activeSelectedId && edge.target !== activeSelectedId ? " dimmed" : "";
+        const nodeWidth = mediaMode ? 220 : 190, nodeHeight = mediaMode ? 124 : 92;
         const vertical = Math.abs(target.x - source.x) < 80;
-        if (vertical) { const x = source.x + 95, y1 = source.y + 92, y2 = target.y, mid = (y1 + y2) / 2; return `<path class="edge ${escapeHtml(edge.kind)}" d="M ${x} ${y1} C ${x} ${mid}, ${x} ${mid}, ${x} ${y2}" />`; }
-        const x1 = source.x + 190, y1 = source.y + 46, x2 = target.x, y2 = target.y + 46, mid = (x1 + x2) / 2;
-        return `<path class="edge ${escapeHtml(edge.kind)}" d="M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}" />`;
+        if (vertical) { const x = source.x + nodeWidth / 2, y1 = source.y + nodeHeight, y2 = target.y, mid = (y1 + y2) / 2; return `<path class="edge ${escapeHtml(edge.kind)}${edgeDimmed}" d="M ${x} ${y1} C ${x} ${mid}, ${x} ${mid}, ${x} ${y2}" />`; }
+        const x1 = source.x + nodeWidth, y1 = source.y + nodeHeight / 2, x2 = target.x, y2 = target.y + nodeHeight / 2, mid = (x1 + x2) / 2;
+        return `<path class="edge ${escapeHtml(edge.kind)}${edgeDimmed}" d="M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}" />`;
       }).join("");
     }
     function renderPlayablePreview(node) {
@@ -373,11 +442,9 @@
       const selected = graph.nodes.find((node) => node.id === state.selectedId) ?? graph.nodes.find((node) => ["video", "audio"].includes(node.type)) ?? graph.nodes[0];
       const counts = graph.counts ?? {};
       const stats = [["视频", counts.video ?? 0], ["音频", counts.audio ?? 0], ["图片", counts.image ?? 0], ["文档", counts.document ?? 0]].map(([label, count]) => `<span class="media-stat"><strong>${escapeHtml(count)}</strong>${label}</span>`).join("");
-      const relations = graph.edges.length ? graph.edges.map((edge) => `<button class="media-relation" data-node-id="${escapeHtml(edge.target)}"><span>${escapeHtml(edge.sourceLabel ?? edge.source)}</span><em>→ ${escapeHtml(relationLabel(edge.kind))} →</em><span>${escapeHtml(edge.targetLabel ?? edge.target)}</span></button>`).join("") : '<span class="empty">文件之间还没有已登记的来源、生成、配音或剪辑关系。</span>';
-      const nodes = graph.nodes.map((node) => `<button class="media-node ${state.selectedId === node.id ? "selected" : ""}" data-node-id="${escapeHtml(node.id)}" style="left:${Number(node.x)}px;top:${Number(node.y)}px">${mediaMarkup(node, "node-preview")}<strong>${escapeHtml(node.label)}</strong><small>${escapeHtml(shortType(node.type))} · ${escapeHtml(statusLabel(node.status))}</small></button>`).join("");
-      const byId = new Map(graph.nodes.map((node) => [node.id, node]));
-      const edges = graph.edges.map((edge) => { const source = byId.get(edge.source), target = byId.get(edge.target); if (!source || !target) return ""; const x1 = source.x + 210, y1 = source.y + 58, x2 = target.x, y2 = target.y + 58, mid = (x1 + x2) / 2; return `<path class="media-edge" d="M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}" />`; }).join("");
-      $("#media").innerHTML = `<div class="media-head"><div><h2>媒体关系</h2><p>只展示真实登记的图片、视频、音频和必要文档；点击节点可播放并查看来源关系。</p></div><div class="media-stats">${stats}</div></div>${renderProductionPulse(creativeSla)}<div class="media-preview"><section class="media-preview-panel"><h3>预览 · ${escapeHtml(selected?.label ?? "尚未选择")}</h3><div class="media-preview-frame">${renderPlayablePreview(selected)}</div><div class="media-preview-copy">${escapeHtml(selected?.detail ?? "生成或抓取到的媒体会出现在这里。")}</div></section><section class="media-relations-panel"><h3>文件关系 · ${graph.edges.length}</h3><div class="media-relations">${relations}</div></section></div><section class="media-graph"><div class="media-graph-plane"><svg class="media-edge-layer" aria-hidden="true">${edges}</svg>${nodes || '<div class="empty">还没有可预览的媒体文件。</div>'}</div></section>`;
+      const selectedEdges = selected ? graph.edges.filter((edge) => edge.source === selected.id || edge.target === selected.id) : [];
+      const relations = selectedEdges.length ? selectedEdges.map((edge) => { const otherId = edge.source === selected.id ? edge.target : edge.source; const other = graph.nodes.find((node) => node.id === otherId); return `<button class="media-relation" data-node-id="${escapeHtml(otherId)}"><span>${escapeHtml(other?.label ?? otherId)}</span><em>${escapeHtml(relationLabel(edge.kind))}</em></button>`; }).join("") : '<span class="empty">这个对象还没有登记直接来源或去向。</span>';
+      $("#media").innerHTML = `<div class="media-head"><div><h2>生产画布</h2><p>真实素材、生成结果和剪辑产物会沿来源关系持续流转。</p></div><div class="media-stats">${stats}<span class="media-stat"><strong>${graph.edges.length}</strong>关系</span></div></div>${renderProductionPulse(creativeSla)}<div class="media-preview"><section class="media-preview-panel"><h3>${escapeHtml(shortType(selected?.type))}预览</h3><div class="media-preview-frame">${renderPlayablePreview(selected)}</div><div class="media-preview-copy"><strong>${escapeHtml(selected?.label ?? "尚未选择")}</strong><br>${escapeHtml(selected?.detail ?? "选择画布对象查看内容和来源。")}</div>${selected ? mediaFactsMarkup(selected, "story-meta") : ""}</section><section class="media-relations-panel"><h3>直接关系 · ${selectedEdges.length}</h3><div class="media-relations">${relations}</div></section></div>`;
     }
     function renderProductionPulse(sla) {
       const status = sla?.status ?? "awaiting_fast_start";
@@ -413,15 +480,12 @@
       const signature = JSON.stringify({ assets: assets.map((node) => [node.id, node.type, node.status, node.previewUri, node.updatedAt]), relations: relations.map((edge) => [edge.id, edge.kind]) });
       if (signature === state.storySignature) return;
       state.storySignature = signature;
-      const groups = [
-        ["文档", assets.filter((node) => node.type === "document")],
-        ["图片", assets.filter((node) => node.type === "image")],
-        ["视频", assets.filter((node) => node.type === "video")],
-        ["音频", assets.filter((node) => node.type === "audio")]
-      ];
-      const relationMap = relations.length ? `<section class="asset-relations"><h2>内容如何组成成片 · ${relations.length}</h2><div class="relation-list">${relations.map((edge) => `<button class="relation-item" data-node-id="${escapeHtml(edge.target)}"><span>${escapeHtml(edge.sourceLabel ?? edge.source)}</span><span class="relation-kind">→ ${escapeHtml(relationLabel(edge.kind))} →</span><span>${escapeHtml(edge.targetLabel ?? edge.target)}</span></button>`).join("")}</div></section>` : '<section class="asset-relations"><h2>内容关系</h2><div class="empty">脚本、画面、声音和成片之间的关系会显示在这里。</div></section>';
-      const cards = `<div class="status-copy">这里集中展示值得查看和使用的文档、图片、视频与声音。</div>${relationMap}${groups.map(([label, items]) => `<div class="story-group"><h2>${label} · ${items.length}</h2><div class="story-grid">${items.length ? items.map((node) => `<article class="story-card" data-node-id="${escapeHtml(node.id)}">${mediaMarkup(node)}<span class="copy"><strong>${escapeHtml(node.label)}</strong><p>${escapeHtml(node.detail ?? stageLabel(node.stage))}</p>${node.metadata?.repairLineage ? `<div class="lineage">已根据审片意见修复</div>` : ""}</span></article>`).join("") : `<div class="empty">当前没有${label}内容。</div>`}</div></div>`).join("")}`;
-      $("#storyboard").innerHTML = cards;
+      const documents = assets.filter((node) => node.type === "document"), images = assets.filter((node) => node.type === "image"), videos = assets.filter((node) => node.type === "video"), audio = assets.filter((node) => node.type === "audio");
+      const incomingCount = (id) => relations.filter((edge) => edge.target === id || edge.source === id).length;
+      const card = (node, compact = false) => `<article class="story-card ${compact ? "compact" : ""}" data-node-id="${escapeHtml(node.id)}">${compact ? '<span class="story-doc-mark">文档</span>' : mediaMarkup(node)}<span class="copy"><strong>${escapeHtml(node.label)}</strong><p>${escapeHtml(node.detail ?? stageLabel(node.stage))}</p><span class="story-meta">${mediaFacts(node).map((fact) => `<span>${escapeHtml(fact)}</span>`).join("")}<span>${escapeHtml(statusLabel(node.status))}</span>${incomingCount(node.id) ? `<span>${incomingCount(node.id)} 个关系</span>` : ""}</span>${node.metadata?.repairLineage ? `<div class="lineage">已根据审片意见修复</div>` : ""}</span></article>`;
+      const group = (label, items, compact = false) => `<section class="story-group"><h2>${label} · ${items.length}</h2><div class="story-grid">${items.length ? items.map((node) => card(node, compact)).join("") : `<div class="empty">当前没有${label}内容。</div>`}</div></section>`;
+      const counts = [["文本", documents.length], ["图片", images.length], ["视频", videos.length], ["音频", audio.length]].map(([label, count]) => `<span class="media-stat"><strong>${count}</strong>${label}</span>`).join("");
+      $("#storyboard").innerHTML = `<header class="storyboard-head"><div><h1>故事板</h1><p>按媒介检查生产内容；选择任一对象查看版本、来源与制作状态。</p></div><div class="storyboard-counts">${counts}</div></header><div class="storyboard-board"><div class="story-column">${group("音频", audio)}${group("文本", documents, true)}</div><div class="story-column">${group("图片", images)}</div><div class="story-column">${group("视频", videos)}</div></div>`;
     }
     function renderReview() {
       const canvas = state.data.productionCanvas, assets = canvas.assets;
@@ -586,7 +650,7 @@
       state.selectedId = id; state.mediaSignature = null; persistUiState(); renderObjectList(); renderGraph(); renderMediaBoard();
       $("#inspector-title").textContent = node.label;
       $("#inspector-body").innerHTML = `${mediaMarkup(node, "node-preview")}<div class="section"><h3>制作状态</h3><div class="kv"><span>类型</span><span>${escapeHtml(shortType(node.type))}</span><span>环节</span><span>${escapeHtml(stageLabel(node.stage))}</span><span>状态</span><span>${escapeHtml(statusLabel(node.status))}</span></div></div><div class="section"><h3>内容</h3><div class="status-copy">${escapeHtml(node.detail ?? "暂无补充说明")}</div><div id="document-preview"></div></div>${advancedDetails("制作详情", { artifactRef: node.artifactRef ?? null, stage: node.stage, status: node.status, metadata: node.metadata ?? {} })}`;
-      $("#inspector").classList.add("open");
+      $("#inspector").classList.toggle("open", state.view !== "media");
       if (["document", "artifact"].includes(node.type) && node.metadata?.path && /\.(md|txt|json|srt|vtt)$/i.test(node.metadata.path)) {
         const target = $("#document-preview"); target.innerHTML = '<div class="status-copy">正在读取文档…</div>';
         try { const response = await fetch(surfaceUrl("/directorx/api/media", { path: node.metadata.path }), { cache: "no-store" }); if (!response.ok) throw new Error(`HTTP ${response.status}`); target.innerHTML = `<pre class="document-preview">${escapeHtml(await response.text())}</pre>`; }
@@ -620,6 +684,7 @@
         if (["media", "workflow", "coverage", "continuity", "storyboard", "review", "activity"].includes(saved?.view)) state.view = saved.view;
         if (["all", "asset"].includes(saved?.filter)) state.filter = saved.filter;
         if (typeof saved?.query === "string") state.query = saved.query.slice(0, 200);
+        if (typeof saved?.railCollapsed === "boolean") state.railCollapsed = saved.railCollapsed;
         if (typeof saved?.syncLocked === "boolean") state.syncLocked = saved.syncLocked;
         if (Number.isFinite(saved?.reviewCurrentTime) && saved.reviewCurrentTime >= 0) state.reviewTransport.currentTime = saved.reviewCurrentTime;
         if (saved?.timelineViewport && Number.isFinite(saved.timelineViewport.start) && Number.isFinite(saved.timelineViewport.duration) && saved.timelineViewport.start >= 0 && saved.timelineViewport.duration > 0) state.timelineViewport = saved.timelineViewport;
@@ -638,7 +703,7 @@
     function persistUiState() {
       state.viewportRestored = true;
       if (!state.uiStateInitialized) return;
-      const value = { version: 1, transform: state.transform, view: state.view, filter: state.filter, query: state.query, selectedId: state.selectedId, compareIds: state.compareIds, syncLocked: state.syncLocked, timelineViewport: state.timelineViewport, reviewCurrentTime: state.reviewTransport.currentTime, updatedAt: new Date().toISOString() };
+      const value = { version: 1, transform: state.transform, view: state.view, filter: state.filter, query: state.query, railCollapsed: state.railCollapsed, selectedId: state.selectedId, compareIds: state.compareIds, syncLocked: state.syncLocked, timelineViewport: state.timelineViewport, reviewCurrentTime: state.reviewTransport.currentTime, updatedAt: new Date().toISOString() };
       state.pendingUiState = value;
       try { localStorage.setItem(uiStorageKey(), JSON.stringify(value)); } catch {}
       clearTimeout(state.uiPersistTimer); state.uiPersistTimer = setTimeout(() => void flushUiState(), 120);
@@ -649,14 +714,22 @@
       document.querySelectorAll("[data-view]").forEach((item) => item.setAttribute("aria-pressed", String(item.dataset.view === state.view)));
       document.querySelectorAll("[data-filter]").forEach((item) => item.classList.toggle("active", item.dataset.filter === state.filter));
       $("#search").value = state.query;
-      $("#viewport").style.display = ["workflow", "continuity"].includes(state.view) ? "block" : "none";
-      $("#toolbar").style.display = ["workflow", "continuity"].includes(state.view) ? "flex" : "none";
+      $("#viewport").style.display = ["media", "workflow", "continuity"].includes(state.view) ? "block" : "none";
+      $("#viewport").dataset.mode = state.view;
+      $("#toolbar").style.display = ["media", "workflow", "continuity"].includes(state.view) ? "flex" : "none";
       $("#media").classList.toggle("open", state.view === "media");
       $("#coverage").classList.toggle("open", state.view === "coverage");
       $("#storyboard").classList.toggle("open", state.view === "storyboard");
       $("#review").classList.toggle("open", state.view === "review");
       $("#activity").classList.toggle("open", state.view === "activity");
+      applyRailState();
     }
+    function applyRailState() {
+      $(".app").dataset.rail = state.railCollapsed ? "collapsed" : "expanded";
+      $("#rail-toggle").textContent = state.railCollapsed ? "展开侧栏" : "收起侧栏";
+      $("#rail-toggle").setAttribute("aria-expanded", String(!state.railCollapsed));
+    }
+    function toggleRail() { state.railCollapsed = !state.railCollapsed; applyRailState(); persistUiState(); }
     function updateTransform() { $("#plane").style.transform = `translate(${state.transform.x}px, ${state.transform.y}px) scale(${state.transform.zoom})`; $("#zoom-label").textContent = `${Math.round(state.transform.zoom * 100)}%`; }
     function zoomAroundPoint(nextZoom, clientX, clientY) {
       const rect = $("#viewport").getBoundingClientRect(), pointX = clientX - rect.left, pointY = clientY - rect.top;
@@ -728,7 +801,8 @@
     $("#search").addEventListener("input", (event) => { state.query = event.target.value; persistUiState(); renderObjectList(); });
     $("#fit").addEventListener("click", fitCanvas); $("#zoom-in").addEventListener("click", () => { const rect = $("#viewport").getBoundingClientRect(); zoomAroundPoint(Math.min(1.6, state.transform.zoom + .1), rect.left + rect.width / 2, rect.top + rect.height / 2); }); $("#zoom-out").addEventListener("click", () => { const rect = $("#viewport").getBoundingClientRect(); zoomAroundPoint(Math.max(.25, state.transform.zoom - .1), rect.left + rect.width / 2, rect.top + rect.height / 2); });
     $("#credential-toggle").addEventListener("click", openCredentialPanel); $("#close-inspector").addEventListener("click", () => $("#inspector").classList.remove("open"));
-    $("#rail-toggle").addEventListener("click", () => $(".rail").classList.toggle("open"));
+    $("#rail-toggle").addEventListener("click", toggleRail);
+    $("#rail-collapse").addEventListener("click", toggleRail);
     $("#viewport").addEventListener("wheel", (event) => { event.preventDefault(); const next = Math.min(1.6, Math.max(.25, state.transform.zoom - Math.sign(event.deltaY) * .07)); zoomAroundPoint(next, event.clientX, event.clientY); }, { passive: false });
     $("#viewport").addEventListener("pointerdown", (event) => { if (event.target.closest(".node")) return; state.dragging = true; state.pointer = { x: event.clientX, y: event.clientY, originX: state.transform.x, originY: state.transform.y }; $("#viewport").classList.add("dragging"); $("#viewport").setPointerCapture(event.pointerId); });
     $("#viewport").addEventListener("pointermove", (event) => { if (!state.dragging) return; state.transform.x = state.pointer.originX + event.clientX - state.pointer.x; state.transform.y = state.pointer.originY + event.clientY - state.pointer.y; updateTransform(); });

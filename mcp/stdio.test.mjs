@@ -334,7 +334,7 @@ test("routes the first preflight to a standalone browser canvas", async () => {
     const response = await claimBrowserCanvas(browserUrl);
     const html = await response.text();
     assert.match(html, /Director X Production Canvas/);
-    assert.match(html, /媒体关系/);
+    assert.match(html, /生产画布/);
     assert.match(html, /审片/);
     child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 31, method: "tools/call", params: { name: "directorx_get_preflight_status", arguments: { projectPath: "/tmp/directorx-browser-test", preflightId: message.result.structuredContent.preflightId } } })}\n`);
     await waitFor(() => messages(output).some((item) => item.id === 31), 500);

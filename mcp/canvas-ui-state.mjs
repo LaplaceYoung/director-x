@@ -15,6 +15,7 @@ export function normalizeCanvasUiState(value, now = new Date().toISOString()) {
     view: value.view,
     filter: value.filter,
     query: boundedText(value.query ?? "", 200, "query"),
+    railCollapsed: Boolean(value.railCollapsed),
     selectedId: value.selectedId == null ? null : boundedText(value.selectedId, 240, "selected ID"),
     compareIds: [...new Set((Array.isArray(value.compareIds) ? value.compareIds : []).map((item) => boundedText(item, 240, "compare ID")))].slice(0, 2),
     syncLocked: Boolean(value.syncLocked),

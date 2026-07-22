@@ -24,9 +24,9 @@ test("browser canvas ships local-only A/B playback and timecoded evidence naviga
   assert.match(html, /node\.type === "audio"/);
   assert.match(html, /document-preview/);
   assert.match(html, /md\|txt\|json\|srt\|vtt/);
-  assert.match(html, /内容如何组成成片/);
+  assert.match(html, /直接关系/);
   assert.match(html, /assetRelations/);
-  assert.match(html, /值得查看和使用的文档、图片、视频与声音/);
+  assert.match(html, /按媒介检查生产内容/);
   assert.match(html, /制作团队/);
   assert.match(html, /activity\.agentBatches/);
   assert.match(html, /renderEvidenceRail/);
@@ -70,22 +70,37 @@ test("preserves a user-controlled viewport across live state refreshes", async (
 test("opens on a media-first relation view and keeps specialist review views available", async () => {
   const html = await readFile(new URL("../app/browser-canvas.html", import.meta.url), "utf8");
   assert.match(html, /data-view="media"/);
-  assert.match(html, /媒体关系/);
+  assert.match(html, /生产画布/);
   assert.match(html, /mediaGraph/);
   assert.match(html, /media-preview/);
+  assert.match(html, /生产画布/);
+  assert.match(html, /data-view="storyboard"/);
+  assert.match(html, /storyboard-board/);
+  assert.match(html, /音频", audio/);
+  assert.match(html, /文本", documents/);
   assert.match(html, /production-pulse/);
   assert.match(html, /创作产出已停滞/);
   assert.match(html, /renderProductionPulse/);
   assert.match(html, /if \(pulse\) pulse\.outerHTML = renderProductionPulse\(creativeSla\)/);
   assert.match(html, /media-edge/);
   assert.match(html, /data-view="review"/);
-  assert.match(html, /\["文档", assets\.filter/);
-  assert.match(html, /\["图片", assets\.filter/);
-  assert.match(html, /\["视频", assets\.filter/);
-  assert.match(html, /\["音频", assets\.filter/);
+  assert.match(html, /documents = assets\.filter/);
+  assert.match(html, /images = assets\.filter/);
+  assert.match(html, /videos = assets\.filter/);
+  assert.match(html, /audio = assets\.filter/);
   assert.match(html, /当前没有\$\{label\}内容/);
   assert.match(html, /\["media", "storyboard", "review"\]\.includes\(state\.view\) \? "asset" : "all"/);
   assert.doesNotMatch(html, /\["视觉与镜头"/);
+});
+
+test("supports a durable collapsible object rail", async () => {
+  const html = await readFile(new URL("../app/browser-canvas.html", import.meta.url), "utf8");
+  assert.match(html, /data-rail="expanded"/);
+  assert.match(html, /id="rail-collapse"/);
+  assert.match(html, /aria-controls="object-rail"/);
+  assert.match(html, /railCollapsed: state\.railCollapsed/);
+  assert.match(html, /function toggleRail/);
+  assert.match(html, /dataset\.rail = state\.railCollapsed/);
 });
 
 test("keeps the side-browser surface alive without treating a hidden tab as disconnected", async () => {
