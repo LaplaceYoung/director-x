@@ -47,6 +47,7 @@ const EXACT_TOOL_TITLES = Object.freeze({
   directorx_research_video: "开始视频研究",
   directorx_generate_media: "生成制作素材",
   directorx_review_media_candidate: "审看生成素材",
+  directorx_build_rough_cut: "准备证据粗剪",
   directorx_recover_production: "恢复视频制作",
   directorx_capability_preflight: "准备制作空间",
   directorx_get_preflight_status: "确认侧边画布",

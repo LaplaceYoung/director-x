@@ -7,7 +7,7 @@ The following values come from the current working tree: a read-only default std
 ```json
 {
   "toolCount": 185,
-  "implementedPublicFacades": 9,
+  "implementedPublicFacades": 10,
   "legacyLooseContracts": 174,
   "modelAndAppExplicitVisibility": 2,
   "appOnlyExplicitVisibility": 1
@@ -24,9 +24,9 @@ The public profile is the executable default boundary. The legacy registry remai
 - Recovery has a strict `inspect/apply` contract with an opaque token and idempotent replay.
 - Tool failures are normalized into structured recovery-oriented payloads.
 - Resource endpoints expose the canvas and durable artifacts.
-- The public profile lists exactly nine actual Facades: `directorx_start_production`, `directorx_get_production_status`, `directorx_resume_production`, `directorx_decide_production`, `directorx_prepare_production`, `directorx_research_video`, `directorx_generate_media`, `directorx_review_media_candidate`, and `directorx_recover_production`.
+- The public profile lists exactly ten actual Facades: `directorx_start_production`, `directorx_get_production_status`, `directorx_resume_production`, `directorx_decide_production`, `directorx_prepare_production`, `directorx_research_video`, `directorx_generate_media`, `directorx_review_media_candidate`, `directorx_build_rough_cut`, and `directorx_recover_production`.
 - Public result projection scrubs unavailable legacy `directorx_*` continuations instead of returning a tool name that a public-only conversation cannot call.
-- Public result projection maps the selected-candidate rough-cut continuation to the executable status Facade until the rough-cut Facade is complete; compatibility mode preserves the low-level route.
+- Public result projection now exposes the bounded rough-cut Facade; compatibility mode still preserves the low-level proposal route.
 - Native decision applications durably apply run mode, public brief confirmation, and stage approval exactly once after the raw Codex answer is resolved. Run mode is now server-canonicalized before persistence.
 
 ## Gaps

@@ -10,6 +10,7 @@ import { readRun } from "./run-store.mjs";
 const availableAgentTypes = DX_SUBAGENT_CATALOG.map((role) => role.agentType);
 const hostToolNames = ["create_goal", "get_goal", "update_goal", "request_user_input", "exec", "wait"];
 const publicToolNames = [
+  "directorx_build_rough_cut",
   "directorx_decide_production",
   "directorx_generate_media",
   "directorx_get_production_status",
@@ -284,6 +285,9 @@ test("public decision Facade persists, resolves, and replays one native decision
     const status = await call(22, "directorx_get_production_status", { projectPath, runId: ready.runId });
     const resumed = await call(23, "directorx_resume_production", { projectPath, runId: ready.runId });
     assert.equal(resumed.resumeActionPlan.protocol, "public_resume");
+    const roughCut = await call(24, "directorx_build_rough_cut", { projectPath, runId: ready.runId, action: "inspect" });
+    assert.equal(roughCut.status, "blocked");
+    assert.equal(roughCut.nextRequiredAction, "directorx_review_media_candidate");
     assertNoHiddenToolNames([blockedResearch, prepared, retriedPreparation, stageApproval, resolvedStageApproval, research, status, resumed], toolNames);
 
     run = await readRun({ projectPath, runId: ready.runId });

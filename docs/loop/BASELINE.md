@@ -14,7 +14,7 @@ Commit baseline: `6a7bcaf` with the current Loop 10 slice still in the working t
 | Entry skill | `skills/directorx/agents/openai.yaml` is the only `allow_implicit_invocation: true` skill | One implicit entry |
 | Specialist skills | 33 specialist skills are explicit-only and point to `directorx-production` | Preserved, with discoverability cost |
 | Registered MCP tools | Static `name: "directorx_*"` definitions in `mcp/server.mjs` | 185 definitions |
-| Default public Facades | Read-only default `tools/list` | 9 actual Facades: start, status, resume, decide, prepare, research, generate, review, recover |
+| Default public Facades | Read-only default `tools/list` | 10 actual Facades: start, status, resume, decide, prepare, research, generate, review, rough cut, recover |
 | Legacy contracts | `directorx/legacyLooseContract: true` metadata | 174; still a P1 migration burden |
 | Public output boundary | Public-result projection replaces unavailable `directorx_*` routes | Implemented; no legacy continuation should appear in a public result |
 | Native protocol | `initialize`, `tools/list`, `tools/call`, `resources/list`, `resources/read`, and resource templates exist in the runtime | Repository evidence only |

@@ -2,11 +2,11 @@
 
 ## Current loop
 
-- Loop: 12
+- Loop: 13
 - Date: 2026-07-23
-- Commit baseline: `0004b5d`; this loop records the public route projection correction.
+- Commit baseline: `f211d1e`; this loop records the first public rough-cut Facade slice.
 - Release baseline: `v0.1.15`
-- Status: `PUBLIC_ROUTE_PROJECTION_CORRECTED`
+- Status: `PUBLIC_ROUGH_CUT_FACADE_STARTED`
 - Current focus: a small, truthful public MCP surface with server-owned decision semantics and resumable production state.
 
 ## Last completed work
@@ -18,6 +18,10 @@
 - The entry Skill remains the one implicit, outcome-led route and loads specialist guidance only after a Run exists.
 
 ## This loop
+
+- Added `directorx_build_rough_cut` to the public profile with two bounded actions: `inspect` returns selected-candidate/editor readiness, and `propose` reuses the existing DX-Editor evidence rough-cut compiler with fixed ownership.
+- The Facade never commits a timeline. It returns a compact next action and leaves native edit approval to the existing decision boundary.
+- Added public list and blocked-state regression coverage; the public profile now has ten actual Facades.
 
 - Corrected public result projection for the selected-candidate → rough-cut boundary. Until `directorx_build_rough_cut` is implemented and listed, a legacy `directorx_build_rough_cut` continuation now resolves to the executable `directorx_get_production_status` Facade instead of leaking an unavailable route or the generic `continue_production` fallback.
 - Preserved the raw compatibility profile route so existing low-level operators retain their migration path.

@@ -655,6 +655,20 @@ const rawTools = [
     annotations: writeAnnotations()
   },
   {
+    name: "directorx_build_rough_cut",
+    description: "Inspect the selected media's evidence-bound editing state or create one reversible DX-Editor rough-cut draft from registered inactivity evidence. This public boundary never commits a timeline; native edit approval remains a separate decision.",
+    inputSchema: { oneOf: [
+      objectSchema({ projectPath: stringSchema(), runId: stringSchema(), action: { const: "inspect", type: "string" } }, ["projectPath", "runId", "action"]),
+      objectSchema({
+        projectPath: stringSchema(), runId: stringSchema(), action: { const: "propose", type: "string" }, editorSessionId: stringSchema(), proposalId: { type: "string", pattern: "^[A-Za-z0-9._:-]{1,120}$" },
+        inactiveRanges: { type: "array", minItems: 1, maxItems: 48, items: objectSchema({ startSeconds: { type: "number", minimum: 0 }, endSeconds: { type: "number", exclusiveMinimum: 0 }, reason: { type: "string" }, evidenceRefs: { type: "array", minItems: 1, maxItems: 16, items: stringSchema() } }, ["startSeconds", "endSeconds", "evidenceRefs"]) },
+        summary: { type: "string" }, keepBeforeSeconds: { type: "number", minimum: 0, maximum: 10 }, keepAfterSeconds: { type: "number", minimum: 0, maximum: 10 }, minimumCutSeconds: { type: "number", minimum: 0, maximum: 10 }
+      }, ["projectPath", "runId", "action", "editorSessionId", "proposalId", "inactiveRanges"])
+    ] },
+    outputSchema: roughCutFacadeOutputSchema(),
+    annotations: writeAnnotations()
+  },
+  {
     name: "directorx_recover_production",
     description: "Inspect or atomically apply one Director X recovery intent. Inspect returns a compact opaque token; apply binds that token to the exact active failure, writes one checkpoint, clears the gate once, and returns the same result on replay.",
     inputSchema: { oneOf: [
@@ -4333,6 +4347,7 @@ async function executeTool(name, args) {
   if (name === "directorx_research_video") return await researchVideo(args);
   if (name === "directorx_generate_media") return await generateMedia(args);
   if (name === "directorx_review_media_candidate") return await reviewMediaCandidate(args);
+  if (name === "directorx_build_rough_cut") return await buildRoughCutFacade(args);
   if (name === "directorx_plan_production_team") {
     const current = await readRun(args);
     if (!current.executionGraph) throw new Error("Register execution_graph.json before planning the DX production team.");
@@ -5556,7 +5571,7 @@ function scrubPublicToolReferences(value, publicToolNames) {
 function publicActionForLegacyRoute(route, publicToolNames = null) {
   const value = String(route ?? "");
   const [base, suffix] = value.split(":", 2);
-  const available = publicToolNames ?? new Set(["directorx_start_production", "directorx_resume_production", "directorx_get_production_status", "directorx_decide_production", "directorx_prepare_production", "directorx_research_video", "directorx_generate_media", "directorx_review_media_candidate", "directorx_recover_production"]);
+  const available = publicToolNames ?? new Set(["directorx_start_production", "directorx_resume_production", "directorx_get_production_status", "directorx_decide_production", "directorx_prepare_production", "directorx_research_video", "directorx_generate_media", "directorx_review_media_candidate", "directorx_build_rough_cut", "directorx_recover_production"]);
   if (available.has(base)) return suffix ? `${base}:${suffix}` : base;
   if (["directorx_begin_reference_research", "directorx_begin_creative_work"].includes(base) && available.has("directorx_research_video")) return "directorx_research_video";
   if (base === "directorx_build_rough_cut" && available.has("directorx_get_production_status")) return "directorx_get_production_status";
@@ -5763,6 +5778,32 @@ async function prepareGenerationAttempt(args) {
     upsertExecutionCanvasNode(run, { id: `attempt:${args.attemptId}`, type: "artifact", label: `${request.shotId} · 正在生成`, detail: `${run.generation.providerId}/${run.generation.modelId} · 官方估价 ${run.generation.currency} ${attempt.estimatedCost}`, stage: "generation", status: "active", metadata: { requestId: args.requestId, attemptId: args.attemptId, prompt: attempt.prompt, pricingQuoteId: attempt.pricingQuote.quoteId, pricingSourceUrl: attempt.pricingQuote.sourceUrl } }, `shot:${request.shotId}`);
     return run;
   }, "generation.attempt.started", `${args.requestId} · ${args.attemptId} · official price quote`);
+}
+
+async function buildRoughCutFacade(args) {
+  if (args.action === "propose") {
+    const result = await executeTool("directorx_propose_evidence_rough_cut", { ...args, owner: "DX-Editor" });
+    return {
+      schemaVersion: "1.0",
+      runId: args.runId,
+      status: "proposal_created",
+      selectedCandidateId: (await readRun(args)).generation?.candidates?.find((candidate) => candidate.status === "selected")?.candidateId ?? null,
+      editorSessionId: args.editorSessionId,
+      proposalId: args.proposalId,
+      proposalArtifactRef: result.proposalArtifactRef ?? null,
+      nextRequiredAction: "directorx_get_production_status",
+      browserCanvasUrl: result.browserCanvasUrl
+    };
+  }
+  const run = await readRun(args);
+  const selected = run.generation?.candidates?.find((candidate) => candidate.status === "selected") ?? null;
+  const activeEditorId = run.openCutEditor?.activeSessionId ?? null;
+  const activeEditor = activeEditorId ? run.openCutEditor?.sessions?.[activeEditorId] ?? null : null;
+  const canvas = await withBrowserCanvas(publicSnapshot(run), args);
+  if (!selected) return { schemaVersion: "1.0", runId: run.runId, status: "blocked", selectedCandidateId: null, editorSessionId: null, proposalId: null, proposalArtifactRef: null, nextRequiredAction: "directorx_review_media_candidate", browserCanvasUrl: canvas.browserCanvasUrl };
+  if (!activeEditor || ["completed", "cancelled", "failed"].includes(activeEditor.status)) return { schemaVersion: "1.0", runId: run.runId, status: "awaiting_editor", selectedCandidateId: selected.candidateId, editorSessionId: null, proposalId: null, proposalArtifactRef: null, nextRequiredAction: "request_post_production_edit", browserCanvasUrl: canvas.browserCanvasUrl };
+  const proposal = Object.values(run.roughCutProposals ?? {}).find((item) => item.editorSessionId === activeEditorId) ?? null;
+  return { schemaVersion: "1.0", runId: run.runId, status: proposal ? "proposal_created" : "ready", selectedCandidateId: selected.candidateId, editorSessionId: activeEditorId, proposalId: proposal?.proposalId ?? null, proposalArtifactRef: proposal ? `rough_cut_proposal_${proposal.proposalId.replace(/[^A-Za-z0-9._-]/g, "-")}.json` : null, nextRequiredAction: proposal ? "directorx_get_production_status" : "directorx_build_rough_cut:propose", browserCanvasUrl: canvas.browserCanvasUrl };
 }
 
 async function reviewMediaCandidate(args) {
@@ -6469,6 +6510,20 @@ function productionRecoveryOutputSchema() {
     checkpointId: { anyOf: [stringSchema(), { type: "null" }] },
     nextRequiredAction: stringSchema()
   }, ["schemaVersion", "runId", "status", "recovery", "checkpointId", "nextRequiredAction"]);
+}
+function roughCutFacadeOutputSchema() {
+  const nullableString = { anyOf: [stringSchema(), { type: "null" }] };
+  return objectSchema({
+    schemaVersion: { const: "1.0", type: "string" },
+    runId: stringSchema(),
+    status: { enum: ["ready", "awaiting_editor", "proposal_created", "blocked"], type: "string" },
+    selectedCandidateId: nullableString,
+    editorSessionId: nullableString,
+    proposalId: nullableString,
+    proposalArtifactRef: nullableString,
+    nextRequiredAction: stringSchema(),
+    browserCanvasUrl: stringSchema()
+  }, ["schemaVersion", "runId", "status", "selectedCandidateId", "editorSessionId", "proposalId", "proposalArtifactRef", "nextRequiredAction", "browserCanvasUrl"]);
 }
 function productionStartOutputSchema() {
   const nullableString = { anyOf: [stringSchema(), { type: "null" }] };

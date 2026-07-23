@@ -7,6 +7,7 @@ export const DIRECTORX_PUBLIC_FACADE_NAMES = Object.freeze([
   "directorx_research_video",
   "directorx_generate_media",
   "directorx_review_media_candidate",
+  "directorx_build_rough_cut",
   "directorx_recover_production"
 ]);
 
@@ -16,7 +17,6 @@ export const DIRECTORX_PUBLIC_FACADE_NAMES = Object.freeze([
 export const DIRECTORX_PLANNED_FACADE_NAMES = Object.freeze([
   "directorx_design_video",
   "directorx_dispatch_production_team",
-  "directorx_build_rough_cut",
   "directorx_edit_video",
   "directorx_render_video",
   "directorx_audit_final_video",
