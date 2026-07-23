@@ -1,6 +1,6 @@
 # DirectorX Plugin Score
 
-Loop 10 score, 2026-07-23.
+Loop 11 score, 2026-07-23.
 
 | Category | Score | Evidence |
 | --- | ---: | --- |
@@ -9,8 +9,8 @@ Loop 10 score, 2026-07-23.
 | MCP quality | 19/20 | Nine actual public Facades include native, canonical-brief preparation; public outputs no longer leak unavailable routes; edit/delivery Facades remain incomplete |
 | UX | 16/20 | Canvas-first native approvals now include public brief confirmation and stage approval; the legacy surface remains costly only when compatibility is explicitly enabled |
 | Maintainability | 18/20 | Shared preparation helper, durable fingerprints, replay coverage, and local check/test evidence; legacy surface remains costly |
-| **Total** | **88/100** | Evidence-weighted progress score; not a DONE score |
+| **Total** | **89/100** | Evidence-weighted progress score; not a DONE score |
 
 ## Score gate
 
-The plugin is not DONE. The public profile still needs the host-receipt and run-mode-mapping P1s, edit/render/delivery coverage, a fresh-host installation probe, and two review cycles without P0/P1 findings.
+The plugin is not DONE. The public profile still needs host-receipt attestation, edit/render/delivery coverage, a fresh-host installation probe, and two review cycles without P0/P1 findings.

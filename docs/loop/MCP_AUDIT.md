@@ -26,7 +26,7 @@ The public profile is the executable default boundary. The legacy registry remai
 - Resource endpoints expose the canvas and durable artifacts.
 - The public profile lists exactly nine actual Facades: `directorx_start_production`, `directorx_get_production_status`, `directorx_resume_production`, `directorx_decide_production`, `directorx_prepare_production`, `directorx_research_video`, `directorx_generate_media`, `directorx_review_media_candidate`, and `directorx_recover_production`.
 - Public result projection scrubs unavailable legacy `directorx_*` continuations instead of returning a tool name that a public-only conversation cannot call.
-- Native decision applications durably apply run mode, public brief confirmation, and stage approval exactly once after the raw Codex answer is resolved.
+- Native decision applications durably apply run mode, public brief confirmation, and stage approval exactly once after the raw Codex answer is resolved. Run mode is now server-canonicalized before persistence.
 
 ## Gaps
 
@@ -35,7 +35,7 @@ The public profile is the executable default boundary. The legacy registry remai
 - Most legacy tools use a broad compatibility output contract rather than a precise intent result.
 - Edit, render, audit, repair, and delivery have planned Facade names but are not publicly listable until they are implemented end to end.
 - Public preparation's native confirmation gate is implemented: it uses one stable `public-brief` gate, persists the canonical brief and fingerprint, and verifies the resolved interaction/application/approved answer before it writes the production promise. **P1 remains at the host trust boundary:** `resolve` accepts the raw Codex MCP `request_user_input` envelope without a host-signed receipt.
-- **P1:** the public run-mode decision still receives its option-label-to-mode mapping from the caller. The mapping must become host-trusted or independently canonicalized so user-visible wording cannot change durable runtime semantics.
+- Public run-mode mapping is now independently canonicalized by the server. The remaining native-decision P1 is host-origin attestation for the raw answer envelope.
 - Conversation UX still has to distinguish user-facing intent from internal activity for all legacy names.
 
 ## Current implementation slice
@@ -46,4 +46,4 @@ The public profile is the executable default boundary. The legacy registry remai
 
 ## Next implementation slice
 
-Close the P1 host-receipt and run-mode-mapping trust boundaries, then implement the first evidence-bound rough-cut Facade using the public decision boundary and exercise the complete public path through delivery.
+Close the P1 host-receipt trust boundary, then implement the first evidence-bound rough-cut Facade using the public decision boundary and exercise the complete public path through delivery.

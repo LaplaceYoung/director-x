@@ -101,3 +101,9 @@ Reason: a migration surface does not improve first-use discovery while the defau
 Decision: export `DIRECTORX_DESTRUCTIVE_TOOL_NAMES` from the safety policy and reuse it when contracts are applied. Mark `directorx_commit_timeline_patch` as destructive/material even though it creates a reversible revision rather than overwriting the source timeline.
 
 Reason: contracts and safety policy must not silently override one another's classification. A reversible implementation can still make a material user-visible change and therefore needs the explicit destructive-write guard and confirmation semantics.
+
+## 2026-07-23 — Canonicalize public run-mode semantics in the server
+
+Decision: `directorx_decide_production` replaces caller-supplied run-mode questions and label-to-mode selections with one server-owned canonical question. The selected label maps to `RUN_MODES` by the canonical option order.
+
+Reason: a public decision must not let presentation wording or an untrusted mapping alter durable execution semantics. Stage approvals remain caller-shaped because their stage and approval wording are intentionally specific to the current pipeline boundary.

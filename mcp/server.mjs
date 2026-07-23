@@ -102,6 +102,16 @@ import { assertDirectorXToolSafetyPolicy } from "./tool-safety-policy.mjs";
 const CANVAS_URI = "ui://directorx/production-canvas-v1.html";
 const SCENE_CONFORMANCE_INSTRUCTIONS = "After directorx_verify_final_media, require scene_coverage_conformance_report.json to pass all non-waivable shot identity, order, duration, source-handle, full-frame, and PTS checks. Dispatch DX-Quality-Reviewer to inspect every planned shot's first/middle/last identity-bound frame, then call directorx_record_scene_coverage_review before final frame-finding acceptance. Metadata cannot prove camera, blocking, composition, lighting, movement, proof, reaction, or narrative fulfillment.";
 const PUBLIC_PRODUCTION_DECISION_KINDS = Object.freeze(NATIVE_INTERACTION_KINDS.filter((kind) => !["goal_entry", "role_install"].includes(kind)));
+const CANONICAL_RUN_MODE_QUESTION = Object.freeze({
+  id: "run_mode",
+  header: "制作方式",
+  question: "请选择 Director X 的推进方式。",
+  options: Object.freeze([
+    Object.freeze({ label: "引导自治 (Recommended)", description: "自动推进低风险步骤，只在预算、模型、版权、交付等关键节点等待确认。" }),
+    Object.freeze({ label: "逐阶段确认", description: "每个生产阶段开始前都等待一次确认，适合需要逐步把控的任务。" }),
+    Object.freeze({ label: "全自动", description: "在已确认的硬门禁之外连续推进，适合已有明确供应商和交付要求的任务。" })
+  ])
+});
 const SERVER_INSTRUCTIONS = "Use a concise consumer-facing Director X voice. In the Codex conversation, never narrate tool calls, file registration, JSON artifacts, schemas, MCP/runtime details, IDs, paths, test counts, or subagent plumbing unless the user asks for technical details or a failure requires diagnosis. Do not use Current Problem / Plan / Risks / Changed / Verified templates during production. Send one short start message, then only tangible stage milestones, blockers, native questions, preview availability, and final delivery. A normal update is at most two short sentences and should reuse userFacingSummary.suggestedUpdate. Do not duplicate a request_user_input question in chat. A returned native interaction may batch up to three independent image, video, voice, or music route questions; execute it once, then execute every afterAnswer resolution action with the same answer map before continuing. Never batch Goal, budget, credential, rights, stage, edit, or delivery approvals. Keep technical execution in collapsed tool results and the canvas Activity details.";
 const COMPATIBILITY_STAGE_INSTRUCTIONS = "A delegated DX child must never call directorx_plan_production_team or create another background delegation plan. For every Director X request, use directorx_start_production for the durable boot transaction and execute only the returned host action. Keep request_user_input and create_goal native to Codex; do not reconstruct their persistence protocol. Use directorx_decide_production for later durable choices, then resume through directorx_resume_production. Start research through directorx_research_video as soon as minimum Intake is resolved; provider Keys and paid-generation approvals remain hard gates only for Generation. The canvas is a projection of the durable Run and must prioritize growing real image, video, audio, research, script, storyboard, keyframe, and preview assets. If any first-content, first-visual, or first-preview SLA breaches, stop adding configuration work and execute the returned production action. For a reference-replication run, ingest the video and audio bundle first, compile the replication plan, then call directorx_score_reference_replication after exhaustive audit to choose pass_export, needs_edit, or regenerate. Never start an auxiliary Director X MCP runtime; one active runtime owns each Run. Preserve all existing provider, rights, pricing, continuity, render, exhaustive review, and delivery gates.";
 const FAILURE_POLICY_INSTRUCTIONS = "When a tool fails, inspect retryable, attempts, stop, recovery, and nextRequiredAction. Retry a transient semantic operation at most once. Use directorx_recover_production with action inspect for the minimal blocked operation and opaque recovery token, then action apply exactly once; completed artifacts remain available. Legacy recovery remains an internal compatibility path. Use directorx_decide_production for native production gates; a chat message such as ‘继续’ cannot satisfy them. Never create a replacement Run or auxiliary MCP runtime.";
@@ -584,7 +594,7 @@ const rawTools = [
   },
   {
     name: "directorx_decide_production",
-    description: "Ask or resolve one durable production decision through Codex-native request_user_input. A typed state application is bound before display, checked against the selected answer, and applied only once when the answer is resolved.",
+    description: "Ask or resolve one durable production decision through Codex-native request_user_input. Run-mode decisions use a server-owned canonical question and mapping; stage approvals retain a persisted answer mapping. Every application is checked against the selected answer and applied only once when resolved.",
     inputSchema: { oneOf: [
       objectSchema({
         projectPath: stringSchema(), runId: stringSchema(), action: { const: "request", type: "string" }, kind: { enum: PUBLIC_PRODUCTION_DECISION_KINDS, type: "string" }, gateKey: { type: "string", pattern: "^[A-Za-z0-9._:-]{1,120}$" }, reason: stringSchema(), questions: { type: "array", minItems: 1, maxItems: 3, items: nativeQuestionSchema() }, application: publicDecisionApplicationSchema(), sourceUrl: { type: "string" }, referenceId: { type: "string" }
@@ -4997,24 +5007,34 @@ async function decideProduction(args) {
 }
 
 async function requestProductionDecision(args) {
-  assertPublicDecisionApplication(args);
-  requireNativeGoalBound(await readRun(args), "Director X production decisions");
+  const canonicalArgs = canonicalizePublicDecisionRequest(args);
+  assertPublicDecisionApplication(canonicalArgs);
+  requireNativeGoalBound(await readRun(canonicalArgs), "Director X production decisions");
   let interaction;
-  const snapshot = await updateRun({ ...args, mutate(run) {
-    interaction = requestNativeInteraction(run, args);
+  const snapshot = await updateRun({ ...canonicalArgs, mutate(run) {
+    interaction = requestNativeInteraction(run, canonicalArgs);
     if (!interaction.deduplicated) run.events.push(event(run, "interaction.requested", run.stage, `${interaction.request.kind} · ${interaction.request.requestId}`));
     return run;
   } });
-  const canvas = await withBrowserCanvas(publicSnapshot(snapshot), args);
+  const canvas = await withBrowserCanvas(publicSnapshot(snapshot), canonicalArgs);
   return summarizeProductionDecision({
     runId: snapshot.runId,
     stage: snapshot.stage,
     request: interaction.request,
     deduplicated: interaction.deduplicated,
-    hostAction: interaction.hostAction ? publicDecisionHostAction(args, interaction.request, interaction.hostAction) : null,
+    hostAction: interaction.hostAction ? publicDecisionHostAction(canonicalArgs, interaction.request, interaction.hostAction) : null,
     browserCanvasUrl: canvas.browserCanvasUrl,
     nextRequiredAction: interaction.hostAction ? "request_user_input" : "directorx_resume_production"
   });
+}
+
+function canonicalizePublicDecisionRequest(args) {
+  if (args.kind !== "run_mode") return args;
+  return {
+    ...args,
+    questions: [structuredClone(CANONICAL_RUN_MODE_QUESTION)],
+    application: { type: "run_mode", questionId: CANONICAL_RUN_MODE_QUESTION.id }
+  };
 }
 
 async function resolveProductionDecision(args) {
@@ -5306,14 +5326,16 @@ function assertPublicDecisionApplication(args) {
   if (!application || application.type !== args.kind) throw new Error(`${args.kind} production decisions require a matching persisted application.`);
   const question = args.questions.find((item) => item.id === application.questionId);
   if (!question) throw new Error(`${args.kind} application must bind to one requested native question.`);
+  if (args.kind === "run_mode") {
+    if (application.questionId !== CANONICAL_RUN_MODE_QUESTION.id) throw new Error("The public run_mode decision must use the canonical Director X question.");
+    if (JSON.stringify(question) !== JSON.stringify(CANONICAL_RUN_MODE_QUESTION)) throw new Error("The public run_mode decision question is not canonical.");
+    return;
+  }
   const optionLabels = new Set(question.options.map((option) => option.label));
   const mappings = application.selections ?? [];
   if (mappings.length !== question.options.length || mappings.some((item) => !optionLabels.has(item.answerLabel))) throw new Error(`${args.kind} application must map every offered option.`);
   if (new Set(mappings.map((item) => item.answerLabel)).size !== mappings.length) throw new Error(`${args.kind} application contains duplicate answer mappings.`);
-  if (args.kind === "run_mode") {
-    if (mappings.some((item) => !RUN_MODES.includes(item.mode))) throw new Error("The run_mode application must map every offered option to one supported run mode.");
-    if (new Set(mappings.map((item) => item.mode)).size !== mappings.length) throw new Error("Each run_mode option must map to a distinct supported mode.");
-  } else {
+  if (args.kind === "stage_approval") {
     if (!String(application.stageId ?? "").trim()) throw new Error("A stage_approval application requires a pipeline stage.");
     if (mappings.some((item) => typeof item.approved !== "boolean")) throw new Error("Each stage_approval option must explicitly approve or defer the stage.");
     if (mappings.filter((item) => item.approved).length !== 1) throw new Error("A stage_approval application must have exactly one approving option.");
@@ -5327,17 +5349,20 @@ async function applyPublicDecisionApplication(run, resolved, args) {
   if (application.type !== resolved.kind) throw new Error("This public decision application does not match the resolved interaction kind.");
   const answer = resolved.answers?.[application.questionId];
   if (Array.isArray(answer) || !String(answer ?? "").trim()) throw new Error(`${application.type} application requires exactly one selected option.`);
-  const selection = application.selections.find((item) => item.answerLabel === answer);
-  if (!selection) throw new Error(`The selected ${application.type} answer has no persisted state mapping.`);
   if (application.type === "run_mode") {
-    configureRunMode(run, { mode: selection.mode, confirmedBy: "request_user_input" });
-    run.events.push(event(run, "run.mode.configured", "intake", selection.mode));
-    const written = await appendRunCheckpoint({ ...args, run, reason: "run.mode.configured", detail: selection.mode });
+    const modeByLabel = new Map(CANONICAL_RUN_MODE_QUESTION.options.map((option, index) => [option.label, RUN_MODES[index]]));
+    const mode = modeByLabel.get(answer);
+    if (!mode) throw new Error("The selected run_mode answer is not one of the canonical Director X options.");
+    configureRunMode(run, { mode, confirmedBy: "request_user_input" });
+    run.events.push(event(run, "run.mode.configured", "intake", mode));
+    const written = await appendRunCheckpoint({ ...args, run, reason: "run.mode.configured", detail: mode });
     run.artifacts ??= {};
     run.artifacts[written.artifactRef] = artifactRecord({ ...written, stage: "intake" });
-    resolved.appliedApplication = { type: "run_mode", mode: selection.mode, appliedAt: new Date().toISOString() };
-    return { type: "run_mode", applied: true, value: selection.mode };
+    resolved.appliedApplication = { type: "run_mode", mode, appliedAt: new Date().toISOString() };
+    return { type: "run_mode", applied: true, value: mode };
   }
+  const selection = application.selections.find((item) => item.answerLabel === answer);
+  if (!selection) throw new Error(`The selected ${application.type} answer has no persisted state mapping.`);
   if (!selection.approved) {
     resolved.appliedApplication = { type: "stage_approval", stageId: application.stageId, approved: false, appliedAt: new Date().toISOString() };
     return { type: "stage_approval", applied: false, value: application.stageId };
@@ -6489,9 +6514,8 @@ function publicDecisionApplicationSchema() {
     oneOf: [
       objectSchema({
         type: { const: "run_mode", type: "string" },
-        questionId: stringSchema(),
-        selections: { type: "array", minItems: 2, maxItems: 3, items: objectSchema({ answerLabel: stringSchema(), mode: { enum: RUN_MODES, type: "string" } }, ["answerLabel", "mode"]) }
-      }, ["type", "questionId", "selections"]),
+        questionId: { const: "run_mode", type: "string" }
+      }, ["type", "questionId"]),
       objectSchema({
         type: { const: "stage_approval", type: "string" },
         questionId: stringSchema(),

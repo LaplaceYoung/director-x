@@ -2,12 +2,12 @@
 
 ## Current loop
 
-- Loop: 10
+- Loop: 11
 - Date: 2026-07-23
-- Commit baseline: `6a7bcaf`; this audit records the current uncommitted working tree.
+- Commit baseline: `a49d621`; this loop records the canonical public run-mode decision change.
 - Release baseline: `v0.1.15`
-- Status: `PUBLIC_PREPARATION_FACADE_IMPLEMENTED`
-- Current focus: a small, truthful public MCP surface with durable approvals and resumable production state.
+- Status: `PUBLIC_DECISION_SEMANTICS_HARDENED`
+- Current focus: a small, truthful public MCP surface with server-owned decision semantics and resumable production state.
 
 ## Last completed work
 
@@ -18,6 +18,11 @@
 - The entry Skill remains the one implicit, outcome-led route and loads specialist guidance only after a Run exists.
 
 ## This loop
+
+- Canonicalized public `run_mode` decisions inside the server. Caller-supplied questions and label-to-mode mappings are ignored for this decision kind; Codex receives one stable Director X question with three stable labels, and the server maps labels to `RUN_MODES` by source order.
+- Kept flexible, persisted mappings only for `stage_approval`, where the requested stage and answer wording are part of the user-facing decision.
+- Added regression coverage proving a malicious/custom run-mode question cannot alter the durable mode semantics.
+- Revalidated the public decision and native interaction suites: 18 tests passing.
 
 - Added `directorx_prepare_production` as the ninth implemented public Facade. It first asks once for Codex-native confirmation of the exact canonical brief, then atomically prepares minimum Intake, pipeline state, Director artifacts, and the production-complexity plan before research.
 - Reused the existing in-process `prepareFastStartIntake` compiler rather than calling a low-level MCP tool from the public Facade.

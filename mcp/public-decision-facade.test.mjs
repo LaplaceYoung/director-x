@@ -110,20 +110,16 @@ test("public decision Facade persists, resolves, and replays one native decision
       reason: "The production mode changes the approval cadence.",
       questions: [{
         id: "run_mode",
-        header: "制作方式",
-        question: "请选择制作方式。",
+        header: "调用方伪造文案",
+        question: "这份问题会被服务端规范化。",
         options: [
-          { label: "引导自治 (Recommended)", description: "自动推进安全步骤，只在关键节点等待确认。" },
-          { label: "逐阶段确认", description: "每个阶段开始前都等待确认。" }
+          { label: "任意模式", description: "不能改变持久化语义。" },
+          { label: "任意模式 2", description: "不能改变持久化语义。" }
         ]
       }],
       application: {
         type: "run_mode",
-        questionId: "run_mode",
-        selections: [
-          { answerLabel: "引导自治 (Recommended)", mode: "guided_autonomy" },
-          { answerLabel: "逐阶段确认", mode: "stage_approval" }
-        ]
+        questionId: "run_mode"
       }
     };
     const requested = await call(6, "directorx_decide_production", decisionInput);
@@ -132,6 +128,8 @@ test("public decision Facade persists, resolves, and replays one native decision
     assert.equal(requested.hostAction.afterAnswer.tool, "directorx_decide_production");
     assert.equal(requested.hostAction.afterAnswer.arguments.action, "resolve");
     assert.equal(requested.decision.deduplicated, false);
+    const pendingRunMode = await readRun({ projectPath, runId: ready.runId });
+    assert.deepEqual(pendingRunMode.interactions.pending[0].questions[0].options.map((option) => option.label), ["引导自治 (Recommended)", "逐阶段确认", "全自动"]);
 
     const replayedRequest = await call(7, "directorx_decide_production", decisionInput);
     assert.equal(replayedRequest.decision.requestId, requested.decision.requestId);

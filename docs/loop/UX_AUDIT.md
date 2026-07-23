@@ -23,7 +23,7 @@ The main Skill now establishes a compact public route: start or resume one produ
 - The distinction between “production action” and “Canvas/app support” is not enforced at transport level.
 - Installation success and live-host readiness are documented, but a clean-host timing benchmark is missing.
 - **P1:** the runtime accepts the Codex MCP host's raw `request_user_input` envelope when resolving a native decision, but has no host-signed receipt to independently attest that answer. This is a host-trust boundary, not a missing public brief-confirmation flow.
-- **P1:** run-mode semantics are selected through a caller-supplied option-label-to-mode mapping. That mapping needs a host-trusted or independently canonical source so presentation wording cannot alter the persisted mode.
+- Run-mode semantics now come from one server-owned canonical question and mapping. Caller wording cannot remap a persisted mode.
 
 ## UX acceptance for the next slice
 
@@ -33,7 +33,7 @@ The main Skill now establishes a compact public route: start or resume one produ
 - Public results explain the next user decision without exposing provider or persistence internals.
 - The native brief prompt displays the canonical material brief fields, its stored fingerprint matches that brief, and revised briefs safely supersede the older pending prompt.
 - A host-signed receipt (or equivalent attestation) binds the native answer to the stored request before public resolution is accepted.
-- Run-mode uses a canonical, host-trusted answer-to-mode mapping rather than caller-supplied wording.
+- Run-mode uses a server-canonical answer-to-mode mapping rather than caller-supplied wording.
 - Generation inspection returns request, attempt, job, candidate, blocker, and next-action counts without leaking credentials or the full Run.
 - Candidate review turns accept → select and fail → repair-plan into one user-facing action, with stable replay behavior.
 - Repair retries return to `directorx_generate_media:prepare`; the user-facing lifecycle no longer exposes attempt bookkeeping.
