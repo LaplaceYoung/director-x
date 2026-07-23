@@ -1,6 +1,6 @@
 # DirectorX Plugin Score
 
-Loop 11 score, 2026-07-23.
+Loop 12 score, 2026-07-23.
 
 | Category | Score | Evidence |
 | --- | ---: | --- |

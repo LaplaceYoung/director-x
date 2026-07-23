@@ -5559,6 +5559,7 @@ function publicActionForLegacyRoute(route, publicToolNames = null) {
   const available = publicToolNames ?? new Set(["directorx_start_production", "directorx_resume_production", "directorx_get_production_status", "directorx_decide_production", "directorx_prepare_production", "directorx_research_video", "directorx_generate_media", "directorx_review_media_candidate", "directorx_recover_production"]);
   if (available.has(base)) return suffix ? `${base}:${suffix}` : base;
   if (["directorx_begin_reference_research", "directorx_begin_creative_work"].includes(base) && available.has("directorx_research_video")) return "directorx_research_video";
+  if (base === "directorx_build_rough_cut" && available.has("directorx_get_production_status")) return "directorx_get_production_status";
   if (base === "directorx_create_and_ask_native_question") return "request_native_decision";
   if (["directorx_confirm_intake", "directorx_select_pipeline", "directorx_plan_production_complexity", "directorx_prepare_fast_start_intake"].includes(base) && available.has("directorx_prepare_production")) return "directorx_prepare_production";
   if (base.startsWith("directorx_")) return "continue_production";

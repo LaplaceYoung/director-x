@@ -2,11 +2,11 @@
 
 ## Current loop
 
-- Loop: 11
+- Loop: 12
 - Date: 2026-07-23
-- Commit baseline: `a49d621`; this loop records the canonical public run-mode decision change.
+- Commit baseline: `0004b5d`; this loop records the public route projection correction.
 - Release baseline: `v0.1.15`
-- Status: `PUBLIC_DECISION_SEMANTICS_HARDENED`
+- Status: `PUBLIC_ROUTE_PROJECTION_CORRECTED`
 - Current focus: a small, truthful public MCP surface with server-owned decision semantics and resumable production state.
 
 ## Last completed work
@@ -18,6 +18,10 @@
 - The entry Skill remains the one implicit, outcome-led route and loads specialist guidance only after a Run exists.
 
 ## This loop
+
+- Corrected public result projection for the selected-candidate → rough-cut boundary. Until `directorx_build_rough_cut` is implemented and listed, a legacy `directorx_build_rough_cut` continuation now resolves to the executable `directorx_get_production_status` Facade instead of leaking an unavailable route or the generic `continue_production` fallback.
+- Preserved the raw compatibility profile route so existing low-level operators retain their migration path.
+- This is intentionally a routing correction, not a claim that the rough-cut Facade is complete.
 
 - Canonicalized public `run_mode` decisions inside the server. Caller-supplied questions and label-to-mode mappings are ignored for this decision kind; Codex receives one stable Director X question with three stable labels, and the server maps labels to `RUN_MODES` by source order.
 - Kept flexible, persisted mappings only for `stage_approval`, where the requested stage and answer wording are part of the user-facing decision.
@@ -35,6 +39,6 @@
 
 ## Exit condition for the next loop
 
-1. Close the remaining native-decision P1s: resolve currently trusts the Codex MCP host's raw `request_user_input` envelope without a host-signed receipt, and the public run-mode application still accepts caller-supplied answer-to-mode wording/mapping.
+1. Close the remaining native-decision P1: resolve currently trusts the Codex MCP host's raw `request_user_input` envelope without a host-signed receipt.
 2. Implement `directorx_build_rough_cut` as a single-source, evidence-bound public edit boundary using the existing public decision Facade for post-production approval.
 3. Do not call the public profile complete until a user can traverse start → prepare → research → generation → review → edit → delivery without an internal tool handoff.

@@ -107,3 +107,9 @@ Reason: contracts and safety policy must not silently override one another's cla
 Decision: `directorx_decide_production` replaces caller-supplied run-mode questions and label-to-mode selections with one server-owned canonical question. The selected label maps to `RUN_MODES` by the canonical option order.
 
 Reason: a public decision must not let presentation wording or an untrusted mapping alter durable execution semantics. Stage approvals remain caller-shaped because their stage and approval wording are intentionally specific to the current pipeline boundary.
+
+## 2026-07-23 — Never project an unavailable public continuation
+
+Decision: map the selected-candidate `directorx_build_rough_cut` continuation to `directorx_get_production_status` in the public result projection until the rough-cut Facade is implemented. Keep the raw route in compatibility mode.
+
+Reason: a public result must always point to an executable next action. A roadmap name creates a dead-end and the generic `continue_production` fallback hides the actual boundary.

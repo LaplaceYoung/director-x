@@ -31,6 +31,7 @@ The main Skill now establishes a compact public route: start or resume one produ
 - An unavailable legacy name fails as unavailable instead of executing silently.
 - Internal activity remains visible to the Canvas/app profile.
 - Public results explain the next user decision without exposing provider or persistence internals.
+- A selected candidate no longer sends the public conversation toward unavailable `directorx_build_rough_cut`; it returns to the executable production status route while rough-cut remains planned.
 - The native brief prompt displays the canonical material brief fields, its stored fingerprint matches that brief, and revised briefs safely supersede the older pending prompt.
 - A host-signed receipt (or equivalent attestation) binds the native answer to the stored request before public resolution is accepted.
 - Run-mode uses a server-canonical answer-to-mode mapping rather than caller-supplied wording.
