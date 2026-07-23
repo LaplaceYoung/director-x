@@ -1,28 +1,27 @@
-# Evolution Loop 08 Report
+# Evolution Loop 10 Report
 
 ## Result
 
-Phase 0 is complete and the eighth implementation slice is complete. The public lifecycle now starts through one durable Facade that opens the side canvas, asks for native Goal confirmation, creates one Codex Goal, creates one Director X Run, and binds the two without duplicate state.
+The default public profile now exposes nine actual implementation Facades: start, status, resume, decide, prepare, research, generate, review, and recover. The 185-tool compatibility profile remains an explicit development/migration opt-in. The public surface is still incomplete: edit, render, audit, repair, and delivery remain planned public contracts.
 
-README release badges and integration references point to `v0.1.15`. The public profile now contains seven completed Facades; compatibility mode remains available.
+`directorx_prepare_production` now asks once for native confirmation of the canonical material brief before it records Intake, budget, route, or delivery promise. The interaction stores the canonical brief and fingerprint under a stable `public-brief` gate; the raw native answer resolves through `directorx_decide_production`, then a host-action sequence resumes public preparation. The shared helper rejects a nonmatching or unapproved resolved interaction/application/fingerprint before it mutates production artifacts.
+
+Public results no longer expose unavailable legacy tool routes. The same durable decision machinery applies run-mode and stage-approval state once, and preparation uses durable fingerprints to keep concurrent identical calls idempotent.
+
+The installed default is now the public profile; compatibility requires explicit opt-in. Safety classification also has one source of truth, with timeline patch commits explicitly treated as material/destructive writes despite their reversible-revision implementation.
 
 ## Verification
 
-- `pnpm validate:plugin` passed.
-- stdio `initialize` / `tools/list` probe passed.
-- Compatibility-mode `tools/list` contains 183 registered tools; public mode lists seven completed Facades.
-- `node runtime/doctor-plugin.mjs --profile planning_only` completed truthfully with host capabilities marked unverified outside a live Codex session.
-- `DIRECTORX_TOOL_PROFILE=public` lists exactly the seven completed Facades and rejects an internal tool at call time.
-- The generation Facade `inspect` path was exercised against a durable Run and returned the missing-plan blocker without a Provider request.
-- Candidate review integration covers atomic acceptance/selection, replay idempotency, and single-variable repair compilation.
-- Generation integration covers repair → prepare → submit readiness and idempotent attempt replay.
-- Start integration covers canvas claim → native input → native Goal → Run creation → Goal binding and idempotent create replay.
-- Full CI after the native-start slice: 577 tests passed, 0 failed.
+- A read-only default stdio `tools/list` probe returned exactly nine Facades: `directorx_start_production`, `directorx_get_production_status`, `directorx_resume_production`, `directorx_decide_production`, `directorx_prepare_production`, `directorx_research_video`, `directorx_generate_media`, `directorx_review_media_candidate`, and `directorx_recover_production`.
+- Static source count found 185 registered `directorx_*` tool definitions and 174 legacy loose contracts.
+- Public-decision coverage exercises native Goal binding → run-mode decision → brief confirmation/defer/revise/confirm → concurrent prepare replay → stage approval → research, while asserting public results contain no unavailable tool name.
+- Final local verification ran `pnpm run ci`: 584 passing tests, 0 failures.
+- No CI run is claimed by this report.
 
 ## Review outcome
 
-No P0 was observed from repository evidence. The highest-value P1 is now the missing public edit/render boundary.
+No P0 was observed from the current working tree. Public preparation's native confirmation/provenance gate is resolved. The remaining P1s are the un-attested trust in the Codex MCP host's raw `request_user_input` envelope and the caller-supplied public run-mode label-to-mode mapping.
 
 ## Current score
 
-82/100 progress score. This is not a DONE or release claim.
+88/100 progress score. This is not a DONE or release claim.

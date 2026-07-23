@@ -3,24 +3,24 @@
 Date: 2026-07-23
 Repository: `@mosi/directorx-codex-plugin`
 Branch: `main`
-Commit: `ffa3a06`
+Commit baseline: `6a7bcaf` with the current Loop 10 slice still in the working tree.
 
 ## Observed facts
 
 | Area | Evidence | Result |
 | --- | --- | --- |
-| Manifest | `.codex-plugin/plugin.json` and `.mcp.json` validate | Pass |
-| Marketplace | `.agents/plugins/marketplace.json` selects `directorx@mosi` with `AVAILABLE` / `ON_INSTALL` | Pass |
-| Entry skill | `skills/directorx/agents/openai.yaml` is the only `allow_implicit_invocation: true` skill | Pass |
-| Specialist skills | 33 specialist skills are explicit-only and point to `directorx-production` | Pass with discoverability cost |
-| MCP tools | `tools/list` returns 183 tools after the native-start Facade slice | P1 gap |
-| Public Facades | 16 names are reserved in policy; start, recovery, status, resume, research, generation, and candidate review are implemented | P1 gap |
-| Legacy contracts | 174 tools carry `directorx/legacyLooseContract: true` | P1 gap |
-| Native protocol | `initialize`, `tools/list`, `tools/call`, `resources/list`, `resources/read`, and resource templates are implemented | Pass at transport level |
-| Installation docs | Marketplace commands exist in both READMEs | Pass |
-| Release docs | README badges and integration line were stale at `v0.1.14` | Fixed in loop 01 |
-| Runtime doctor | Planning profile reports identity, Node, workspace, and media binaries; host capabilities are unverified outside a live Codex session | Expected host-dependent state |
-| Regression suite | `pnpm run ci` passed: 577 tests, 0 failures | Pass |
+| Manifest | `.codex-plugin/plugin.json` and `.mcp.json` are present; configuration was not changed in this documentation slice | Outside this slice |
+| Marketplace | `.agents/plugins/marketplace.json` selects `directorx@mosi` with `AVAILABLE` / `ON_INSTALL` | Present |
+| Entry skill | `skills/directorx/agents/openai.yaml` is the only `allow_implicit_invocation: true` skill | One implicit entry |
+| Specialist skills | 33 specialist skills are explicit-only and point to `directorx-production` | Preserved, with discoverability cost |
+| Registered MCP tools | Static `name: "directorx_*"` definitions in `mcp/server.mjs` | 185 definitions |
+| Default public Facades | Read-only default `tools/list` | 9 actual Facades: start, status, resume, decide, prepare, research, generate, review, recover |
+| Legacy contracts | `directorx/legacyLooseContract: true` metadata | 174; still a P1 migration burden |
+| Public output boundary | Public-result projection replaces unavailable `directorx_*` routes | Implemented; no legacy continuation should appear in a public result |
+| Native protocol | `initialize`, `tools/list`, `tools/call`, `resources/list`, `resources/read`, and resource templates exist in the runtime | Repository evidence only |
+| Installation docs | Marketplace commands exist in both READMEs | Present |
+| Runtime doctor | Planning profile reports identity, Node, workspace, and media binaries; host capabilities remain unverified outside a live Codex session | Expected host-dependent state |
+| Regression suite | Final local verification ran `pnpm run ci` | 584 passing tests, 0 failures; validates plugin packaging, syntax, and tests locally |
 
 ## Installation path
 
@@ -35,11 +35,12 @@ marketplace add repository
 → native Goal + side Browser canvas
 ```
 
-The repository validates the static path. A fresh-host, installed-cache measurement is not yet automated; this is a backlog item rather than an assumed pass.
+The repository documents the static path. A fresh-host, installed-cache measurement is not yet automated; this is a backlog item rather than an assumed pass.
 
 ## Baseline risks
 
-1. The model receives a very large low-level tool descriptor set.
-2. The reserved public Facade list is ahead of the implementation.
-3. Legacy tools remain callable even when not intended as user-facing entry points.
-4. Host readiness cannot be proven from a repository-only test; it needs a live Codex session.
+1. The legacy 185-tool compatibility profile remains available as an explicit development/migration opt-in, so it still needs a tight operational boundary.
+2. Public preparation now uses a stable native `public-brief` gate, a canonical brief fingerprint, a persisted interaction, and a resolved-interaction/application check before it writes Intake, budget, route, or delivery promise. Its remaining P1 is not missing confirmation: `resolve` still trusts the Codex MCP host's raw answer envelope without a host-signed receipt.
+3. The public run-mode application still accepts caller-supplied option-label-to-mode mappings; it needs a host-trusted canonical mapping boundary.
+4. Edit, render, audit, repair, and delivery remain planned public Facades.
+5. Host readiness cannot be proven from a repository-only inspection; it needs a live Codex session.

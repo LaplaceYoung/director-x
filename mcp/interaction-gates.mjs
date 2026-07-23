@@ -25,7 +25,7 @@ export function requestNativeInteraction(run, input, now = new Date().toISOStrin
   // supplier/model question again. A caller can intentionally re-open it by
   // using a new gateKey (for example, a new provider job or route revision).
   if (STABLE_DECISION_KINDS.has(input.kind)) {
-    const equivalent = [...store.history].reverse().find((item) => item.status === "resolved" && item.kind === input.kind && (item.gateKey ?? item.kind) === gateKey && sameQuestionIds(item.questions, input.questions));
+    const equivalent = [...store.history].reverse().find((item) => item.status === "resolved" && item.kind === input.kind && (item.gateKey ?? item.kind) === gateKey && sameQuestionIds(item.questions, input.questions) && sameApplication(item.application, input.application));
     if (equivalent) return { request: equivalent, hostAction: null, deduplicated: true };
   }
   const pending = store.pending.find((item) => item.fingerprint === fingerprint);
@@ -39,6 +39,7 @@ export function requestNativeInteraction(run, input, now = new Date().toISOStrin
     gateKey,
     reason: input.reason.trim(),
     questions: structuredClone(input.questions),
+    application: input.application == null ? null : structuredClone(input.application),
     fingerprint,
     status: "pending",
     interactionSurface: "codex_request_user_input",
@@ -127,6 +128,7 @@ function interactionFingerprint(input) {
     gateKey: normalizedGateKey(input),
     reason: input.reason.trim(),
     questions: input.questions,
+    application: input.application ?? null,
     scope: interactionScope(input)
   })).digest("hex");
 }
@@ -169,6 +171,10 @@ function sameQuestionIds(left = [], right = []) {
   const a = left.map((item) => item?.id).filter(Boolean).sort();
   const b = right.map((item) => item?.id).filter(Boolean).sort();
   return a.length > 0 && a.length === b.length && a.every((id, index) => id === b[index]);
+}
+
+function sameApplication(left, right) {
+  return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
 }
 
 function assertRawRequestUserInputEnvelope(questions, answers) {

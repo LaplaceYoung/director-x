@@ -31,11 +31,14 @@ test("classifies reads, runtime mutation, network access, idempotency, and destr
   assert.equal(generationFacade.idempotentHint, true);
   assert.equal(directorXToolSafetyAnnotations("directorx_review_media_candidate").idempotentHint, true);
   assert.equal(directorXToolSafetyAnnotations("directorx_start_production").idempotentHint, true);
+  assert.equal(directorXToolSafetyAnnotations("directorx_decide_production").idempotentHint, true);
+  assert.equal(directorXToolSafetyAnnotations("directorx_prepare_production").idempotentHint, true);
   assert.equal(directorXToolSafetyAnnotations("directorx_poll_media_generation").openWorldHint, true);
   assert.equal(directorXToolSafetyAnnotations("directorx_generate_mosi_voiceover").openWorldHint, true);
   assert.equal(directorXToolSafetyAnnotations("directorx_install_builtin_media_runtime").openWorldHint, true);
 
   assert.equal(directorXToolSafetyAnnotations("directorx_cancel_provider_job").destructiveHint, true);
+  assert.equal(directorXToolSafetyAnnotations("directorx_commit_timeline_patch").destructiveHint, true);
   assert.equal(directorXToolSafetyAnnotations("directorx_revoke_model_knowledge_patch").destructiveHint, true);
   assert.equal(directorXToolSafetyAnnotations("directorx_revoke_benchmark_baseline").destructiveHint, true);
 });
@@ -57,7 +60,7 @@ function requiredPolicyDefinitions(excludedName) {
   const names = [
     "directorx_list_subagent_roles", "directorx_get_subagent_naming_status", "directorx_list_video_capabilities",
     "directorx_list_benchmark_verifiers", "directorx_list_benchmark_fixture_templates", "directorx_get_benchmark_baselines",
-    "directorx_get_fast_start_status", "directorx_start_production", "directorx_get_production_status", "directorx_resume_production", "directorx_research_video", "directorx_generate_media", "directorx_review_media_candidate", "directorx_query_director_knowledge",
+    "directorx_get_fast_start_status", "directorx_start_production", "directorx_decide_production", "directorx_prepare_production", "directorx_get_production_status", "directorx_resume_production", "directorx_research_video", "directorx_generate_media", "directorx_review_media_candidate", "directorx_query_director_knowledge",
     "directorx_query_cinematic_references", "directorx_get_opencut_editor_status", "directorx_validate_research_package",
     "directorx_get_stage_requirements", "directorx_list_media_providers", "directorx_get_media_provider_setup",
     "directorx_get_custom_media_provider_intake", "directorx_get_custom_media_provider_setup", "directorx_get_mosi_voice_setup",
@@ -67,7 +70,7 @@ function requiredPolicyDefinitions(excludedName) {
     "directorx_record_provider_api_research", "directorx_acquire_web_image_asset", "directorx_submit_media_generation",
     "directorx_poll_media_generation", "directorx_generate_mosi_voiceover", "directorx_install_builtin_media_runtime",
     "directorx_revoke_model_knowledge_patch", "directorx_cancel_benchmark_schedule", "directorx_revoke_benchmark_baseline",
-    "directorx_cancel_provider_job", "directorx_submit_provider_job", "directorx_recover_production"
+    "directorx_cancel_provider_job", "directorx_commit_timeline_patch", "directorx_submit_provider_job", "directorx_recover_production"
   ];
   return names.filter((name) => name !== excludedName).map((name) => ({ name }));
 }

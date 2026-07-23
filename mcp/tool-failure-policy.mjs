@@ -56,7 +56,7 @@ async function assertRecoveryGateAllows(toolName, args) {
   if (toolName === gate.toolName && gate.code === "transient_execution_failure" && gate.attempts < MAX_RETRIES) return;
   if (toolName === gate.toolName && gate.code === "execution_failure" && gate.failedInputKey && failureKey(toolName, args) !== gate.failedInputKey) return;
   if (gate.nextRequiredAction === "bind_native_goal" && toolName === "directorx_bind_goal") return;
-  if (gate.code === "native_interaction_required" && ["directorx_create_and_ask_native_question", "directorx_request_user_interaction", "directorx_resolve_user_interaction"].includes(toolName)) return;
+  if (gate.code === "native_interaction_required" && ["directorx_create_and_ask_native_question", "directorx_request_user_interaction", "directorx_resolve_user_interaction", "directorx_decide_production"].includes(toolName)) return;
   if (gate.code === "native_reference_consent_required" && toolName === "directorx_record_reference_download_consent") return;
   if (gate.code === "native_reference_consent_required" && toolName === gate.toolName && run.referenceDownloadConsent?.decision === "authorized") return;
   throw new DirectorXToolExecutionError("Director X recovery gate is active.", {
@@ -228,8 +228,9 @@ async function clearRecoveryGate(args, key) {
     if (current.recoveryGate?.kind !== "tool_failure") return;
     const toolName = key.split(":", 1)[0];
     const sameTool = current.recoveryGate.toolName === toolName;
+    const publicNativeResolution = toolName === "directorx_decide_production" && args?.action === "resolve";
     const recoveryAction = (current.recoveryGate.nextRequiredAction === "bind_native_goal" && toolName === "directorx_bind_goal")
-      || (current.recoveryGate.code === "native_interaction_required" && toolName === "directorx_resolve_user_interaction");
+      || (current.recoveryGate.code === "native_interaction_required" && (toolName === "directorx_resolve_user_interaction" || publicNativeResolution));
     const explicitRecovery = toolName === "directorx_recover_run";
     if (!sameTool && !recoveryAction && !explicitRecovery) return;
     await updateRun({ ...args, mutate(run) {

@@ -101,9 +101,10 @@ import { assertDirectorXToolSafetyPolicy } from "./tool-safety-policy.mjs";
 
 const CANVAS_URI = "ui://directorx/production-canvas-v1.html";
 const SCENE_CONFORMANCE_INSTRUCTIONS = "After directorx_verify_final_media, require scene_coverage_conformance_report.json to pass all non-waivable shot identity, order, duration, source-handle, full-frame, and PTS checks. Dispatch DX-Quality-Reviewer to inspect every planned shot's first/middle/last identity-bound frame, then call directorx_record_scene_coverage_review before final frame-finding acceptance. Metadata cannot prove camera, blocking, composition, lighting, movement, proof, reaction, or narrative fulfillment.";
-const SERVER_INSTRUCTIONS = "Use a concise consumer-facing Director X voice. In the Codex conversation, never narrate tool calls, file registration, JSON artifacts, schemas, MCP/runtime details, IDs, paths, test counts, or subagent plumbing unless the user asks for technical details or a failure requires diagnosis. Do not use Current Problem / Plan / Risks / Changed / Verified templates during production. Send one short start message, then only tangible stage milestones, blockers, native questions, preview availability, and final delivery. A normal update is at most two short sentences and should reuse userFacingSummary.suggestedUpdate. Do not duplicate a request_user_input question in chat. A returned native interaction may batch up to three independent image, video, voice, or music route questions; execute it once, then execute every afterAnswer resolution action with the same answer map before continuing. Never batch Goal, budget, credential, rights, stage, edit, or delivery approvals. Keep technical execution in collapsed tool results and the canvas Activity details. A delegated DX child must never call directorx_plan_production_team or create another background delegation plan. " +
-  "For every Director X trigger, call directorx_capability_preflight before all other work. Use directorx_create_and_ask_native_question as the single model-visible native interaction entry. After Goal, run mode, any required Intake answer, and the minimum Intake contract are resolved, use directorx_prepare_fast_start_intake when available, then call directorx_begin_reference_research immediately and execute its returned fast-start spawn wave. Reference download, audio extraction, video reading, asset search, and the first script must proceed while provider docs and Keys are being configured. Provider, budget, and Key approvals remain hard gates for Generation, never for Research. Before Generation, confirm exact image, video, and voice routes through Codex request_user_input. For built-in routes, call directorx_get_media_provider_setup, resolve its native keySetupInteraction, and inject the secret only through the secure canvas credential field before recording the decision. For an unknown supplier/model, call directorx_get_custom_media_provider_intake and require the user to provide the exact model plus an official HTTPS API documentation or homepage URL; the parent DX-Director must read only verified official sources before registering a declarative adapter. The parent Director owns model routing, capability selection, provider fallback, and budget quotes directly; do not dispatch a separate routing or budget agent. Use directorx_begin_creative_work only as an idempotent compatibility path after research has started. The canvas is a projection of the durable Run and must prioritize growing real image, video, audio, research, script, storyboard, keyframe, and preview assets. If any first-content, first-visual, or first-preview SLA breaches, stop adding configuration work and execute the returned production action. Record music_strategy during research, then music_asset_selection only after search, local acquisition, rights proof, and quality audit. Research and generation must register the audio_responsibility_plan.json route before final review. For a reference-replication run, ingest the video and audio bundle first, compile the replication plan, then call directorx_score_reference_replication after exhaustive audit to choose pass_export, needs_edit, or regenerate. Never start an auxiliary Director X MCP runtime; one active runtime owns each Run. Preserve all existing provider, rights, pricing, continuity, render, exhaustive review, and delivery gates.";
-const FAILURE_POLICY_INSTRUCTIONS = "When a tool fails, inspect retryable, attempts, stop, recovery, and nextRequiredAction. Retry a transient semantic operation at most once. Use directorx_recover_production with action inspect for the minimal blocked operation and opaque recovery token, then action apply exactly once; completed artifacts remain available. Keep directorx_recover_run only for legacy compatibility. Use directorx_create_and_ask_native_question for native gates; a chat message such as ‘继续’ cannot satisfy them. Never create a replacement Run or auxiliary MCP runtime.";
+const PUBLIC_PRODUCTION_DECISION_KINDS = Object.freeze(NATIVE_INTERACTION_KINDS.filter((kind) => !["goal_entry", "role_install"].includes(kind)));
+const SERVER_INSTRUCTIONS = "Use a concise consumer-facing Director X voice. In the Codex conversation, never narrate tool calls, file registration, JSON artifacts, schemas, MCP/runtime details, IDs, paths, test counts, or subagent plumbing unless the user asks for technical details or a failure requires diagnosis. Do not use Current Problem / Plan / Risks / Changed / Verified templates during production. Send one short start message, then only tangible stage milestones, blockers, native questions, preview availability, and final delivery. A normal update is at most two short sentences and should reuse userFacingSummary.suggestedUpdate. Do not duplicate a request_user_input question in chat. A returned native interaction may batch up to three independent image, video, voice, or music route questions; execute it once, then execute every afterAnswer resolution action with the same answer map before continuing. Never batch Goal, budget, credential, rights, stage, edit, or delivery approvals. Keep technical execution in collapsed tool results and the canvas Activity details.";
+const COMPATIBILITY_STAGE_INSTRUCTIONS = "A delegated DX child must never call directorx_plan_production_team or create another background delegation plan. For every Director X request, use directorx_start_production for the durable boot transaction and execute only the returned host action. Keep request_user_input and create_goal native to Codex; do not reconstruct their persistence protocol. Use directorx_decide_production for later durable choices, then resume through directorx_resume_production. Start research through directorx_research_video as soon as minimum Intake is resolved; provider Keys and paid-generation approvals remain hard gates only for Generation. The canvas is a projection of the durable Run and must prioritize growing real image, video, audio, research, script, storyboard, keyframe, and preview assets. If any first-content, first-visual, or first-preview SLA breaches, stop adding configuration work and execute the returned production action. For a reference-replication run, ingest the video and audio bundle first, compile the replication plan, then call directorx_score_reference_replication after exhaustive audit to choose pass_export, needs_edit, or regenerate. Never start an auxiliary Director X MCP runtime; one active runtime owns each Run. Preserve all existing provider, rights, pricing, continuity, render, exhaustive review, and delivery gates.";
+const FAILURE_POLICY_INSTRUCTIONS = "When a tool fails, inspect retryable, attempts, stop, recovery, and nextRequiredAction. Retry a transient semantic operation at most once. Use directorx_recover_production with action inspect for the minimal blocked operation and opaque recovery token, then action apply exactly once; completed artifacts remain available. Legacy recovery remains an internal compatibility path. Use directorx_decide_production for native production gates; a chat message such as ‘继续’ cannot satisfy them. Never create a replacement Run or auxiliary MCP runtime.";
 const credentialStatus = new Map();
 const preflightSessions = new Map();
 const setupRepairRegistry = createPluginRepairRegistry();
@@ -579,6 +580,27 @@ const rawTools = [
       objectSchema({ projectPath: stringSchema(), action: { const: "create", type: "string" }, outcome: stringSchema(), preflightId: stringSchema(), goalInteractionRequestId: stringSchema(), codexGoalId: stringSchema(), confirmedBy: { const: "request_user_input", type: "string" }, goalAccepted: { const: true, type: "boolean" } }, ["projectPath", "action", "outcome", "preflightId", "goalInteractionRequestId", "codexGoalId", "confirmedBy", "goalAccepted"])
     ] },
     outputSchema: productionStartOutputSchema(),
+    annotations: writeAnnotations()
+  },
+  {
+    name: "directorx_decide_production",
+    description: "Ask or resolve one durable production decision through Codex-native request_user_input. A typed state application is bound before display, checked against the selected answer, and applied only once when the answer is resolved.",
+    inputSchema: { oneOf: [
+      objectSchema({
+        projectPath: stringSchema(), runId: stringSchema(), action: { const: "request", type: "string" }, kind: { enum: PUBLIC_PRODUCTION_DECISION_KINDS, type: "string" }, gateKey: { type: "string", pattern: "^[A-Za-z0-9._:-]{1,120}$" }, reason: stringSchema(), questions: { type: "array", minItems: 1, maxItems: 3, items: nativeQuestionSchema() }, application: publicDecisionApplicationSchema(), sourceUrl: { type: "string" }, referenceId: { type: "string" }
+      }, ["projectPath", "runId", "action", "kind", "reason", "questions"]),
+      objectSchema({
+        projectPath: stringSchema(), runId: stringSchema(), action: { const: "resolve", type: "string" }, requestId: stringSchema(), confirmedBy: { const: "request_user_input", type: "string" }, answers: { type: "object" }
+      }, ["projectPath", "runId", "action", "requestId", "confirmedBy", "answers"])
+    ] },
+    outputSchema: productionDecisionOutputSchema(),
+    annotations: writeAnnotations()
+  },
+  {
+    name: "directorx_prepare_production",
+    description: "Ask once for native confirmation of a material video brief, then atomically turn that exact confirmed brief into minimum Intake, pipeline, Director artifacts, and a production-complexity plan. Use after run-mode selection and before research; a deferred brief writes no budget, route, or delivery promise.",
+    inputSchema: publicProductionPreparationInputSchema(),
+    outputSchema: productionPreparationOutputSchema(),
     annotations: writeAnnotations()
   },
   {
@@ -2035,8 +2057,8 @@ for (const tool of tools) {
 
 assertLegacyToolSurfaceBudget(tools);
 
-const toolProfile = normalizeToolProfile(process.env.DIRECTORX_TOOL_PROFILE ?? "compatibility");
-const toolRegistry = createToolRegistry({ definitions: tools, invoke: callTool, profile: toolProfile });
+const toolProfile = normalizeToolProfile(process.env.DIRECTORX_TOOL_PROFILE ?? "public");
+const toolRegistry = createToolRegistry({ definitions: tools, invoke: callTool, profile: toolProfile, projectPublicResult: projectPublicFacadeResult });
 
 async function callTool(name, args) {
   return await withToolFailureGuard(name, args, () => executeTool(name, args));
@@ -4236,69 +4258,7 @@ async function executeTool(name, args) {
     if (!run.checkpoints?.length) throw new Error("This Run has no durable checkpoint to resume from.");
     return await withBrowserCanvas(publicSnapshot(run), args);
   }
-  if (name === "directorx_prepare_fast_start_intake") {
-    const snapshot = await updateRun({ ...args, mutate: async (run) => {
-      if (!run.goal?.boundAt) throw new Error("Bind the native Codex Goal before preparing fast-start Intake.");
-      if (!run.runMode?.mode) throw new Error("Confirm the Director X run mode through Codex request_user_input before preparing fast-start Intake.");
-      if (run.stage !== "intake") throw new Error("Fast-start Intake can only be prepared while the Run is in Intake.");
-      const selected = createPipelineRunState(args.pipelineId);
-      if (run.pipeline && run.pipeline.id !== selected.id) throw new Error("The Run already has a different pipeline. Record user approval before replacing it.");
-      const existingIntakeArtifacts = selected.stages.find((stage) => stage.id === "intake").requiredOutputs.filter((artifactRef) => run.artifacts?.[artifactRef]);
-      if (existingIntakeArtifacts.length) throw new Error(`Fast-start Intake will not overwrite existing production promises: ${existingIntakeArtifacts.join(", ")}`);
-      const needsIntakeInteraction = args.intake.questionsAsked.length || args.intake.userAnswers.length || args.resolution.clarity === "clarified" || args.resolution.questionsAsked.length || args.resolution.userAnswers.length;
-      if (needsIntakeInteraction) requireResolvedInteraction(run, args.interactionRequestId, "intake");
-      confirmIntake(run, args.intake);
-      const platform = run.intakeGate.decisions.find((decision) => decision.field === "platform")?.value?.trim();
-      const productionRoute = run.intakeGate.decisions.find((decision) => decision.field === "production_route")?.value?.trim();
-      if (args.director.platform.trim() !== platform) throw new Error("Director platform must match the confirmed Intake platform.");
-
-      const intakeWritten = await writeIntakeConfirmation(args);
-      const intentWritten = await writeIntentResolution(args);
-      const isReferenceReplication = args.pipelineId === "reference-replication";
-      const directorWritten = isReferenceReplication ? null : await writeDirectorDocument(args);
-      const briefWritten = await writeProjectBrief({ ...args, brief: {
-        videoType: args.production.videoType,
-        targetPlatform: platform,
-        budgetCap: args.production.budgetCap,
-        durationSeconds: args.production.durationSeconds,
-        qualityTarget: args.production.qualityTarget,
-        runMode: run.runMode.mode
-      } });
-      const deliveryWritten = await writeDeliveryPromise({ ...args, brief: briefWritten.artifact, delivery: { ...args.delivery, primaryProductionPath: productionRoute } });
-      const complexity = planProductionComplexity(args.production);
-      const complexityPath = await writeExecutionReceipt(args.projectPath, args.runId, "production_complexity_plan.json", complexity);
-      const records = await Promise.all([
-        inspectArtifact({ ...args, artifactRef: intakeWritten.artifactRef, path: intakeWritten.path, stage: "intake", mediaKind: "document" }),
-        inspectArtifact({ ...args, artifactRef: intentWritten.artifactRef, path: intentWritten.path, stage: "intake", mediaKind: "document" }),
-        ...(directorWritten ? [
-          inspectArtifact({ ...args, artifactRef: directorWritten.artifactRef, path: directorWritten.path, stage: "intake", mediaKind: "document", metadata: { canvasEssential: true, contractRef: directorWritten.contractArtifactRef, fingerprint: directorWritten.fingerprint } }),
-          inspectArtifact({ ...args, artifactRef: directorWritten.contractArtifactRef, path: directorWritten.contractPath, stage: "intake", mediaKind: "document", metadata: { fingerprint: directorWritten.fingerprint } })
-        ] : []),
-        inspectArtifact({ ...args, artifactRef: briefWritten.artifactRef, path: briefWritten.path, stage: "intake", mediaKind: "document" }),
-        inspectArtifact({ ...args, artifactRef: deliveryWritten.artifactRef, path: deliveryWritten.path, stage: "intake", mediaKind: "document" }),
-        inspectArtifact({ ...args, artifactRef: "production_complexity_plan.json", path: complexityPath, stage: "intake", mediaKind: "document", metadata: { internal: true, profile: complexity.profile } })
-      ]);
-
-      run.pipeline = run.pipeline ?? selected;
-      run.intentResolution = { ...args.resolution, artifactRef: intentWritten.artifactRef, path: intentWritten.path };
-      if (directorWritten) run.directorDocument = directorWritten;
-      run.projectBrief = briefWritten.artifact;
-      run.deliveryPromise = deliveryWritten.artifact;
-      run.productionComplexityPlan = complexity;
-      run.artifacts ??= {};
-      for (const record of records) run.artifacts[record.artifactRef] = record;
-      run.canvas ??= { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 0.72 } };
-      if (directorWritten) {
-        const node = { id: "document:director", type: "document", label: "Director.md", detail: args.director.logline, stage: "intake", status: "complete", artifactRef: "Director.md", metadata: { path: directorWritten.path, contractRef: directorWritten.contractArtifactRef, fingerprint: directorWritten.fingerprint }, updatedAt: new Date().toISOString() };
-        const nodeIndex = run.canvas.nodes.findIndex((item) => item.id === node.id);
-        if (nodeIndex >= 0) run.canvas.nodes[nodeIndex] = node; else run.canvas.nodes.push(node);
-      }
-      run.events.push(event(run, "fast_start.intake.prepared", "intake", `${selected.id} · ${complexity.profile} · ${directorWritten ? "7" : "6"} required artifacts; Director.md deferred until reference planning`));
-      return run;
-    } });
-    const response = await withBrowserCanvas(publicSnapshot(snapshot), args);
-    return { ...response, readiness: evaluateFastStartReadiness(snapshot) };
-  }
+  if (name === "directorx_prepare_fast_start_intake") return await prepareFastStartIntake(args);
   if (name === "directorx_select_pipeline") {
     const selected = createPipelineRunState(args.pipelineId);
     return await withBrowserCanvas(publicSnapshot(await updateRun({ ...args, mutate(run) {
@@ -4358,6 +4318,8 @@ async function executeTool(name, args) {
     } }), args);
   }
   if (name === "directorx_start_production") return await startProduction(args);
+  if (name === "directorx_decide_production") return await decideProduction(args);
+  if (name === "directorx_prepare_production") return await prepareProduction(args);
   if (name === "directorx_research_video") return await researchVideo(args);
   if (name === "directorx_generate_media") return await generateMedia(args);
   if (name === "directorx_review_media_candidate") return await reviewMediaCandidate(args);
@@ -4809,6 +4771,81 @@ function event(run, type, stage, detail) {
   return { id: randomUUID(), sequence: (run.events.at(-1)?.sequence ?? 0) + 1, type, stage, at: new Date().toISOString(), detail };
 }
 
+async function prepareFastStartIntake(args) {
+  const snapshot = await updateRun({ ...args, mutate: async (run) => {
+    if (args.publicPreparationFingerprint && run.publicProductionPreparation?.fingerprint === args.publicPreparationFingerprint) return run;
+    const publicBriefConfirmation = args.publicPreparationFingerprint ? requireConfirmedPublicProductionBrief(run, args) : null;
+    if (!run.goal?.boundAt) throw new Error("Bind the native Codex Goal before preparing fast-start Intake.");
+    if (!run.runMode?.mode) throw new Error("Confirm the Director X run mode through Codex request_user_input before preparing fast-start Intake.");
+    if (run.stage !== "intake") throw new Error("Fast-start Intake can only be prepared while the Run is in Intake.");
+    const selected = createPipelineRunState(args.pipelineId);
+    if (run.pipeline && run.pipeline.id !== selected.id) throw new Error("The Run already has a different pipeline. Record user approval before replacing it.");
+    const existingIntakeArtifacts = selected.stages.find((stage) => stage.id === "intake").requiredOutputs.filter((artifactRef) => run.artifacts?.[artifactRef]);
+    if (existingIntakeArtifacts.length) throw new Error(`Fast-start Intake will not overwrite existing production promises: ${existingIntakeArtifacts.join(", ")}`);
+    const needsIntakeInteraction = args.intake.questionsAsked.length || args.intake.userAnswers.length || args.resolution.clarity === "clarified" || args.resolution.questionsAsked.length || args.resolution.userAnswers.length;
+    if (needsIntakeInteraction) requireResolvedInteraction(run, args.interactionRequestId, "intake");
+    confirmIntake(run, args.intake);
+    const platform = run.intakeGate.decisions.find((decision) => decision.field === "platform")?.value?.trim();
+    const productionRoute = run.intakeGate.decisions.find((decision) => decision.field === "production_route")?.value?.trim();
+    if (args.director.platform.trim() !== platform) throw new Error("Director platform must match the confirmed Intake platform.");
+
+    const intakeWritten = await writeIntakeConfirmation(args);
+    const intentWritten = await writeIntentResolution(args);
+    const isReferenceReplication = args.pipelineId === "reference-replication";
+    const directorWritten = isReferenceReplication ? null : await writeDirectorDocument(args);
+    const briefWritten = await writeProjectBrief({ ...args, brief: {
+      videoType: args.production.videoType,
+      targetPlatform: platform,
+      budgetCap: args.production.budgetCap,
+      durationSeconds: args.production.durationSeconds,
+      qualityTarget: args.production.qualityTarget,
+      runMode: run.runMode.mode
+    } });
+    const deliveryWritten = await writeDeliveryPromise({ ...args, brief: briefWritten.artifact, delivery: { ...args.delivery, primaryProductionPath: productionRoute } });
+    const complexity = planProductionComplexity(args.production);
+    const complexityPath = await writeExecutionReceipt(args.projectPath, args.runId, "production_complexity_plan.json", complexity);
+    const records = await Promise.all([
+      inspectArtifact({ ...args, artifactRef: intakeWritten.artifactRef, path: intakeWritten.path, stage: "intake", mediaKind: "document" }),
+      inspectArtifact({ ...args, artifactRef: intentWritten.artifactRef, path: intentWritten.path, stage: "intake", mediaKind: "document" }),
+      ...(directorWritten ? [
+        inspectArtifact({ ...args, artifactRef: directorWritten.artifactRef, path: directorWritten.path, stage: "intake", mediaKind: "document", metadata: { canvasEssential: true, contractRef: directorWritten.contractArtifactRef, fingerprint: directorWritten.fingerprint } }),
+        inspectArtifact({ ...args, artifactRef: directorWritten.contractArtifactRef, path: directorWritten.contractPath, stage: "intake", mediaKind: "document", metadata: { fingerprint: directorWritten.fingerprint } })
+      ] : []),
+      inspectArtifact({ ...args, artifactRef: briefWritten.artifactRef, path: briefWritten.path, stage: "intake", mediaKind: "document" }),
+      inspectArtifact({ ...args, artifactRef: deliveryWritten.artifactRef, path: deliveryWritten.path, stage: "intake", mediaKind: "document" }),
+      inspectArtifact({ ...args, artifactRef: "production_complexity_plan.json", path: complexityPath, stage: "intake", mediaKind: "document", metadata: { internal: true, profile: complexity.profile } })
+    ]);
+
+    run.pipeline = run.pipeline ?? selected;
+    run.intentResolution = { ...args.resolution, artifactRef: intentWritten.artifactRef, path: intentWritten.path };
+    if (directorWritten) run.directorDocument = directorWritten;
+    run.projectBrief = briefWritten.artifact;
+    run.deliveryPromise = deliveryWritten.artifact;
+    run.productionComplexityPlan = complexity;
+    if (args.publicPreparationFingerprint) {
+      run.publicProductionPreparation = {
+        fingerprint: args.publicPreparationFingerprint,
+        pipelineId: selected.id,
+        confirmationRequestId: publicBriefConfirmation.requestId,
+        confirmedAt: publicBriefConfirmation.resolvedAt,
+        preparedAt: new Date().toISOString()
+      };
+    }
+    run.artifacts ??= {};
+    for (const record of records) run.artifacts[record.artifactRef] = record;
+    run.canvas ??= { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 0.72 } };
+    if (directorWritten) {
+      const node = { id: "document:director", type: "document", label: "Director.md", detail: args.director.logline, stage: "intake", status: "complete", artifactRef: "Director.md", metadata: { path: directorWritten.path, contractRef: directorWritten.contractArtifactRef, fingerprint: directorWritten.fingerprint }, updatedAt: new Date().toISOString() };
+      const nodeIndex = run.canvas.nodes.findIndex((item) => item.id === node.id);
+      if (nodeIndex >= 0) run.canvas.nodes[nodeIndex] = node; else run.canvas.nodes.push(node);
+    }
+    run.events.push(event(run, "fast_start.intake.prepared", "intake", `${selected.id} · ${complexity.profile} · ${directorWritten ? "7" : "6"} required artifacts; Director.md deferred until reference planning`));
+    return run;
+  } });
+  const response = await withBrowserCanvas(publicSnapshot(snapshot), args);
+  return { ...response, readiness: evaluateFastStartReadiness(snapshot) };
+}
+
 async function executeProductionRecovery(args) {
   if (args.action === "inspect") return inspectProductionRecovery(await readRun(args));
   if (args.action !== "apply") throw new Error(`Unsupported production recovery action: ${args.action}`);
@@ -4953,6 +4990,584 @@ function summarizeProductionStart(payload, args, preflight = null) {
   return { schemaVersion: "1.0", phase: runId ? "run_ready" : "preflight", status, preflightId, runId, stage: payload.stage ?? "intake", browserCanvasUrl: payload.browserCanvasUrl, goalInteractionRequestId, goalBound: Boolean(payload.goal?.boundAt), hostAction, nextRequiredAction };
 }
 
+async function decideProduction(args) {
+  if (args.action === "request") return await requestProductionDecision(args);
+  if (args.action === "resolve") return await resolveProductionDecision(args);
+  throw new Error(`Unsupported production decision action: ${args.action}`);
+}
+
+async function requestProductionDecision(args) {
+  assertPublicDecisionApplication(args);
+  requireNativeGoalBound(await readRun(args), "Director X production decisions");
+  let interaction;
+  const snapshot = await updateRun({ ...args, mutate(run) {
+    interaction = requestNativeInteraction(run, args);
+    if (!interaction.deduplicated) run.events.push(event(run, "interaction.requested", run.stage, `${interaction.request.kind} · ${interaction.request.requestId}`));
+    return run;
+  } });
+  const canvas = await withBrowserCanvas(publicSnapshot(snapshot), args);
+  return summarizeProductionDecision({
+    runId: snapshot.runId,
+    stage: snapshot.stage,
+    request: interaction.request,
+    deduplicated: interaction.deduplicated,
+    hostAction: interaction.hostAction ? publicDecisionHostAction(args, interaction.request, interaction.hostAction) : null,
+    browserCanvasUrl: canvas.browserCanvasUrl,
+    nextRequiredAction: interaction.hostAction ? "request_user_input" : "directorx_resume_production"
+  });
+}
+
+async function resolveProductionDecision(args) {
+  let resolved;
+  let wasPending = false;
+  let application = null;
+  const snapshot = await updateRun({ ...args, async mutate(run) {
+    wasPending = run.interactions?.pending?.some((item) => item.requestId === args.requestId) ?? false;
+    resolved = resolveNativeInteraction(run, args);
+    if (wasPending) application = await applyPublicDecisionApplication(run, resolved, args);
+    if (resolved.kind === "post_production_edit") recordPostProductionEditDecision(run, resolved);
+    if (resolved.kind === "edit_change") resumeOpenCutEditorAfterDecline(run, resolved);
+    if (wasPending) run.events.push(event(run, "interaction.resolved", run.stage, `${resolved.kind} · ${resolved.requestId}`));
+    return run;
+  } });
+  const canvas = await withBrowserCanvas(publicSnapshot(snapshot), args);
+  return summarizeProductionDecision({
+    runId: snapshot.runId,
+    stage: snapshot.stage,
+    request: resolved,
+    deduplicated: !wasPending,
+    application: application ?? summarizeAppliedDecisionApplication(resolved, snapshot),
+    hostAction: null,
+    browserCanvasUrl: canvas.browserCanvasUrl,
+    nextRequiredAction: application?.type === "public_prepare"
+      ? (application.applied ? "directorx_prepare_production" : "revise_production_brief")
+      : "directorx_resume_production"
+  });
+}
+
+async function prepareProduction(args) {
+  const current = await readRun(args);
+  // Missing public prerequisites are normal state, not a failed mutation. This
+  // keeps the next native decision callable instead of manufacturing recovery.
+  if (!current.goal?.boundAt || !current.runMode?.mode) {
+    const canvas = await withBrowserCanvas(publicSnapshot(current), args);
+    return summarizePublicProductionPreparation(current, canvas.browserCanvasUrl);
+  }
+  const fingerprint = publicProductionPreparationFingerprint(args);
+  const confirmedBrief = publicPreparationConfirmationFor(current, fingerprint);
+  if (!confirmedBrief?.confirmed) return await requestPublicProductionBriefConfirmation(args, fingerprint);
+  if (current.publicProductionPreparation?.fingerprint === fingerprint) {
+    const canvas = await withBrowserCanvas(publicSnapshot(current), args);
+    return summarizePublicProductionPreparation(current, canvas.browserCanvasUrl);
+  }
+  const legacyArgs = compilePublicProductionPreparation(args, confirmedBrief);
+  // Reuse the same in-process compiler as the compatibility handler. The
+  // public façade never loops through a raw MCP tool or a second failure guard.
+  const prepared = await prepareFastStartIntake({ ...legacyArgs, publicPreparationFingerprint: fingerprint });
+  const run = await readRun(args);
+  return summarizePublicProductionPreparation(run, prepared.browserCanvasUrl);
+}
+
+async function requestPublicProductionBriefConfirmation(args, fingerprint) {
+  let interaction;
+  const snapshot = await updateRun({ ...args, mutate(run) {
+    const confirmed = publicPreparationConfirmationFor(run, fingerprint);
+    if (confirmed) return run;
+    interaction = requestNativeInteraction(run, publicProductionBriefConfirmationRequest(args, fingerprint));
+    if (!interaction.deduplicated) run.events.push(event(run, "interaction.requested", run.stage, `${interaction.request.kind} · ${interaction.request.requestId}`));
+    return run;
+  } });
+  const canvas = await withBrowserCanvas(publicSnapshot(snapshot), args);
+  const confirmation = publicPreparationConfirmationFor(snapshot, fingerprint, interaction?.request);
+  return summarizePublicProductionPreparation(snapshot, canvas.browserCanvasUrl, {
+    briefConfirmation: confirmation,
+    hostAction: interaction?.hostAction ? publicDecisionHostAction(args, interaction.request, interaction.hostAction) : null
+  });
+}
+
+function summarizePublicProductionPreparation(run, browserCanvasUrl, { briefConfirmation = null, hostAction = null } = {}) {
+  const researchReadiness = publicReadinessProjection(evaluateReferenceResearchReadiness(run));
+  const awaitingBriefConfirmation = briefConfirmation?.status === "pending";
+  const declinedBriefConfirmation = briefConfirmation?.status === "declined";
+  return {
+    schemaVersion: "1.0",
+    runId: run.runId,
+    status: awaitingBriefConfirmation ? "awaiting_brief_confirmation" : declinedBriefConfirmation ? "brief_confirmation_declined" : run.status,
+    stage: run.stage,
+    pipelineId: run.pipeline?.id ?? null,
+    complexityProfile: run.productionComplexityPlan?.profile ?? null,
+    researchReadiness,
+    briefConfirmation,
+    hostAction,
+    nextRequiredAction: awaitingBriefConfirmation
+      ? "request_user_input"
+      : declinedBriefConfirmation
+        ? "revise_production_brief"
+        : run.stage === "intake"
+      ? (researchReadiness.ready ? "directorx_research_video" : researchReadiness.nextAction)
+      : "directorx_resume_production",
+    browserCanvasUrl
+  };
+}
+
+function publicProductionPreparationFingerprint(args) {
+  return publicProductionBriefFingerprint(args.pipelineId, args.brief);
+}
+
+function publicProductionBriefFingerprint(pipelineId, brief) {
+  return `sha256:${createHash("sha256").update(JSON.stringify(canonicalizePublicInput({ pipelineId, brief }))).digest("hex")}`;
+}
+
+function publicPreparationConfirmationFor(run, fingerprint, pendingRequest = null) {
+  const stored = run.publicProductionBriefConfirmation;
+  if (stored?.fingerprint === fingerprint) return stored;
+  if (!pendingRequest || pendingRequest.application?.type !== "public_prepare" || pendingRequest.application?.fingerprint !== fingerprint) return null;
+  return {
+    status: pendingRequest.status === "resolved" ? "declined" : "pending",
+    confirmed: false,
+    requestId: pendingRequest.requestId,
+    fingerprint,
+    pipelineId: pendingRequest.application.pipelineId,
+    deduplicated: Boolean(pendingRequest.deduplicated)
+  };
+}
+
+function publicProductionBriefConfirmationRequest(args, fingerprint) {
+  const brief = canonicalizePublicInput(args.brief);
+  const summary = publicProductionBriefSummary(brief);
+  const questionId = "confirm_production_brief";
+  const confirmLabel = "确认并继续 (Recommended)";
+  const deferLabel = "暂不确认";
+  return {
+    kind: "intake",
+    // A user can edit a brief while its confirmation is on screen. Keep one
+    // stable Run-level gate so the revised brief supersedes that stale prompt
+    // instead of creating two competing Intake blockers.
+    gateKey: "public-brief",
+    reason: "Confirm the material production brief before Director X records its budget, route, and delivery promise.",
+    questions: [{
+      id: questionId,
+      header: "确认制作简报",
+      question: `确认制作简报：目标「${summary.objective}」；名称「${summary.title}」；受众${summary.audience}；平台${summary.platform}；${summary.durationSeconds}秒 ${summary.aspectRatio} ${summary.videoType}；路线${summary.productionRoute}；素材${summary.assetReadiness}；质量${summary.qualityTarget}；镜头${summary.shotCount}、片段${summary.segmentCount}、参考视频${summary.referenceVideoCount}；素材类型${summary.modalities.join("、")}；角色连续性${summary.characterContinuity ? "需要" : "不需要"}；预算上限${summary.budget}；交付${summary.deliveryTier}版本；视觉方向${summary.visualDirection}。是否按这份完整简报继续？`,
+      options: [
+        { label: confirmLabel, description: "记录这份简报并进入参考资料、素材与脚本研究。" },
+        { label: deferLabel, description: "保留当前 Run；修改简报后再确认，不会写入预算或交付承诺。" }
+      ]
+    }],
+    application: {
+      type: "public_prepare",
+      questionId,
+      fingerprint,
+      pipelineId: args.pipelineId,
+      brief,
+      selections: [
+        { answerLabel: confirmLabel, confirmed: true },
+        { answerLabel: deferLabel, confirmed: false }
+      ]
+    }
+  };
+}
+
+function publicProductionBriefSummary(brief) {
+  const exact = (value) => String(value ?? "").trim();
+  return {
+    title: exact(brief.title || brief.objective),
+    objective: exact(brief.objective),
+    audience: exact(brief.audience),
+    platform: exact(brief.platform),
+    durationSeconds: brief.durationSeconds,
+    aspectRatio: exact(brief.aspectRatio),
+    productionRoute: exact(brief.productionRoute),
+    assetReadiness: exact(brief.assetReadiness),
+    qualityTarget: exact(brief.qualityTarget),
+    shotCount: brief.shotCount ?? "自动",
+    segmentCount: brief.segmentCount ?? "自动",
+    referenceVideoCount: brief.referenceVideoCount ?? "自动",
+    modalities: structuredClone(brief.modalities ?? []),
+    characterContinuity: brief.characterContinuity === true,
+    budget: `${exact(brief.budgetCap?.currency)} ${brief.budgetCap?.amount}`,
+    videoType: exact(brief.videoType),
+    deliveryTier: exact(brief.deliveryTier),
+    visualDirection: exact(brief.visualDirection || "按 Director X 研究结果确定")
+  };
+}
+
+function canonicalizePublicInput(value) {
+  if (Array.isArray(value)) return value.map(canonicalizePublicInput);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.keys(value).sort().filter((key) => value[key] !== undefined).map((key) => [key, canonicalizePublicInput(value[key])]));
+}
+
+function compilePublicProductionPreparation(args, confirmation) {
+  const committedBrief = canonicalizePublicInput(confirmation?.brief);
+  if (confirmation?.fingerprint !== publicProductionBriefFingerprint(args.pipelineId, args.brief) || JSON.stringify(committedBrief) !== JSON.stringify(canonicalizePublicInput(args.brief))) {
+    throw new Error("The public production brief changed after native confirmation. Confirm the revised brief before preparing Intake.");
+  }
+  const brief = committedBrief;
+  const duration = `${brief.durationSeconds}s`;
+  const title = brief.title?.trim() || brief.objective;
+  const route = brief.productionRoute.trim();
+  const confirmationEvidence = {
+    kind: "public_production_brief",
+    requestId: confirmation.requestId,
+    fingerprint: confirmation.fingerprint,
+    pipelineId: confirmation.pipelineId,
+    confirmedBy: confirmation.confirmedBy,
+    resolvedAt: confirmation.resolvedAt
+  };
+  const director = {
+    title,
+    logline: brief.objective,
+    audience: brief.audience,
+    platform: brief.platform,
+    duration,
+    aspectRatio: brief.aspectRatio,
+    objective: brief.objective,
+    directorInterpretation: `Build a clear, original film around ${brief.objective}.`,
+    hook: `Open with the clearest proof of ${brief.objective}.`,
+    beatProgression: "Hook, proof, escalation, and a direct closing beat.",
+    visualLanguage: brief.visualDirection?.trim() || "Grounded cinematic product storytelling.",
+    cameraGrammar: "Purposeful framing and motivated movement.",
+    composition: "Use hierarchy, negative space, and a legible focal subject.",
+    lightingColor: "Match the product and brand context; keep contrast intentional.",
+    performanceDirection: "Natural, concise, and directed toward the viewer outcome.",
+    audioDirection: "Use clear narration and purposeful sound accents.",
+    musicDirection: "Choose a rights-safe route before final generation.",
+    editRhythm: "Edit on proof, action, and musical emphasis rather than arbitrary motion.",
+    continuityAnchors: ["Maintain subject, product, palette, and action continuity across every shot."],
+    styleThesis: brief.visualDirection?.trim() || "Cinematic clarity with evidence-led pacing.",
+    worldBehavior: "Every shot advances the same believable production world.",
+    textureMaterial: "Use materials and texture that support the subject's real context.",
+    typographyGraphics: "Keep text minimal, readable, and inside platform safe areas.",
+    temporalGrammar: "Use a visible progression from premise to proof to outcome.",
+    promptStrategy: "Bind prompts to shot intent, continuity anchors, and a repair surface.",
+    modelRoutes: {},
+    researchPlan: "Research original sources, rights-safe assets, and transferable reference grammar before writing the first production package.",
+    negativeRules: ["Do not reuse reference pixels, voice, logos, or music without rights evidence."],
+    reviewCriteria: ["Verify story, visual continuity, timing, rights, audio, and final frame evidence."],
+    approvalBoundaries: ["Budget, provider route, delivery promise, and final delivery remain native approval gates."]
+  };
+  return {
+    projectPath: args.projectPath,
+    runId: args.runId,
+    pipelineId: args.pipelineId,
+    intake: {
+      decisions: [
+        { field: "objective", value: brief.objective, source: "user", rationale: "Confirmed through the native production-brief interaction." },
+        { field: "audience", value: brief.audience, source: "user", rationale: "Confirmed through the native production-brief interaction." },
+        { field: "platform", value: brief.platform, source: "user", rationale: "Confirmed through the native production-brief interaction." },
+        { field: "duration", value: duration, source: "user", rationale: "Confirmed through the native production-brief interaction." },
+        { field: "production_route", value: route, source: "user", rationale: "Confirmed through the native production-brief interaction." },
+        { field: "asset_readiness", value: brief.assetReadiness, source: "user", rationale: "Confirmed through the native production-brief interaction." }
+      ],
+      questionsAsked: ["Confirm the material production brief before recording budget, route, and delivery promise."],
+      userAnswers: [`Confirmed production brief ${confirmation.fingerprint} through request_user_input.`],
+      confirmation: confirmationEvidence
+    },
+    resolution: {
+      clarity: "clarified",
+      questionsAsked: ["Confirm the material production brief before recording budget, route, and delivery promise."],
+      userAnswers: [`Confirmed production brief ${confirmation.fingerprint} through request_user_input.`],
+      resolvedIntent: brief.objective,
+      assumptions: ["The provided public brief is the current production intent because it matches the native confirmation fingerprint."],
+      confirmation: confirmationEvidence
+    },
+    director,
+    production: {
+      videoType: brief.videoType,
+      budgetCap: brief.budgetCap,
+      durationSeconds: brief.durationSeconds,
+      qualityTarget: brief.qualityTarget,
+      shotCount: brief.shotCount,
+      segmentCount: brief.segmentCount,
+      referenceVideoCount: brief.referenceVideoCount,
+      modalities: brief.modalities,
+      characterContinuity: brief.characterContinuity,
+      deliveryTier: brief.deliveryTier
+    },
+    delivery: {
+      promise: `Deliver a ${duration} ${brief.videoType} for ${brief.platform}.`,
+      primaryViewerOutcome: brief.objective,
+      minimumFinalScore: 0.8,
+      minimumShotScore: 0.7,
+      requiredArtifacts: ["semantic_timeline.json", "render_report.json", "final_review.json"],
+      requiredTracks: ["picture", "audio", "captions"]
+    },
+    interactionRequestId: confirmation.requestId
+  };
+}
+
+function assertPublicDecisionApplication(args) {
+  const application = args.application;
+  if (!["run_mode", "stage_approval"].includes(args.kind)) {
+    if (application) throw new Error("A public state application is only supported for run_mode or stage_approval decisions.");
+    return;
+  }
+  if (!application || application.type !== args.kind) throw new Error(`${args.kind} production decisions require a matching persisted application.`);
+  const question = args.questions.find((item) => item.id === application.questionId);
+  if (!question) throw new Error(`${args.kind} application must bind to one requested native question.`);
+  const optionLabels = new Set(question.options.map((option) => option.label));
+  const mappings = application.selections ?? [];
+  if (mappings.length !== question.options.length || mappings.some((item) => !optionLabels.has(item.answerLabel))) throw new Error(`${args.kind} application must map every offered option.`);
+  if (new Set(mappings.map((item) => item.answerLabel)).size !== mappings.length) throw new Error(`${args.kind} application contains duplicate answer mappings.`);
+  if (args.kind === "run_mode") {
+    if (mappings.some((item) => !RUN_MODES.includes(item.mode))) throw new Error("The run_mode application must map every offered option to one supported run mode.");
+    if (new Set(mappings.map((item) => item.mode)).size !== mappings.length) throw new Error("Each run_mode option must map to a distinct supported mode.");
+  } else {
+    if (!String(application.stageId ?? "").trim()) throw new Error("A stage_approval application requires a pipeline stage.");
+    if (mappings.some((item) => typeof item.approved !== "boolean")) throw new Error("Each stage_approval option must explicitly approve or defer the stage.");
+    if (mappings.filter((item) => item.approved).length !== 1) throw new Error("A stage_approval application must have exactly one approving option.");
+  }
+}
+
+async function applyPublicDecisionApplication(run, resolved, args) {
+  const application = resolved.application;
+  if (!application) return { type: null, applied: false, value: null };
+  if (application.type === "public_prepare") return applyPublicPreparationConfirmation(run, resolved, application);
+  if (application.type !== resolved.kind) throw new Error("This public decision application does not match the resolved interaction kind.");
+  const answer = resolved.answers?.[application.questionId];
+  if (Array.isArray(answer) || !String(answer ?? "").trim()) throw new Error(`${application.type} application requires exactly one selected option.`);
+  const selection = application.selections.find((item) => item.answerLabel === answer);
+  if (!selection) throw new Error(`The selected ${application.type} answer has no persisted state mapping.`);
+  if (application.type === "run_mode") {
+    configureRunMode(run, { mode: selection.mode, confirmedBy: "request_user_input" });
+    run.events.push(event(run, "run.mode.configured", "intake", selection.mode));
+    const written = await appendRunCheckpoint({ ...args, run, reason: "run.mode.configured", detail: selection.mode });
+    run.artifacts ??= {};
+    run.artifacts[written.artifactRef] = artifactRecord({ ...written, stage: "intake" });
+    resolved.appliedApplication = { type: "run_mode", mode: selection.mode, appliedAt: new Date().toISOString() };
+    return { type: "run_mode", applied: true, value: selection.mode };
+  }
+  if (!selection.approved) {
+    resolved.appliedApplication = { type: "stage_approval", stageId: application.stageId, approved: false, appliedAt: new Date().toISOString() };
+    return { type: "stage_approval", applied: false, value: application.stageId };
+  }
+  const note = application.note?.trim() || "Confirmed through Codex request_user_input.";
+  approveStage(run, { stageId: application.stageId, confirmedBy: "request_user_input", note });
+  run.events.push(event(run, "stage.approval.recorded", application.stageId, note));
+  const written = await appendRunCheckpoint({ ...args, run, reason: "stage.approval", detail: `${application.stageId} · ${note}` });
+  run.artifacts ??= {};
+  run.artifacts[written.artifactRef] = artifactRecord({ ...written, stage: application.stageId });
+  resolved.appliedApplication = { type: "stage_approval", stageId: application.stageId, approved: true, appliedAt: new Date().toISOString() };
+  return { type: "stage_approval", applied: true, value: application.stageId };
+}
+
+function applyPublicPreparationConfirmation(run, resolved, application) {
+  if (resolved.kind !== "intake") throw new Error("A public production brief confirmation must resolve an Intake interaction.");
+  if (!/^sha256:[a-f0-9]{32,64}$/i.test(String(application.fingerprint ?? ""))) throw new Error("A public production brief confirmation requires a stable brief fingerprint.");
+  if (!String(application.pipelineId ?? "").trim()) throw new Error("A public production brief confirmation requires its pipeline ID.");
+  if (!String(application.questionId ?? "").trim()) throw new Error("A public production brief confirmation requires its question ID.");
+  if (!application.brief || typeof application.brief !== "object" || Array.isArray(application.brief)) throw new Error("A public production brief confirmation requires the exact persisted brief.");
+  if (application.fingerprint !== publicProductionBriefFingerprint(application.pipelineId, application.brief)) throw new Error("The public production brief confirmation fingerprint does not match its persisted brief.");
+  const answer = resolved.answers?.[application.questionId];
+  if (Array.isArray(answer) || !String(answer ?? "").trim()) throw new Error("A public production brief confirmation requires exactly one selected option.");
+  const selections = application.selections ?? [];
+  if (selections.length !== 2 || new Set(selections.map((item) => item.answerLabel)).size !== selections.length || selections.some((item) => typeof item.confirmed !== "boolean") || selections.filter((item) => item.confirmed).length !== 1) {
+    throw new Error("A public production brief confirmation must persist one confirm and one defer option.");
+  }
+  const selection = selections.find((item) => item.answerLabel === answer);
+  if (!selection) throw new Error("The selected production brief answer has no persisted confirmation mapping.");
+  const status = selection.confirmed ? "confirmed" : "declined";
+  const recordedAt = new Date().toISOString();
+  run.publicProductionBriefConfirmation = {
+    schemaVersion: "1.0",
+    status,
+    confirmed: selection.confirmed === true,
+    fingerprint: application.fingerprint,
+    pipelineId: application.pipelineId,
+    requestId: resolved.requestId,
+    confirmedBy: "request_user_input",
+    resolvedAt: recordedAt,
+    brief: structuredClone(application.brief ?? {})
+  };
+  run.events.push(event(run, `public.brief.${status}`, "intake", `${application.pipelineId} · ${application.fingerprint.slice(0, 18)}`));
+  resolved.appliedApplication = {
+    type: "public_prepare",
+    fingerprint: application.fingerprint,
+    pipelineId: application.pipelineId,
+    confirmed: selection.confirmed === true,
+    appliedAt: recordedAt
+  };
+  return { type: "public_prepare", applied: selection.confirmed === true, value: status };
+}
+
+function requireConfirmedPublicProductionBrief(run, args) {
+  const confirmation = run.publicProductionBriefConfirmation;
+  const fingerprint = args.publicPreparationFingerprint;
+  if (confirmation?.fingerprint !== fingerprint || confirmation?.confirmed !== true || confirmation?.pipelineId !== args.pipelineId || !confirmation.requestId) {
+    throw new Error("Confirm the exact public production brief through Codex request_user_input before recording Intake, budget, route, or delivery promise.");
+  }
+  const request = requireResolvedInteraction(run, confirmation.requestId, "intake");
+  const application = request.application;
+  if (application?.type !== "public_prepare" || application.fingerprint !== fingerprint || application.pipelineId !== args.pipelineId || application.questionId !== "confirm_production_brief") {
+    throw new Error("The saved public production brief confirmation does not match this Intake preparation.");
+  }
+  if (application.fingerprint !== publicProductionBriefFingerprint(application.pipelineId, application.brief)) {
+    throw new Error("The saved public production brief confirmation has an invalid brief fingerprint.");
+  }
+  const selection = application.selections?.find((item) => item.answerLabel === request.answers?.[application.questionId]);
+  if (!selection?.confirmed) throw new Error("The saved public production brief was not approved through Codex request_user_input.");
+  return confirmation;
+}
+
+function summarizeAppliedDecisionApplication(request, run) {
+  const applied = request.appliedApplication;
+  if (applied?.type === "run_mode") return { type: "run_mode", applied: Boolean(run.runMode?.mode === applied.mode), value: applied.mode };
+  if (applied?.type === "stage_approval") return { type: "stage_approval", applied: applied.approved === true && run.stageApprovals?.[applied.stageId]?.status === "approved", value: applied.stageId };
+  if (applied?.type === "public_prepare") {
+    const confirmation = run.publicProductionBriefConfirmation;
+    return { type: "public_prepare", applied: confirmation?.fingerprint === applied.fingerprint && confirmation?.confirmed === true, value: confirmation?.status ?? null };
+  }
+  return { type: null, applied: false, value: null };
+}
+
+function publicDecisionHostAction(args, request, hostAction) {
+  const resolveAction = {
+    type: "mcp_tool",
+    tool: "directorx_decide_production",
+    required: true,
+    arguments: {
+      projectPath: args.projectPath,
+      runId: args.runId,
+      action: "resolve",
+      requestId: request.requestId,
+      confirmedBy: "request_user_input",
+      answers: "$request_user_input.answers"
+    }
+  };
+  const preparation = request.application?.type === "public_prepare" ? {
+    type: "mcp_tool",
+    tool: "directorx_prepare_production",
+    required: true,
+    arguments: {
+      projectPath: args.projectPath,
+      runId: args.runId,
+      pipelineId: request.application.pipelineId,
+      brief: structuredClone(request.application.brief)
+    }
+  } : null;
+  return {
+    ...structuredClone(hostAction),
+    afterAnswer: preparation
+      ? { type: "host_action_sequence", actions: [resolveAction, preparation] }
+      : resolveAction
+  };
+}
+
+function summarizeProductionDecision({ runId, stage, request, deduplicated, application = null, hostAction, browserCanvasUrl, nextRequiredAction }) {
+  return {
+    schemaVersion: "1.0",
+    runId,
+    stage,
+    status: request.status === "resolved" ? "resolved" : "pending",
+    decision: {
+      requestId: request.requestId,
+      kind: request.kind,
+      gateKey: request.gateKey ?? request.kind,
+      status: request.status,
+      deduplicated: Boolean(deduplicated)
+    },
+    application: application ?? {
+      type: request.application?.type ?? null,
+      applied: Boolean(request.appliedApplication),
+      value: request.appliedApplication?.mode ?? request.appliedApplication?.stageId ?? null
+    },
+    hostAction,
+    browserCanvasUrl,
+    nextRequiredAction
+  };
+}
+
+function publicReadinessProjection(readiness) {
+  if (toolProfile !== "public") return readiness;
+  const { nextTool, ...safe } = readiness;
+  return { ...safe, nextAction: publicActionForBlockers(readiness.blockers, readiness.ready ? "directorx_research_video" : "continue_production") };
+}
+
+function publicActionForBlockers(blockers = [], fallback = "continue_production") {
+  const first = blockers[0] ?? null;
+  if (first === "run_mode_not_confirmed") return "request_run_mode";
+  if (["minimum_intake_not_confirmed", "pipeline_not_selected", "complexity_not_planned"].includes(first) || String(first ?? "").startsWith("artifact:")) return "directorx_prepare_production";
+  if (String(first ?? "").startsWith("stage_approval:")) return "request_stage_approval";
+  if (String(first ?? "").startsWith("approval:")) return "configure_generation_routes";
+  if (first === "goal_not_bound") return "resume_goal_boot";
+  return fallback;
+}
+
+function projectPublicFacadeResult({ toolName, result, publicToolNames }) {
+  const projected = structuredClone(result);
+  if (["directorx_resume_production", "directorx_research_video"].includes(toolName) && projected.resumeActionPlan) {
+    projected.resumeActionPlan = publicResumeProjection(projected.resumeActionPlan, projected);
+  }
+  return scrubPublicToolReferences(projected, publicToolNames);
+}
+
+function publicResumeProjection(plan = {}, result = {}) {
+  plan ??= {};
+  const bootstrap = plan.productionBootstrap ?? {};
+  return {
+    schemaVersion: "1.0",
+    protocol: "public_resume",
+    runId: result.runId ?? plan.runId,
+    blocked: Boolean(plan.blockedBy),
+    awaitingDecision: Boolean(plan.nativeInteraction),
+    readyBatchId: plan.readyBatchId ?? null,
+    productionBootstrap: {
+      state: bootstrap.state ?? "unknown",
+      nextRequiredAction: publicActionForLegacyRoute(bootstrap.nextRequiredAction),
+      complexityProfile: bootstrap.complexityProfile ?? null,
+      taskCounts: bootstrap.taskCounts ?? { total: 0, running: 0, completed: 0 }
+    }
+  };
+}
+
+function scrubPublicToolReferences(value, publicToolNames) {
+  if (typeof value === "string") return value.replace(/\bdirectorx_[a-z0-9_]+(?:\:[a-z0-9_-]+)?\b/g, (route) => publicActionForLegacyRoute(route, publicToolNames));
+  if (Array.isArray(value)) return value.map((item) => scrubPublicToolReferences(item, publicToolNames));
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, scrubPublicToolReferences(nested, publicToolNames)]));
+}
+
+function publicActionForLegacyRoute(route, publicToolNames = null) {
+  const value = String(route ?? "");
+  const [base, suffix] = value.split(":", 2);
+  const available = publicToolNames ?? new Set(["directorx_start_production", "directorx_resume_production", "directorx_get_production_status", "directorx_decide_production", "directorx_prepare_production", "directorx_research_video", "directorx_generate_media", "directorx_review_media_candidate", "directorx_recover_production"]);
+  if (available.has(base)) return suffix ? `${base}:${suffix}` : base;
+  if (["directorx_begin_reference_research", "directorx_begin_creative_work"].includes(base) && available.has("directorx_research_video")) return "directorx_research_video";
+  if (base === "directorx_create_and_ask_native_question") return "request_native_decision";
+  if (["directorx_confirm_intake", "directorx_select_pipeline", "directorx_plan_production_complexity", "directorx_prepare_fast_start_intake"].includes(base) && available.has("directorx_prepare_production")) return "directorx_prepare_production";
+  if (base.startsWith("directorx_")) return "continue_production";
+  return value;
+}
+
+function projectPublicFailure(failure) {
+  if (!failure || toolProfile !== "public") return failure;
+  const publicToolNames = new Set(toolRegistry.list().map((tool) => tool.name));
+  const recovery = failure.recovery ? {
+    recoveryToken: failure.recovery.recoveryToken ?? null,
+    requiredAction: failure.recovery.requiredAction ?? null,
+    preservesCompletedArtifacts: failure.recovery.preservesCompletedArtifacts === true
+  } : null;
+  return {
+    schemaVersion: failure.schemaVersion ?? "1.0",
+    code: failure.code ?? "production_error",
+    retryable: Boolean(failure.retryable),
+    attempts: Number(failure.attempts ?? 0),
+    maxAttempts: Number(failure.maxAttempts ?? 0),
+    stop: Boolean(failure.stop),
+    nextRequiredAction: publicActionForLegacyRoute(failure.nextRequiredAction, publicToolNames),
+    userFacingMessage: failure.userFacingMessage ?? "当前制作环节需要处理后再继续。",
+    recovery
+  };
+}
+
+function instructionsForToolProfile() {
+  if (toolProfile === "public") {
+    return `${SERVER_INSTRUCTIONS} Public profile: use only the tools returned by tools/list. Follow the outcome flow: start the durable Run, resolve the native run-mode decision, prepare the user-confirmed production brief, then begin research. If an action is unavailable, state the stage boundary plainly instead of naming an internal tool.`;
+  }
+  return `${SERVER_INSTRUCTIONS} ${COMPATIBILITY_STAGE_INSTRUCTIONS} ${SCENE_CONFORMANCE_INSTRUCTIONS}`;
+}
+
 async function getProductionStatus(args) {
   const run = await readRun(args);
   const productionReadiness = evaluateFastStartReadiness(run);
@@ -5011,6 +5626,23 @@ async function resumeProduction(args) {
 
 async function researchVideo(args) {
   const current = await readRun(args);
+  const readiness = evaluateReferenceResearchReadiness(current);
+  if (toolProfile === "public" && !readiness.ready) {
+    const canvas = await withBrowserCanvas(publicSnapshot(current), args);
+    return {
+      schemaVersion: "1.0",
+      runId: current.runId,
+      status: "blocked",
+      stage: current.stage,
+      researchStatus: "awaiting_minimum_intake",
+      generationBlockers: readiness.generationBlockedUntil,
+      taskCount: 0,
+      readyBatchId: null,
+      nextRequiredAction: publicActionForBlockers(readiness.blockers),
+      browserCanvasUrl: canvas.browserCanvasUrl,
+      resumeActionPlan: publicResumeProjection(null, { runId: current.runId })
+    };
+  }
   let run = current;
   if (!(current.stage === "research" && current.fastStart?.status === "reference_research_started")) {
     run = await updateRun({ ...args, mutate: async (next) => {
@@ -5827,6 +6459,91 @@ function productionStartOutputSchema() {
     hostAction: nullableLooseObjectSchema(),
     nextRequiredAction: stringSchema()
   }, ["schemaVersion", "phase", "status", "preflightId", "runId", "stage", "browserCanvasUrl", "goalInteractionRequestId", "goalBound", "hostAction", "nextRequiredAction"]);
+}
+function productionDecisionOutputSchema() {
+  const nullableString = { anyOf: [stringSchema(), { type: "null" }] };
+  return objectSchema({
+    schemaVersion: { const: "1.0", type: "string" },
+    runId: stringSchema(),
+    stage: stringSchema(),
+    status: { enum: ["pending", "resolved"], type: "string" },
+    decision: objectSchema({
+      requestId: stringSchema(),
+      kind: { enum: PUBLIC_PRODUCTION_DECISION_KINDS, type: "string" },
+      gateKey: stringSchema(),
+      status: { enum: ["pending", "resolved"], type: "string" },
+      deduplicated: { type: "boolean" }
+    }, ["requestId", "kind", "gateKey", "status", "deduplicated"]),
+    application: objectSchema({
+      type: nullableString,
+      applied: { type: "boolean" },
+      value: nullableString
+    }, ["type", "applied", "value"]),
+    hostAction: nullableLooseObjectSchema(),
+    browserCanvasUrl: stringSchema(),
+    nextRequiredAction: stringSchema()
+  }, ["schemaVersion", "runId", "stage", "status", "decision", "application", "hostAction", "browserCanvasUrl", "nextRequiredAction"]);
+}
+function publicDecisionApplicationSchema() {
+  return {
+    oneOf: [
+      objectSchema({
+        type: { const: "run_mode", type: "string" },
+        questionId: stringSchema(),
+        selections: { type: "array", minItems: 2, maxItems: 3, items: objectSchema({ answerLabel: stringSchema(), mode: { enum: RUN_MODES, type: "string" } }, ["answerLabel", "mode"]) }
+      }, ["type", "questionId", "selections"]),
+      objectSchema({
+        type: { const: "stage_approval", type: "string" },
+        questionId: stringSchema(),
+        stageId: stringSchema(),
+        note: stringSchema(),
+        selections: { type: "array", minItems: 2, maxItems: 3, items: objectSchema({ answerLabel: stringSchema(), approved: { type: "boolean" } }, ["answerLabel", "approved"]) }
+      }, ["type", "questionId", "stageId", "selections"])
+    ]
+  };
+}
+function publicProductionPreparationInputSchema() {
+  return objectSchema({
+    projectPath: stringSchema(),
+    runId: stringSchema(),
+    pipelineId: stringSchema(),
+    brief: objectSchema({
+      title: stringSchema(),
+      objective: stringSchema(),
+      audience: stringSchema(),
+      platform: stringSchema(),
+      durationSeconds: { type: "number", exclusiveMinimum: 0 },
+      aspectRatio: stringSchema(),
+      productionRoute: stringSchema(),
+      assetReadiness: stringSchema(),
+      videoType: stringSchema(),
+      qualityTarget: stringSchema(),
+      budgetCap: objectSchema({ currency: stringSchema(), amount: { type: "number", minimum: 0 } }, ["currency", "amount"]),
+      shotCount: { type: "integer", minimum: 1, maximum: 500 },
+      segmentCount: { type: "integer", minimum: 1, maximum: 500 },
+      referenceVideoCount: { type: "integer", minimum: 0, maximum: 100 },
+      modalities: { type: "array", minItems: 1, items: { enum: ["image", "video", "voice", "music", "screen", "avatar", "live_action"], type: "string" } },
+      characterContinuity: { type: "boolean" },
+      deliveryTier: { enum: ["preview", "review", "publish"], type: "string" },
+      visualDirection: stringSchema()
+    }, ["objective", "audience", "platform", "durationSeconds", "aspectRatio", "productionRoute", "assetReadiness", "videoType", "qualityTarget", "budgetCap", "shotCount", "modalities", "characterContinuity", "deliveryTier"])
+  }, ["projectPath", "runId", "pipelineId", "brief"]);
+}
+function productionPreparationOutputSchema() {
+  const nullableString = { anyOf: [stringSchema(), { type: "null" }] };
+  return objectSchema({
+    schemaVersion: { const: "1.0", type: "string" },
+    runId: stringSchema(),
+    status: stringSchema(),
+    stage: stringSchema(),
+    pipelineId: nullableString,
+    complexityProfile: nullableString,
+    researchReadiness: looseObjectSchema(),
+    briefConfirmation: nullableLooseObjectSchema(),
+    hostAction: nullableLooseObjectSchema(),
+    nextRequiredAction: stringSchema(),
+    browserCanvasUrl: stringSchema()
+  }, ["schemaVersion", "runId", "status", "stage", "pipelineId", "complexityProfile", "researchReadiness", "nextRequiredAction", "browserCanvasUrl"]);
 }
 function productionStatusOutputSchema() {
   return objectSchema({
@@ -6670,14 +7387,14 @@ function json(response, status, value) { return send(response, status, JSON.stri
 async function handle(message) {
   const id = message.id ?? null;
   if (message.method === "notifications/initialized") return;
-  if (message.method === "initialize") return respond(id, { protocolVersion: "2025-11-05", serverInfo: { name: "directorx-production", version: "0.1.0" }, instructions: `${SERVER_INSTRUCTIONS} ${SCENE_CONFORMANCE_INSTRUCTIONS} ${FAILURE_POLICY_INSTRUCTIONS}`, capabilities: { tools: { listChanged: false }, resources: { listChanged: false } } });
+  if (message.method === "initialize") return respond(id, { protocolVersion: "2025-11-05", serverInfo: { name: "directorx-production", version: "0.1.0" }, instructions: `${instructionsForToolProfile()} ${FAILURE_POLICY_INSTRUCTIONS}`, capabilities: { tools: { listChanged: false }, resources: { listChanged: false } } });
   if (message.method === "tools/list") return respond(id, { tools: toolRegistry.list() });
   if (message.method === "tools/call") {
     try {
       const result = await toolRegistry.call(message.params?.name, message.params?.arguments ?? {});
       return respond(id, { content: [{ type: "text", text: conciseToolResult(message.params?.name ?? "", result) }], structuredContent: result });
   } catch (error) {
-      const failure = toolFailurePayload(error);
+      const failure = projectPublicFailure(toolFailurePayload(error));
       return respond(id, {
         isError: true,
         content: [{ type: "text", text: failure?.userFacingMessage ?? (error instanceof Error ? error.message : String(error)) }],

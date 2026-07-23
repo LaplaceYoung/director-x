@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { access, readdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DIRECTORX_PUBLIC_FACADE_NAMES } from "./tool-surface-policy.mjs";
 
 const pluginRoot = fileURLToPath(new URL("..", import.meta.url));
 
@@ -28,6 +29,7 @@ test("keeps the plugin runtime dependency-free and repository-relative", async (
   assert.equal(server.command, "node");
   assert.deepEqual(server.args, ["./mcp/server.mjs"]);
   assert.equal(server.cwd, ".");
+  assert.deepEqual(server.env, { DIRECTORX_TOOL_PROFILE: "public" });
 });
 
 test("ships an installable repository marketplace with matching public instructions", async () => {
@@ -40,6 +42,8 @@ test("ships an installable repository marketplace with matching public instructi
   assert.deepEqual(marketplace.plugins.map((entry) => entry.name), [plugin.name]);
   assert.deepEqual(marketplace.plugins[0].source, { source: "local", path: "./" });
   assert.deepEqual(marketplace.plugins[0].policy, { installation: "AVAILABLE", authentication: "ON_INSTALL" });
+  assert.ok(plugin.interface.displayName.length <= 30);
+  assert.ok(plugin.interface.shortDescription.length <= 30);
   assert.match(readme, /directorx@mosi/);
   assert.match(chineseReadme, /directorx@mosi/);
 });
@@ -73,11 +77,16 @@ test("ships a standalone setup doctor and approval-gated MCP repair path", async
   assert.match(server, /name: "directorx_repair_setup"/);
 });
 
-test("fails closed when the Director X MCP runtime is unavailable", async () => {
+test("starts the entry Skill through the durable public Facade", async () => {
   const skill = await readFile(join(pluginRoot, "skills", "directorx", "SKILL.md"), "utf8");
-  assert.match(skill, /If `directorx_capability_preflight` is absent[\s\S]*fail closed/);
-  assert.match(skill, /do not create a substitute Markdown package/);
-  assert.match(skill, /A new thread alone does not reload plugin MCP processes/);
+  assert.match(skill, /directorx_start_production/);
+  assert.match(skill, /directorx_decide_production/);
+  assert.match(skill, /directorx_resume_production/);
+  assert.match(skill, /directorx_prepare_production/);
+  assert.match(skill, /Do not scan the workspace, inspect plugin caches, construct a Run/);
+  assert.match(skill, /Do not silently replace Director X with a Markdown-only plan/);
+  const entryToolNames = [...new Set(skill.match(/\bdirectorx_[a-z0-9_]+\b/g) ?? [])];
+  for (const toolName of entryToolNames) assert.ok(DIRECTORX_PUBLIC_FACADE_NAMES.includes(toolName), `entry Skill references a non-public tool: ${toolName}`);
 });
 
 test("keeps production conversation concise and consumer-facing", async () => {
@@ -117,8 +126,11 @@ test("binds every surfaced Director X skill to the bundled production MCP server
   }
   const skill = await readFile(join(pluginRoot, "skills", "directorx", "SKILL.md"), "utf8");
   const orchestrationSkill = await readFile(join(pluginRoot, "skills", "directorx-production-orchestration", "SKILL.md"), "utf8");
-  assert.match(skill, /browser-client\.mjs/);
-  assert.match(skill, /Do not use the MCP App inline surface during preflight/);
+  const entryMetadata = metadataFiles.find((item) => item.skillName === "directorx").content;
+  assert.match(entryMetadata, /default_prompt:\s*["'][^"']*\$directorx/);
+  assert.match(entryMetadata, /short_description:\s*["'][^"']{25,64}["']/);
+  assert.match(skill, /Execute the returned `hostAction` exactly/);
+  assert.doesNotMatch(skill, /browser-client\.mjs|node_repl|\.codex\/plugins\/cache/);
   assert.match(orchestrationSkill, /load the main `directorx` skill and complete its canvas-first boot sequence/i);
 });
 

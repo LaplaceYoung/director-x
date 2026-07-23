@@ -8,7 +8,7 @@ const definitions = [
 ];
 
 test("registers unique tools and isolates listed definitions from mutation", () => {
-  const registry = createToolRegistry({ definitions, invoke: async () => ({ ok: true }) });
+  const registry = createToolRegistry({ profile: "compatibility", definitions, invoke: async () => ({ ok: true }) });
   const listed = registry.list();
   listed[0].description = "mutated";
   assert.equal(registry.size, 2);
@@ -34,13 +34,43 @@ test("public profile lists and calls only completed public Facades", async () =>
   assert.deepEqual(calls, ["directorx_recover_production"]);
 });
 
+test("defaults the installed registry to the public Facade profile", () => {
+  const registry = createToolRegistry({
+    definitions: [
+      { name: "directorx_recover_production", description: "Recover", inputSchema: { type: "object", properties: {} }, outputSchema: { type: "object", additionalProperties: true, properties: {} } },
+      { name: "directorx_internal_checkpoint", description: "Internal", inputSchema: { type: "object", properties: {} }, outputSchema: { type: "object", additionalProperties: true, properties: {} } }
+    ],
+    invoke: async () => ({})
+  });
+  assert.equal(registry.profile, "public");
+  assert.deepEqual(registry.list().map((tool) => tool.name), ["directorx_recover_production"]);
+});
+
+test("projects public results after validation without changing compatibility results", async () => {
+  const publicRegistry = createToolRegistry({
+    profile: "public",
+    definitions: [{ name: "directorx_recover_production", description: "Recover", inputSchema: { type: "object", properties: {} }, outputSchema: { type: "object", additionalProperties: true, properties: {} } }],
+    invoke: async () => ({ nextTool: "directorx_internal_checkpoint" }),
+    projectPublicResult: ({ result, publicToolNames }) => ({ ...result, nextTool: publicToolNames.has("directorx_recover_production") ? "continue_production" : "unexpected" })
+  });
+  assert.deepEqual(await publicRegistry.call("directorx_recover_production"), { nextTool: "continue_production" });
+
+  const compatibilityRegistry = createToolRegistry({
+    profile: "compatibility",
+    definitions: [{ name: "directorx_recover_production", description: "Recover", inputSchema: { type: "object", properties: {} }, outputSchema: { type: "object", additionalProperties: true, properties: {} } }],
+    invoke: async () => ({ nextTool: "directorx_internal_checkpoint" }),
+    projectPublicResult: () => ({ nextTool: "should-not-run" })
+  });
+  assert.deepEqual(await compatibilityRegistry.call("directorx_recover_production"), { nextTool: "directorx_internal_checkpoint" });
+});
+
 test("rejects unknown tool profiles", () => {
   assert.throws(() => normalizeToolProfile("debug"), /Unknown Director X tool profile/);
 });
 
 test("dispatches only registered tools", async () => {
   const calls = [];
-  const registry = createToolRegistry({ definitions, invoke: async (name, args) => {
+  const registry = createToolRegistry({ profile: "compatibility", definitions, invoke: async (name, args) => {
     calls.push({ name, args });
     return { name, args };
   } });
@@ -56,6 +86,6 @@ test("rejects duplicate or malformed registrations", () => {
 });
 
 test("validates structured results against declared output schemas", async () => {
-  const registry = createToolRegistry({ definitions, invoke: async () => ({ nope: true }) });
+  const registry = createToolRegistry({ profile: "compatibility", definitions, invoke: async () => ({ nope: true }) });
   await assert.rejects(() => registry.call("directorx_read"), /structuredContent\.ok is required/);
 });

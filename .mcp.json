@@ -3,7 +3,10 @@
     "directorx-production": {
       "command": "node",
       "args": ["./mcp/server.mjs"],
-      "cwd": "."
+      "cwd": ".",
+      "env": {
+        "DIRECTORX_TOOL_PROFILE": "public"
+      }
     }
   }
 }

@@ -40,15 +40,19 @@ const OPEN_WORLD_TOOLS = new Set([
   "directorx_install_builtin_media_runtime"
 ]);
 
-const DESTRUCTIVE_TOOLS = new Set([
+export const DIRECTORX_DESTRUCTIVE_TOOL_NAMES = Object.freeze([
   "directorx_revoke_model_knowledge_patch",
   "directorx_cancel_benchmark_schedule",
   "directorx_revoke_benchmark_baseline",
-  "directorx_cancel_provider_job"
+  "directorx_cancel_provider_job",
+  "directorx_commit_timeline_patch"
 ]);
+const DESTRUCTIVE_TOOLS = new Set(DIRECTORX_DESTRUCTIVE_TOOL_NAMES);
 
 const IDEMPOTENT_WRITE_TOOLS = new Set([
   "directorx_start_production",
+  "directorx_decide_production",
+  "directorx_prepare_production",
   "directorx_recover_production",
   "directorx_submit_provider_job",
   "directorx_submit_media_generation",

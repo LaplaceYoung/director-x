@@ -172,6 +172,25 @@ test("blocks the failed native-gated operation until its interaction is resolved
   }
 });
 
+test("allows the public decision Facade to resolve a native-interaction recovery gate", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-public-native-recovery-"));
+  try {
+    const run = await createRun({ projectPath, outcome: "Resolve a public decision" });
+    const args = { projectPath, runId: run.runId, requestId: "dxq-public-native-recovery" };
+    await assert.rejects(() => withToolFailureGuard("directorx_configure_run_mode", args, async () => {
+      throw new Error("Resolve native interaction before configuring the Director X run mode.");
+    }));
+    await withToolFailureGuard("directorx_decide_production", { ...args, action: "request" }, async () => ({ status: "pending" }));
+    let persisted = await readRun({ projectPath, runId: run.runId });
+    assert.equal(persisted.recoveryGate.status, "blocked");
+    await withToolFailureGuard("directorx_decide_production", { ...args, action: "resolve" }, async () => ({ status: "resolved" }));
+    persisted = await readRun({ projectPath, runId: run.runId });
+    assert.equal(persisted.recoveryGate, null);
+  } finally {
+    await rm(projectPath, { recursive: true, force: true });
+  }
+});
+
 test("writes a failure checkpoint and allows corrected deterministic arguments", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "directorx-failure-recovery-"));
   try {

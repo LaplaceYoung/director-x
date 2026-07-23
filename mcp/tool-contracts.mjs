@@ -1,22 +1,20 @@
+import { DIRECTORX_DESTRUCTIVE_TOOL_NAMES } from "./tool-safety-policy.mjs";
+
 const CONTRACT_VERSION = "1.0";
 
 const IDEMPOTENT_WRITES = new Set([
   "directorx_set_session_credential",
   "directorx_submit_provider_job",
   "directorx_submit_media_generation",
+  "directorx_decide_production",
+  "directorx_prepare_production",
   "directorx_recover_production",
   "directorx_update_provider_job",
   "directorx_upsert_canvas_object",
   "directorx_register_media_evidence_index"
 ]);
 
-const DESTRUCTIVE_TOOLS = new Set([
-  "directorx_cancel_benchmark_schedule",
-  "directorx_cancel_provider_job",
-  "directorx_commit_timeline_patch",
-  "directorx_revoke_benchmark_baseline",
-  "directorx_revoke_model_knowledge_patch"
-]);
+const DESTRUCTIVE_TOOLS = new Set(DIRECTORX_DESTRUCTIVE_TOOL_NAMES);
 
 const OPEN_WORLD_PATTERNS = [
   /acquire_web|record_web_research|provider_api_research|ingest_reference/,

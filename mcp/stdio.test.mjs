@@ -157,6 +157,11 @@ test("serves MCP tools over newline-delimited stdio", async () => {
     assert.equal(startFacade._meta["directorx/legacyLooseContract"], false);
     assert.equal(startFacade.annotations.idempotentHint, true);
     assert.ok(startFacade.inputSchema.oneOf);
+    const decisionFacade = message.result.tools.find((tool) => tool.name === "directorx_decide_production");
+    assert.ok(decisionFacade);
+    assert.equal(decisionFacade._meta["directorx/legacyLooseContract"], false);
+    assert.equal(decisionFacade.annotations.idempotentHint, true);
+    assert.ok(decisionFacade.inputSchema.oneOf);
     const statusFacade = message.result.tools.find((tool) => tool.name === "directorx_get_production_status");
     assert.ok(statusFacade);
     assert.equal(statusFacade._meta["directorx/legacyLooseContract"], false);
@@ -229,10 +234,12 @@ test("serves MCP tools over newline-delimited stdio", async () => {
     const mediaSubmission = message.result.tools.find((tool) => tool.name === "directorx_submit_media_generation");
     const mediaPoll = message.result.tools.find((tool) => tool.name === "directorx_poll_media_generation");
     const providerCancellation = message.result.tools.find((tool) => tool.name === "directorx_cancel_provider_job");
+    const timelineCommit = message.result.tools.find((tool) => tool.name === "directorx_commit_timeline_patch");
     assert.equal(mediaSubmission.annotations.openWorldHint, true);
     assert.equal(mediaSubmission.annotations.idempotentHint, true);
     assert.equal(mediaPoll.annotations.openWorldHint, true);
     assert.equal(providerCancellation.annotations.destructiveHint, true);
+    assert.equal(timelineCommit.annotations.destructiveHint, true);
     assert.ok(message.result.tools.every((tool) => typeof tool.annotations?.title === "string" && tool.annotations.title.length > 0));
     assert.ok(message.result.tools.every((tool) => typeof tool._meta?.["openai/toolInvocation/invoking"] === "string"));
     assert.ok(message.result.tools.every((tool) => typeof tool._meta?.["openai/toolInvocation/invoked"] === "string"));
@@ -311,24 +318,21 @@ test("reviews and selects an accepted media candidate atomically and idempotentl
   }
 });
 
-test("advertises the mandatory side-Browser startup contract during MCP initialization", async () => {
+test("advertises the public, native-safe production contract during MCP initialization", async () => {
   const child = spawn(process.execPath, [new URL("./server.mjs", import.meta.url).pathname], { stdio: ["pipe", "pipe", "pipe"] });
   let output = ""; child.stdout.setEncoding("utf8"); child.stdout.on("data", (chunk) => { output += chunk; });
   child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 100, method: "initialize", params: {} })}\n`);
   try {
     await waitFor(() => messages(output).some((item) => item.id === 100), 500);
     const initialized = messages(output).find((item) => item.id === 100).result;
-    assert.match(initialized.instructions, /directorx_capability_preflight/);
-    assert.match(initialized.instructions, /directorx_create_and_ask_native_question/);
-    assert.match(initialized.instructions, /afterAnswer/);
-    assert.match(initialized.instructions, /directorx_begin_creative_work/);
-    assert.match(initialized.instructions, /directorx_prepare_fast_start_intake/);
+    assert.match(initialized.instructions, /directorx_start_production/);
+    assert.match(initialized.instructions, /directorx_decide_production/);
+    assert.match(initialized.instructions, /directorx_resume_production/);
+    assert.match(initialized.instructions, /directorx_research_video/);
+    assert.match(initialized.instructions, /request_user_input and create_goal native to Codex/);
     assert.match(initialized.instructions, /first-content, first-visual, or first-preview SLA/);
-    assert.match(initialized.instructions, /music_strategy/);
-    assert.match(initialized.instructions, /music_asset_selection/);
     assert.match(initialized.instructions, /Never start an auxiliary Director X MCP runtime/);
     assert.match(initialized.instructions, /directorx_record_scene_coverage_review/);
-    assert.match(initialized.instructions, /audio_responsibility_plan\.json/);
     assert.match(initialized.instructions, /DX-Quality-Reviewer/);
     assert.match(initialized.instructions, /concise consumer-facing Director X voice/);
     assert.match(initialized.instructions, /never narrate tool calls/);

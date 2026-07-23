@@ -1,8 +1,10 @@
 import { access, readFile, readdir } from "node:fs/promises";
+import { spawn } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateSkillMcpDependencyContract } from "./skill-mcp-dependencies.mjs";
 import { validateSkillMetadataCatalog } from "./skill-metadata-catalog.mjs";
+import { DIRECTORX_PUBLIC_FACADE_NAMES } from "../mcp/tool-surface-policy.mjs";
 
 const pluginRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const errors = [];
@@ -21,12 +23,16 @@ requireText(manifest?.interface, "longDescription", "interface.longDescription")
 requireText(manifest?.interface, "developerName", "interface.developerName");
 requireText(manifest?.interface, "category", "interface.category");
 
+if ((manifest?.interface?.displayName ?? "").length > 30) errors.push("interface.displayName must be at most 30 characters");
+if ((manifest?.interface?.shortDescription ?? "").length > 30) errors.push("interface.shortDescription must be at most 30 characters");
+
 if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(manifest?.name ?? "")) errors.push("plugin name must be lower-case kebab-case");
 if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(manifest?.version ?? "")) errors.push("plugin version must be valid semver");
 if ((manifest?.version ?? "").split("+")[0] !== packageJson?.version) errors.push("plugin and package base versions must match");
 if (manifest?.mcpServers) await requirePath(manifest.mcpServers, "mcpServers");
 if (manifest?.skills) await requirePath(manifest.skills, "skills");
 await validateSkillMcpDependencies(mcpConfig);
+await validateInstalledPublicToolSurface(mcpConfig);
 for (const key of ["composerIcon", "logo", "logoDark"]) {
   if (manifest?.interface?.[key]) await requirePath(manifest.interface[key], `interface.${key}`);
 }
@@ -110,4 +116,69 @@ async function validateSkillMcpDependencies(config) {
   }
   errors.push(...validateSkillMetadataCatalog({ skillNames, metadataFiles }));
   errors.push(...validateSkillMcpDependencyContract({ configuredServers: Object.keys(config?.mcpServers ?? {}), metadataFiles }));
+}
+
+async function validateInstalledPublicToolSurface(config) {
+  const server = config?.mcpServers?.["directorx-production"];
+  if (!server) {
+    errors.push(".mcp.json must configure directorx-production");
+    return;
+  }
+  if (server?.env?.DIRECTORX_TOOL_PROFILE !== "public") {
+    errors.push("directorx-production must default DIRECTORX_TOOL_PROFILE to public");
+    return;
+  }
+  if (server.command !== "node" || !Array.isArray(server.args) || server.args.length !== 1 || server.args[0] !== "./mcp/server.mjs") {
+    errors.push("directorx-production must use the repository-local Node MCP server for public-surface validation");
+    return;
+  }
+  const cwd = resolve(pluginRoot, server.cwd ?? ".");
+  try {
+    const response = await runMcpToolsList({ command: server.command, args: server.args, cwd, env: { ...process.env, ...server.env } });
+    const names = (response?.result?.tools ?? []).map((tool) => tool?.name).sort();
+    const expected = [...DIRECTORX_PUBLIC_FACADE_NAMES].sort();
+    if (JSON.stringify(names) !== JSON.stringify(expected)) errors.push(`installed public MCP surface mismatch: expected ${expected.length} Facades, received ${names.length}`);
+  } catch (error) {
+    errors.push(`installed public MCP surface could not start: ${error.message}`);
+  }
+}
+
+async function runMcpToolsList({ command, args, cwd, env }) {
+  const child = spawn(command, args, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
+  try {
+    return await new Promise((resolveResponse, rejectResponse) => {
+      let stdout = "";
+      let stderr = "";
+      let settled = false;
+      const finish = (callback, value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        callback(value);
+      };
+      const timeout = setTimeout(() => finish(rejectResponse, new Error("timed out after 2 seconds")), 2_000);
+      child.stdout.setEncoding("utf8");
+      child.stderr.setEncoding("utf8");
+      child.stdout.on("data", (chunk) => {
+        stdout += chunk;
+        const lines = stdout.split("\n");
+        stdout = lines.pop() ?? "";
+        for (const line of lines) {
+          try {
+            const message = JSON.parse(line);
+            if (message?.id === "validate-public-surface") finish(resolveResponse, message);
+          } catch {
+            // MCP stdout can contain no non-JSON content; preserve it for the
+            // next complete line rather than making validation flaky on chunks.
+          }
+        }
+      });
+      child.stderr.on("data", (chunk) => { stderr += chunk; });
+      child.once("error", (error) => finish(rejectResponse, error));
+      child.once("exit", (code, signal) => finish(rejectResponse, new Error(`exited before tools/list (code=${code}, signal=${signal}, stderr=${stderr.trim()})`)));
+      child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: "validate-public-surface", method: "tools/list", params: {} })}\n`);
+    });
+  } finally {
+    child.kill("SIGTERM");
+  }
 }

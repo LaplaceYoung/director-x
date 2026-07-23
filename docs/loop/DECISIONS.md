@@ -59,3 +59,45 @@ Reason: opening a priced, bounded attempt is part of generating media. Exposing 
 Decision: `directorx_start_production` owns the durable preflight, interaction resolution, Run creation, and Goal binding, but returns `request_user_input` and `create_goal` as explicit Codex host actions.
 
 Reason: MCP cannot truthfully invoke Codex-native Goal or input UI by itself. Keeping those boundaries visible preserves the native experience, while routing every MCP continuation back through one Facade prevents repeated questions, duplicate Runs, and public dependence on hidden low-level tools.
+
+## 2026-07-23 — Entry Skill is a focused outcome route, not a runtime manual
+
+Decision: replace the 251-line entry Skill's direct boot and stage choreography with a concise start/resume route that follows public Facade host actions and loads specialist Skills only after a Run exists.
+
+Reason: OpenAI's [Build plugins](https://learn.chatgpt.com/docs/build-plugins) and [Build Skills](https://learn.chatgpt.com/docs/build-skills) guidance favors a workflow-first plugin, a clear scope boundary, and progressive disclosure. The old entry named 84 low-level tools and was incompatible with the public profile that the plugin was already migrating toward. The new entry keeps user intent at the top level and leaves implementation detail inside the MCP runtime or an explicit stage Skill.
+
+## 2026-07-23 — Native production decisions get one public Facade
+
+Decision: add `directorx_decide_production` with strict `request` and `resolve` branches. Its returned native action resolves back through the same Facade, never through `directorx_resolve_user_interaction`.
+
+Reason: upcoming public editing needs a durable `post_production_edit` choice. Leaving the native decision boundary low-level would either leak an internal tool into the public profile or tempt the host to repeat a question. The Facade persists first, deduplicates request replay, accepts only the raw Codex answer envelope, and replays a resolved request safely.
+
+## 2026-07-23 — Public means actual, executable Facades
+
+Decision: the public profile lists only the nine implemented Facades—start, status, resume, decide, prepare, research, generate, review, and recover. Future edit/render/audit/delivery names remain a separate planned list until each has a complete public contract.
+
+Reason: a model cannot safely act on a roadmap name that `tools/list` cannot return. The registry enforces the same public boundary in both listing and dispatch, and public result projection must not leak a legacy continuation back across it.
+
+## 2026-07-23 — Public preparation confirms the canonical brief before mutation
+
+Decision: `directorx_prepare_production` first creates one native `public-brief` Intake gate. Its interaction stores the canonical brief and a fingerprint; the native answer resolves through `directorx_decide_production`, then a returned host-action sequence resumes the same public prepare call.
+
+Reason: a material brief determines Intake, budget, route, and delivery promise. The shared `prepareFastStartIntake` helper verifies the resolved interaction, typed application, matching pipeline/fingerprint, and approved answer before it mutates those artifacts. A stable gate supersedes an older pending brief question rather than creating parallel actionable prompts, and identical retries remain idempotent.
+
+## 2026-07-23 — Keep the remaining decision trust assumptions visible
+
+Decision: record two remaining P1s rather than calling native decisions cryptographically complete: the resolver trusts the raw Codex MCP `request_user_input` envelope without a host-signed receipt, and public run-mode semantics are still supplied by the caller's label-to-mode mapping.
+
+Reason: persistence and replay safety prove that the runtime applies a recorded answer once; they do not independently attest its host origin or prove that presentation wording cannot remap a durable run mode. These boundaries need a host-trusted receipt and canonical mapping before the decision protocol can be considered fully hardened.
+
+## 2026-07-23 — Make the public Facade surface the default
+
+Decision: set the registry fallback and `.mcp.json` launch environment to the `public` profile. Retain the 185-tool compatibility surface only behind explicit `DIRECTORX_TOOL_PROFILE=compatibility` opt-in for development or migration.
+
+Reason: a migration surface does not improve first-use discovery while the default still exposes every low-level tool. An explicit opt-in preserves existing expert escape hatches without making them the model's normal decision surface.
+
+## 2026-07-23 — Classify material timeline writes from one source
+
+Decision: export `DIRECTORX_DESTRUCTIVE_TOOL_NAMES` from the safety policy and reuse it when contracts are applied. Mark `directorx_commit_timeline_patch` as destructive/material even though it creates a reversible revision rather than overwriting the source timeline.
+
+Reason: contracts and safety policy must not silently override one another's classification. A reversible implementation can still make a material user-visible change and therefore needs the explicit destructive-write guard and confirmation semantics.

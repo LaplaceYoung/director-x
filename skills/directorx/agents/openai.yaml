@@ -1,7 +1,7 @@
 interface:
   display_name: "Director X"
-  short_description: "Run a canvas-first, approval-aware AI video production workflow."
-  default_prompt: "Use Director X to produce and verify a playable video, opening the production canvas in the in-app Browser first."
+  short_description: "Start and supervise a durable AI video production run."
+  default_prompt: "Use $directorx to create a 30-second product film and guide me through the few decisions that affect it."
 
 policy:
   allow_implicit_invocation: true

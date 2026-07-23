@@ -1,16 +1,16 @@
 # DirectorX Plugin Score
 
-Loop 08 score, 2026-07-23.
+Loop 10 score, 2026-07-23.
 
 | Category | Score | Evidence |
 | --- | ---: | --- |
-| Installation | 15/20 | Manifest, marketplace, paths, commands, and validation pass; fresh-host timing is not automated |
-| Discovery | 18/20 | One implicit entry skill and explicit specialists; public startup is now one Facade, while compatibility still exposes 183 tools |
-| MCP quality | 18/20 | Start, recovery, status, resume, research, replay-safe generation, and candidate review are covered; edit/delivery Facades remain incomplete |
-| UX | 15/20 | Canvas-first and native approvals are established; internal activity still leaks into the model surface |
-| Maintainability | 16/20 | Strong tests and structured docs; large legacy surface increases migration cost |
-| **Total** | **82/100** | Progress score; not a DONE score |
+| Installation | 15/20 | Manifest, marketplace, paths, and commands are present; fresh-host timing is not automated |
+| Discovery | 20/20 | One scoped, outcome-led implicit entry Skill; explicit specialists and `$directorx` metadata; the default surface is nine public Facades and compatibility is opt-in |
+| MCP quality | 19/20 | Nine actual public Facades include native, canonical-brief preparation; public outputs no longer leak unavailable routes; edit/delivery Facades remain incomplete |
+| UX | 16/20 | Canvas-first native approvals now include public brief confirmation and stage approval; the legacy surface remains costly only when compatibility is explicitly enabled |
+| Maintainability | 18/20 | Shared preparation helper, durable fingerprints, replay coverage, and local check/test evidence; legacy surface remains costly |
+| **Total** | **88/100** | Evidence-weighted progress score; not a DONE score |
 
 ## Score gate
 
-The plugin is not DONE. The public profile still needs edit/render and delivery coverage, a fresh-host installation probe, and two review cycles without P0/P1 findings.
+The plugin is not DONE. The public profile still needs the host-receipt and run-mode-mapping P1s, edit/render/delivery coverage, a fresh-host installation probe, and two review cycles without P0/P1 findings.

@@ -121,6 +121,66 @@ test("does not repeat a stable model decision when only prompt wording changes",
   assert.equal(run.interactions.pending.length, 0);
 });
 
+test("does not deduplicate a stable decision when its persisted application changes", () => {
+  const run = { runId: "dx-test", interactions: { pending: [], history: [] } };
+  const runModeQuestion = {
+    id: "run_mode", header: "制作方式", question: "选择制作方式。",
+    options: [
+      { label: "引导自治", description: "关键节点确认。" },
+      { label: "逐阶段确认", description: "逐阶段等待确认。" }
+    ]
+  };
+  const application = (guidedMode) => ({
+    type: "run_mode",
+    questionId: "run_mode",
+    selections: [
+      { answerLabel: "引导自治", mode: guidedMode },
+      { answerLabel: "逐阶段确认", mode: guidedMode === "guided_autonomy" ? "stage_approval" : "guided_autonomy" }
+    ]
+  });
+  const first = requestNativeInteraction(run, { kind: "run_mode", gateKey: "run-mode", reason: "确定制作方式。", questions: [runModeQuestion], application: application("guided_autonomy") });
+  resolveNativeInteraction(run, { requestId: first.request.requestId, confirmedBy: "request_user_input", answers: { run_mode: { answers: ["引导自治"] } } });
+  const changed = requestNativeInteraction(run, { kind: "run_mode", gateKey: "run-mode", reason: "确定制作方式。", questions: [runModeQuestion], application: application("stage_approval") });
+  assert.notEqual(changed.request.requestId, first.request.requestId);
+  assert.equal(changed.deduplicated, false);
+  assert.equal(run.interactions.pending.length, 1);
+});
+
+test("supersedes a pending public production brief when the user edits it before answering", () => {
+  const run = { runId: "dx-test", interactions: { pending: [], history: [] } };
+  const input = (fingerprint, objective) => ({
+    kind: "intake",
+    gateKey: "public-brief",
+    reason: "Confirm the material production brief.",
+    questions: [{
+      id: "confirm_production_brief",
+      header: "确认制作简报",
+      question: `确认目标：${objective}`,
+      options: [
+        { label: "确认", description: "保存简报。" },
+        { label: "暂不确认", description: "保留当前 Run。" }
+      ]
+    }],
+    application: {
+      type: "public_prepare",
+      questionId: "confirm_production_brief",
+      fingerprint,
+      pipelineId: "brand-film",
+      brief: { objective },
+      selections: [
+        { answerLabel: "确认", confirmed: true },
+        { answerLabel: "暂不确认", confirmed: false }
+      ]
+    }
+  });
+  const first = requestNativeInteraction(run, input("sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "First brief"));
+  const revised = requestNativeInteraction(run, input("sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "Revised brief"));
+  assert.equal(revised.request.supersedes, first.request.requestId);
+  assert.equal(run.interactions.pending.length, 1);
+  assert.equal(run.interactions.pending[0].application.fingerprint, "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+  assert.equal(run.interactions.history.at(-1).status, "superseded");
+});
+
 test("rejects a late answer for a superseded interaction and points to its replacement", () => {
   const run = { runId: "dx-test", interactions: { pending: [], history: [] } };
   const first = requestNativeInteraction(run, { kind: "budget", reason: "Budget changes the route.", questions: [question] });

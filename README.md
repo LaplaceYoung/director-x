@@ -142,6 +142,19 @@ Review, repair, render, and approve delivery
 
 Director X keeps production state under `.directorx/plugin-runs/`. The canvas reads that state; it does not maintain a separate version of the truth.
 
+## Designed for Codex
+
+Director X follows a deliberately small user-facing contract:
+
+- **One production entry:** invoke `$directorx` for a new or resumed video Run instead of choosing among implementation tools.
+- **Native boundaries:** Codex owns the Goal and user-input UI; Director X returns the exact next action and persists decisions before they are shown.
+- **Progressive disclosure:** research, generation, editing, and review instructions load only when the current stage needs them.
+- **Visible state:** the live canvas is a projection of one durable Run, so resuming a task reuses its media, decisions, and next action.
+
+The default MCP profile now exposes nine implemented Facades: start, status, resume, decide, prepare, research, generate, review, and recover. Public preparation asks for one native confirmation of the canonical brief before it writes the production promise, and all public continuations stay on the listed surface.
+
+The compatibility surface is retained only as an explicit development or migration opt-in (`DIRECTORX_TOOL_PROFILE=compatibility`). The default public profile is not yet a full production lifecycle: edit, render, audit, repair, and delivery Facades are planned rather than exposed.
+
 ## Common Use Cases
 
 - Turn a product brief into a short brand film or launch video
@@ -185,7 +198,7 @@ Profiles range from `planning_only` and `local_video_read` to `local_composition
 Open a new Codex task and enter:
 
 ```text
-@directorx Create a 30-second product film.
+$directorx Create a 30-second product film.
 Use a native Goal, ask only for decisions that change the result,
 show acquired and generated media on the live canvas,
 and do not finish until a reviewed video is ready for delivery.
