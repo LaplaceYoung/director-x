@@ -4,6 +4,11 @@ All notable public changes to Director X are recorded here.
 
 ## [Unreleased]
 
+### Documentation
+
+- Updated the installation and release references to `v0.1.15`.
+- Started the plugin evolution-loop audit under `docs/loop/`.
+
 ### Changed
 
 - Started plugin productization work around marketplace installation, validation, CI, public tool contracts, and progressive disclosure.

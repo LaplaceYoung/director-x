@@ -83,7 +83,7 @@ import { assertRenderPropsBindRemotionProjection, compileRemotionRenderProjectio
 import { bindShotSequenceReviewToShotlist, reviewShotSequence, SHOT_SEQUENCE_FUNCTIONS, SHOT_SEQUENCE_MOVEMENTS, SHOT_SEQUENCE_SIZES, writeShotSequenceReview } from "./shot-sequence-review.mjs";
 import { AXIS_TYPES, bindSceneCoveragePlanToShotlist, CAMERA_HEIGHTS, CAMERA_SIDES, compileSceneCoveragePlan, FACING_DIRECTIONS, FOCUS_STRATEGIES, FRAME_REGIONS, LENS_INTENTS, LIGHT_DIRECTIONS, MEDIA_MODES, NEGATIVE_SPACE_PURPOSES, SCENE_COVERAGE_ROLES, writeSceneCoveragePlan } from "./scene-coverage-plan.mjs";
 import { attachSceneCoverageEvidence, compileSceneCoverageConformance, extractSceneCoverageEvidence, recordSceneCoverageConformanceReview, sceneCoverageEvidenceFrameIndices, sceneCoverageReviewDecisions, sceneCoverageReviewerId, sceneCoverageReviewStatuses, writeSceneCoverageConformance } from "./scene-coverage-conformance.mjs";
-import { createToolRegistry } from "./tool-registry.mjs";
+import { createToolRegistry, normalizeToolProfile } from "./tool-registry.mjs";
 import { assertLegacyToolSurfaceBudget } from "./tool-surface-policy.mjs";
 import { applyToolContracts } from "./tool-contracts.mjs";
 import { CanvasSurfaceHostError, createCanvasSurfaceHost } from "./canvas-surface-host.mjs";
@@ -1968,7 +1968,8 @@ for (const tool of tools) {
 
 assertLegacyToolSurfaceBudget(tools);
 
-const toolRegistry = createToolRegistry({ definitions: tools, invoke: callTool });
+const toolProfile = normalizeToolProfile(process.env.DIRECTORX_TOOL_PROFILE ?? "compatibility");
+const toolRegistry = createToolRegistry({ definitions: tools, invoke: callTool, profile: toolProfile });
 
 async function callTool(name, args) {
   return await withToolFailureGuard(name, args, () => executeTool(name, args));

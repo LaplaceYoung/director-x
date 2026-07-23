@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createToolRegistry } from "./tool-registry.mjs";
+import { createToolRegistry, normalizeToolProfile } from "./tool-registry.mjs";
 
 const definitions = [
   { name: "directorx_read", description: "Read", inputSchema: { type: "object", properties: {} }, outputSchema: { type: "object", properties: { ok: { type: "boolean" } }, required: ["ok"] } },
@@ -14,6 +14,28 @@ test("registers unique tools and isolates listed definitions from mutation", () 
   assert.equal(registry.size, 2);
   assert.equal(registry.has("directorx_write"), true);
   assert.equal(registry.definition("directorx_read").description, "Read");
+});
+
+test("public profile lists and calls only completed public Facades", async () => {
+  const calls = [];
+  const registry = createToolRegistry({
+    profile: "public",
+    definitions: [
+      { name: "directorx_recover_production", description: "Recover", inputSchema: { type: "object", properties: {} }, outputSchema: { type: "object", additionalProperties: true, properties: {} } },
+      { name: "directorx_internal_checkpoint", description: "Internal", inputSchema: { type: "object", properties: {} }, outputSchema: { type: "object", additionalProperties: true, properties: {} } }
+    ],
+    invoke: async (name) => { calls.push(name); return {}; }
+  });
+  assert.equal(registry.profile, "public");
+  assert.deepEqual(registry.list().map((tool) => tool.name), ["directorx_recover_production"]);
+  assert.equal(registry.definition("directorx_internal_checkpoint"), null);
+  await registry.call("directorx_recover_production");
+  await assert.rejects(() => registry.call("directorx_internal_checkpoint"), /unavailable in public/);
+  assert.deepEqual(calls, ["directorx_recover_production"]);
+});
+
+test("rejects unknown tool profiles", () => {
+  assert.throws(() => normalizeToolProfile("debug"), /Unknown Director X tool profile/);
 });
 
 test("dispatches only registered tools", async () => {
