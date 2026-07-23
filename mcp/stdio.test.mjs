@@ -166,6 +166,10 @@ test("serves MCP tools over newline-delimited stdio", async () => {
     assert.ok(generationFacade);
     assert.equal(generationFacade._meta["directorx/legacyLooseContract"], false);
     assert.ok(generationFacade.inputSchema.oneOf);
+    const candidateReviewFacade = message.result.tools.find((tool) => tool.name === "directorx_review_media_candidate");
+    assert.ok(candidateReviewFacade);
+    assert.equal(candidateReviewFacade._meta["directorx/legacyLooseContract"], false);
+    assert.ok(candidateReviewFacade.inputSchema.oneOf);
     assert.equal(message.result.tools.some((tool) => tool.name === "directorx_get_recovery_action"), false);
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_query_director_knowledge"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_query_cinematic_references"));
@@ -233,6 +237,56 @@ test("serves MCP tools over newline-delimited stdio", async () => {
     assert.match(runSnapshot.description, /MANDATORY on every resumed/);
   } finally {
     child.kill("SIGTERM");
+  }
+});
+
+test("reviews and selects an accepted media candidate atomically and idempotently", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-review-facade-"));
+  const created = await createRun({ projectPath, outcome: "Review one generated image" });
+  await updateRun({ projectPath, runId: created.runId, mutate(run) {
+    run.status = "production_in_progress";
+    run.stage = "generation";
+    run.generation = {
+      generationRequestId: "GEN-REVIEW", currency: "CNY", providerId: "test-provider", modelId: "test-model", requests: [
+        { requestId: "REQ-1", shotId: "SHOT-1", mode: "image", qualityThreshold: 0.75, maxAttempts: 2, maxCost: 2, attemptCostCap: 1, attemptCount: 1, spent: 0.5, status: "awaiting_review", selectedCandidateId: null, negativeConstraints: [], inputAnchorAssets: [], outputAnchorAssets: [], carryForwardRules: [] },
+        { requestId: "REQ-2", shotId: "SHOT-2", mode: "image", qualityThreshold: 0.75, maxAttempts: 2, maxCost: 2, attemptCostCap: 1, attemptCount: 1, spent: 0.5, status: "awaiting_review", selectedCandidateId: null, negativeConstraints: [], inputAnchorAssets: [], outputAnchorAssets: [], carryForwardRules: [] }
+      ], attempts: [],
+      candidates: [
+        { requestId: "REQ-1", attemptId: "ATT-1", candidateId: "CAN-1", assetRef: "candidate:CAN-1", previewUri: "candidate.png", mediaType: "image", actualCost: 0.5, status: "awaiting_review", scores: null, decision: null, reviewReason: null, reviewedAt: null, selectedAt: null },
+        { requestId: "REQ-2", attemptId: "ATT-2", candidateId: "CAN-2", assetRef: "candidate:CAN-2", previewUri: "candidate-2.png", mediaType: "image", actualCost: 0.5, status: "awaiting_review", scores: null, decision: null, reviewReason: null, reviewedAt: null, selectedAt: null }
+      ], totalEstimatedCost: 1, totalActualCost: 1, providerJobs: []
+    };
+    run.canvas.nodes.push({ id: "candidate:CAN-1", type: "image", label: "Candidate", detail: "awaiting review", stage: "generation", status: "active", updatedAt: new Date().toISOString() });
+    run.canvas.nodes.push({ id: "candidate:CAN-2", type: "image", label: "Candidate 2", detail: "awaiting review", stage: "generation", status: "active", updatedAt: new Date().toISOString() });
+    return run;
+  } });
+  const child = spawn(process.execPath, [new URL("./server.mjs", import.meta.url).pathname], { stdio: ["pipe", "pipe", "pipe"] });
+  let output = ""; child.stdout.setEncoding("utf8"); child.stdout.on("data", (chunk) => { output += chunk; });
+  const review = { projectPath, runId: created.runId, action: "review", requestId: "REQ-1", candidateId: "CAN-1", scores: { promptMatch: 0.9, visualQuality: 0.9, continuity: 0.85, motion: 0.8, editFit: 0.9 }, evidence: [], defects: [], decision: "accept", reason: "Meets the approved image quality threshold." };
+  child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 180, method: "tools/call", params: { name: "directorx_review_media_candidate", arguments: review } })}\n`);
+  try {
+    await waitFor(() => messages(output).some((item) => item.id === 180), 1500);
+    const accepted = messages(output).find((item) => item.id === 180).result.structuredContent;
+    assert.equal(accepted.candidateStatus, "selected");
+    assert.equal(accepted.selected, true);
+    assert.equal(accepted.nextRequiredAction, "directorx_build_rough_cut");
+    child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 181, method: "tools/call", params: { name: "directorx_review_media_candidate", arguments: review } })}\n`);
+    await waitFor(() => messages(output).some((item) => item.id === 181), 1500);
+    const replay = messages(output).find((item) => item.id === 181).result.structuredContent;
+    assert.equal(replay.candidateStatus, "selected");
+    const rejected = { ...review, requestId: "REQ-2", candidateId: "CAN-2", scores: { promptMatch: 0.7, visualQuality: 0.6, continuity: 0.8, motion: 0.8, editFit: 0.55 }, evidence: [{ timeSeconds: 0, frameRef: "candidate:CAN-2", dimension: "composition", observation: "The product is cropped too tightly." }], defects: [{ code: "composition", severity: "major", timeSeconds: 0, description: "The product is cropped too tightly.", repairAction: "widen framing" }], decision: "retry", reason: "Composition needs one bounded correction.", primaryDefect: "composition" };
+    child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 182, method: "tools/call", params: { name: "directorx_review_media_candidate", arguments: rejected } })}\n`);
+    await waitFor(() => messages(output).some((item) => item.id === 182), 1500);
+    const repair = messages(output).find((item) => item.id === 182).result.structuredContent;
+    assert.equal(repair.candidateStatus, "needs_action");
+    assert.equal(repair.repair.disposition, "retry");
+    assert.equal(repair.repair.controlVariable, "composition_clause");
+    const persisted = JSON.parse(await readFile(join(projectPath, ".directorx", "plugin-runs", `${created.runId}.json`), "utf8"));
+    assert.equal(persisted.events.filter((item) => item.type === "generation.candidate.selected").length, 1);
+    assert.equal(persisted.events.filter((item) => item.type === "generation.repair.compiled").length, 1);
+  } finally {
+    child.kill("SIGTERM");
+    await rm(projectPath, { recursive: true, force: true });
   }
 });
 

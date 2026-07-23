@@ -2,11 +2,11 @@
 
 ## Current loop
 
-- Loop: 05
+- Loop: 06
 - Date: 2026-07-23
-- Commit baseline: `538be23`
+- Commit baseline: `25242f0`
 - Release baseline: `v0.1.15`
-- Status: `GENERATION_FACADE_IMPLEMENTED`
+- Status: `CANDIDATE_REVIEW_FACADE_IMPLEMENTED`
 - Current focus: plugin discovery, MCP surface, installation truth, and recovery UX
 
 ## Last completed work
@@ -18,7 +18,8 @@
 - Added the `directorx_resume_production` durable resume facade.
 - Added the `directorx_research_video` reference-first research facade.
 - Added the `directorx_generate_media` inspect/submit/poll facade over the existing billing-safe Provider gateway.
-- Full Loop 05 CI passed with 575 tests.
+- Added the `directorx_review_media_candidate` inspect/review facade with atomic accept-and-select and evidence-bound repair compilation.
+- Full Loop 06 CI passed with 576 tests.
 
 ## This loop
 
@@ -31,7 +32,10 @@
 - Implemented a compact generation projection that does not expose credentials or the full Run.
 - Reused the existing durable submission reservation, official price quote, model approval, session credential, and duplicate-billing protections.
 - Verified the read-only `inspect` action against a real durable Run without issuing a Provider request.
+- Made candidate review replay-safe through a stable review fingerprint.
+- Made accepted candidates enter editing in the same durable update.
+- Made rejected candidates produce one single-variable repair plan without consuming another paid attempt.
 
 ## Exit condition for the next loop
 
-Implement and verify `directorx_review_media_candidate` or the public `start` boundary while preserving the existing legacy compatibility route. Do not claim the public profile is complete until a user can traverse a full public lifecycle path.
+Implement and verify the public `start` boundary, then remove remaining low-level generation-attempt setup from the public lifecycle. Do not claim the public profile is complete until a user can traverse start → research → generation → review → edit → delivery.

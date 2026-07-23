@@ -6,9 +6,9 @@ Measured through the stdio `tools/list` response from `mcp/server.mjs`:
 
 ```json
 {
-  "toolCount": 181,
+  "toolCount": 182,
   "publicFacadeNamesReserved": 16,
-  "implementedPublicFacades": 5,
+  "implementedPublicFacades": 6,
   "legacyLooseContracts": 174,
   "modelAndAppExplicitVisibility": 2,
   "appOnlyExplicitVisibility": 1
@@ -37,8 +37,8 @@ The current implementation treats all tools as registered and callable by the sa
 
 `mcp/tool-registry.mjs` now supports `compatibility` and `public` profiles. The default remains `compatibility`; `DIRECTORX_TOOL_PROFILE=public` lists and dispatches only names in the reserved public Facade set. The boundary is enforced in both `list()` and `call()`.
 
-The public profile currently contains the completed `directorx_recover_production`, `directorx_get_production_status`, `directorx_resume_production`, `directorx_research_video`, and `directorx_generate_media` Facades. Generation provides a strict `inspect/submit/poll` boundary over the existing Provider gateway; it preserves durable submission reservation, official-price and approved-route checks, session-only credentials, and duplicate-billing protection. This remains a migration slice, not a claim that the public profile is production-complete.
+The public profile currently contains six completed Facades: recovery, status, resume, research, generation, and candidate review. `directorx_review_media_candidate` atomically accepts and selects passing candidates, while failed candidates receive a durable single-variable repair plan. A stable review fingerprint makes identical replays no-ops and blocks evidence overwrite. This remains a migration slice, not a claim that the public profile is production-complete.
 
 ## Next implementation slice
 
-Add `directorx_review_media_candidate` so generated candidates can move through review, retry/reroute, and selection without exposing the low-level draw-loop tools. Then implement the public start boundary and exercise the full public lifecycle.
+Implement the public start boundary and absorb generation-attempt preparation into the public lifecycle so retry plans do not need a low-level attempt tool. Then exercise the complete public path through editing and delivery.

@@ -6,8 +6,8 @@ None observed in the repository-only audit. A live-host installation test is sti
 
 ## P1
 
-1. Implement `directorx_review_media_candidate` with exact outputs for accept, retry, reroute, and stop decisions while preserving the existing draw-loop cost caps.
-2. Implement the public `start` Facade and exercise start → research → generation → review as one durable lifecycle. `get_production_status`, `resume_production`, `research_video`, and `generate_media` are complete migration slices.
+1. Implement the public `start` Facade and exercise start → research → generation → review as one durable lifecycle. Status, resume, research, generation, and candidate review are complete migration slices.
+2. Absorb bounded generation-attempt creation into the public generation/review lifecycle so retries do not expose a low-level tool.
 3. Make the installed-cache and fresh Codex session test executable and record elapsed time to first successful call.
 4. Convert the remaining recovery, start, resume, and progress skill instructions to the public Facade contract.
 

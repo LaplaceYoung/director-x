@@ -52,6 +52,7 @@ const IDEMPOTENT_WRITE_TOOLS = new Set([
   "directorx_submit_provider_job",
   "directorx_submit_media_generation",
   "directorx_generate_media",
+  "directorx_review_media_candidate",
   "directorx_install_builtin_media_runtime"
 ]);
 

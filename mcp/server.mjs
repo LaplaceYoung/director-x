@@ -591,6 +591,22 @@ const rawTools = [
     annotations: writeAnnotations()
   },
   {
+    name: "directorx_review_media_candidate",
+    description: "Inspect or atomically review one generated image/video candidate. Accepted candidates are selected for editing in the same call; failed candidates receive one evidence-bound, single-variable repair plan without consuming another generation attempt.",
+    inputSchema: { oneOf: [
+      objectSchema({ projectPath: stringSchema(), runId: stringSchema(), action: { const: "inspect", type: "string" }, candidateId: { type: "string" } }, ["projectPath", "runId", "action"]),
+      objectSchema({
+        projectPath: stringSchema(), runId: stringSchema(), action: { const: "review", type: "string" }, requestId: stringSchema(), candidateId: stringSchema(),
+        scores: objectSchema({ promptMatch: { type: "number", minimum: 0, maximum: 1 }, visualQuality: { type: "number", minimum: 0, maximum: 1 }, continuity: { type: "number", minimum: 0, maximum: 1 }, motion: { type: "number", minimum: 0, maximum: 1 }, editFit: { type: "number", minimum: 0, maximum: 1 }, worldConsistency: { type: "number", minimum: 0, maximum: 1 }, actionCompleteness: { type: "number", minimum: 0, maximum: 1 }, audioVisualSync: { type: "number", minimum: 0, maximum: 1 } }, ["promptMatch", "visualQuality", "continuity", "motion", "editFit"]),
+        evidence: { type: "array", items: objectSchema({ timeSeconds: { type: "number", minimum: 0 }, endTimeSeconds: { type: "number", minimum: 0 }, frameRef: stringSchema(), dimension: stringSchema(), observation: stringSchema() }, ["timeSeconds", "frameRef", "dimension", "observation"]) },
+        defects: { type: "array", items: objectSchema({ code: stringSchema(), severity: { enum: ["info", "minor", "major", "critical"], type: "string" }, timeSeconds: { type: "number", minimum: 0 }, description: stringSchema(), repairAction: stringSchema() }, ["code", "severity", "timeSeconds", "description", "repairAction"]) },
+        decision: { enum: ["accept", "retry", "reroute", "add_reference", "split", "simplify", "request_approval", "terminate"], type: "string" }, reason: stringSchema(), failureType: { type: "string" }, promptDelta: { type: "string" }, primaryDefect: { enum: generationRepairDefectTypes, type: "string" }, evidenceRefs: { type: "array", items: stringSchema() }, preserveDimensions: { type: "array", items: stringSchema() }
+      }, ["projectPath", "runId", "action", "requestId", "candidateId", "scores", "evidence", "defects", "decision", "reason"])
+    ] },
+    outputSchema: productionCandidateReviewOutputSchema(),
+    annotations: writeAnnotations()
+  },
+  {
     name: "directorx_recover_production",
     description: "Inspect or atomically apply one Director X recovery intent. Inspect returns a compact opaque token; apply binds that token to the exact active failure, writes one checkpoint, clears the gate once, and returns the same result on replay.",
     inputSchema: { oneOf: [
@@ -4196,32 +4212,7 @@ async function executeTool(name, args) {
     }, "generation.candidate.reviewed", `${args.candidateId} · ${args.decision}`);
   }
   if (name === "directorx_compile_generation_repair") {
-    const current = await readRun(args);
-    const plan = compileGenerationRepairPlan(current, args);
-    const written = await writeGenerationRepairArtifacts({ ...args, plan });
-    const jsonRecord = await inspectArtifact({ ...args, artifactRef: written.json.artifactRef, path: written.json.path, stage: "generation", mediaKind: "document", metadata: { internal: true, sourceArtifactRefs: [`candidate:${args.candidateId}`, "shot_review_report.json"] } });
-    const summaryRecord = await inspectArtifact({ ...args, artifactRef: written.summary.artifactRef, path: written.summary.path, stage: "generation", mediaKind: "document", metadata: { canvasEssential: true, sourceArtifactRefs: [`candidate:${args.candidateId}`, written.json.artifactRef] } });
-    const snapshot = await updateRun({ ...args, mutate(run) {
-      const candidate = run.generation?.candidates?.find((item) => item.candidateId === args.candidateId && item.requestId === args.requestId);
-      if (!candidate || candidate.reviewedAt !== plan.sourceReview.reviewedAt || candidate.decision !== plan.sourceReview.decision) throw new Error("Candidate review changed while the generation repair plan was being compiled; compile again from the latest review.");
-      run.generationRepairs ??= {};
-      if (run.generationRepairs[plan.repairId]) throw new Error(`Duplicate generation repair plan: ${plan.repairId}`);
-      run.generationRepairs[plan.repairId] = plan;
-      candidate.repairPlanIds = [...new Set([...(candidate.repairPlanIds ?? []), plan.repairId])];
-      run.artifacts ??= {};
-      run.artifacts[jsonRecord.artifactRef] = jsonRecord;
-      run.artifacts[summaryRecord.artifactRef] = summaryRecord;
-      upsertExecutionCanvasNode(run, {
-        id: `generation-repair:${plan.repairId}`, type: "artifact", label: `生成修复 · ${plan.shotId}`,
-        detail: `${plan.diagnosis.primaryDefect} · 只改 ${plan.repair.controlVariable} · ${plan.execution.disposition}`,
-        stage: "generation", status: plan.execution.disposition === "request_approval" ? "blocked" : "complete",
-        artifactRef: summaryRecord.artifactRef,
-        metadata: { repairId: plan.repairId, sourceCandidateId: plan.sourceCandidateId, action: plan.repair.action, controlVariable: plan.repair.controlVariable, nextTool: plan.execution.nextTool, requiresNativeApproval: plan.execution.requiresNativeApproval, sourceArtifactRefs: [`candidate:${args.candidateId}`, jsonRecord.artifactRef] }
-      }, `candidate:${args.candidateId}`);
-      run.events.push(event(run, "generation.repair.compiled", "generation", `${plan.repairId} · ${plan.repair.action} · ${plan.repair.controlVariable}`));
-      return run;
-    } });
-    return await withBrowserCanvas(publicSnapshot(snapshot), args);
+    return await compileGenerationRepair(args);
   }
   if (name === "directorx_select_generation_candidate") {
     return await mutateGeneration(args, (run) => {
@@ -4425,6 +4416,7 @@ async function executeTool(name, args) {
   }
   if (name === "directorx_research_video") return await researchVideo(args);
   if (name === "directorx_generate_media") return await generateMedia(args);
+  if (name === "directorx_review_media_candidate") return await reviewMediaCandidate(args);
   if (name === "directorx_plan_production_team") {
     const current = await readRun(args);
     if (!current.executionGraph) throw new Error("Register execution_graph.json before planning the DX production team.");
@@ -5048,6 +5040,127 @@ async function generateMedia(args) {
     blockers,
     nextRequiredAction,
     browserCanvasUrl: canvasResponse.browserCanvasUrl
+  };
+}
+
+async function reviewMediaCandidate(args) {
+  let current = await readRun(args);
+  let canvasResponse;
+  let candidate = findGenerationCandidate(current, args.candidateId);
+
+  if (args.action === "review") {
+    if (!candidate || candidate.requestId !== args.requestId) throw new Error(`Unknown candidate ${args.candidateId} for ${args.requestId}.`);
+    const reviewFingerprint = generationReviewFingerprint(args);
+    if (candidate.reviewFingerprint && candidate.reviewFingerprint !== reviewFingerprint) {
+      throw new Error("This candidate already has a different durable review. Create a repair or a new candidate instead of overwriting reviewer evidence.");
+    }
+    if (candidate.reviewedAt && !candidate.reviewFingerprint && !matchesExistingCandidateReview(candidate, args)) {
+      throw new Error("This candidate already has reviewer evidence from the compatibility workflow. Inspect it or create a repair; do not overwrite it through the public Facade.");
+    }
+    if (!candidate.reviewFingerprint) {
+      canvasResponse = await mutateGeneration(args, (run) => {
+        const reviewed = findGenerationCandidate(run, args.candidateId);
+        if (!reviewed.reviewedAt) reviewGenerationCandidate(run, args);
+        reviewed.reviewFingerprint = reviewFingerprint;
+        if (args.decision === "accept" && reviewed.status !== "selected") selectGenerationCandidate(run, args);
+        const node = run.canvas.nodes.find((item) => item.id === `candidate:${args.candidateId}`);
+        if (node) {
+          node.status = args.decision === "accept" ? "complete" : args.decision === "terminate" ? "failed" : "blocked";
+          node.detail = `${args.decision} · ${reviewed.qualityScore.toFixed(2)} · ${args.reason}`;
+          node.metadata = { ...node.metadata, scores: args.scores, evidence: args.evidence ?? [], defects: args.defects ?? [], criticalFloor: reviewed.criticalFloor, decision: args.decision, failureType: args.failureType, promptDelta: args.promptDelta, selected: args.decision === "accept" };
+        }
+        return run;
+      }, args.decision === "accept" ? "generation.candidate.selected" : "generation.candidate.reviewed", `${args.candidateId} · ${args.decision}`);
+    }
+
+    current = await readRun(args);
+    candidate = findGenerationCandidate(current, args.candidateId);
+    if (!["accept", "terminate"].includes(candidate.decision)) {
+      const repairId = `review-${reviewFingerprint.slice(7, 31)}`;
+      if (!current.generationRepairs?.[repairId]) {
+        canvasResponse = await compileGenerationRepair({ ...args, repairId });
+        current = await readRun(args);
+        candidate = findGenerationCandidate(current, args.candidateId);
+      }
+    }
+  }
+
+  if (!canvasResponse) canvasResponse = await withBrowserCanvas(publicSnapshot(current), args);
+  return summarizeCandidateReview(current, candidate, canvasResponse.browserCanvasUrl);
+}
+
+async function compileGenerationRepair(args) {
+  const current = await readRun(args);
+  const existing = current.generationRepairs?.[args.repairId];
+  if (existing) return await withBrowserCanvas(publicSnapshot(current), args);
+  const plan = compileGenerationRepairPlan(current, args);
+  const written = await writeGenerationRepairArtifacts({ ...args, plan });
+  const jsonRecord = await inspectArtifact({ ...args, artifactRef: written.json.artifactRef, path: written.json.path, stage: "generation", mediaKind: "document", metadata: { internal: true, sourceArtifactRefs: [`candidate:${args.candidateId}`, "shot_review_report.json"] } });
+  const summaryRecord = await inspectArtifact({ ...args, artifactRef: written.summary.artifactRef, path: written.summary.path, stage: "generation", mediaKind: "document", metadata: { canvasEssential: true, sourceArtifactRefs: [`candidate:${args.candidateId}`, written.json.artifactRef] } });
+  const snapshot = await updateRun({ ...args, mutate(run) {
+    const candidate = findGenerationCandidate(run, args.candidateId);
+    if (!candidate || candidate.reviewedAt !== plan.sourceReview.reviewedAt || candidate.decision !== plan.sourceReview.decision) throw new Error("Candidate review changed while the generation repair plan was being compiled; compile again from the latest review.");
+    run.generationRepairs ??= {};
+    if (run.generationRepairs[plan.repairId]) return run;
+    run.generationRepairs[plan.repairId] = plan;
+    candidate.repairPlanIds = [...new Set([...(candidate.repairPlanIds ?? []), plan.repairId])];
+    run.artifacts ??= {};
+    run.artifacts[jsonRecord.artifactRef] = jsonRecord;
+    run.artifacts[summaryRecord.artifactRef] = summaryRecord;
+    upsertExecutionCanvasNode(run, {
+      id: `generation-repair:${plan.repairId}`, type: "artifact", label: `生成修复 · ${plan.shotId}`,
+      detail: `${plan.diagnosis.primaryDefect} · 只改 ${plan.repair.controlVariable} · ${plan.execution.disposition}`,
+      stage: "generation", status: plan.execution.disposition === "request_approval" ? "blocked" : "complete",
+      artifactRef: summaryRecord.artifactRef,
+      metadata: { repairId: plan.repairId, sourceCandidateId: plan.sourceCandidateId, action: plan.repair.action, controlVariable: plan.repair.controlVariable, nextTool: plan.execution.nextTool, requiresNativeApproval: plan.execution.requiresNativeApproval, sourceArtifactRefs: [`candidate:${args.candidateId}`, jsonRecord.artifactRef] }
+    }, `candidate:${args.candidateId}`);
+    run.events.push(event(run, "generation.repair.compiled", "generation", `${plan.repairId} · ${plan.repair.action} · ${plan.repair.controlVariable}`));
+    return run;
+  } });
+  return await withBrowserCanvas(publicSnapshot(snapshot), args);
+}
+
+function findGenerationCandidate(run, candidateId) {
+  const candidates = run.generation?.candidates ?? [];
+  if (candidateId) return candidates.find((item) => item.candidateId === candidateId) ?? null;
+  return candidates.find((item) => item.status === "awaiting_review") ?? candidates.at(-1) ?? null;
+}
+
+function generationReviewFingerprint(args) {
+  const value = { requestId: args.requestId, candidateId: args.candidateId, scores: args.scores, evidence: args.evidence ?? [], defects: args.defects ?? [], decision: args.decision, reason: args.reason, failureType: args.failureType ?? null, promptDelta: args.promptDelta ?? null, primaryDefect: args.primaryDefect ?? null, evidenceRefs: args.evidenceRefs ?? [], preserveDimensions: args.preserveDimensions ?? [] };
+  return `sha256:${createHash("sha256").update(JSON.stringify(value)).digest("hex")}`;
+}
+
+function matchesExistingCandidateReview(candidate, args) {
+  const existing = { scores: candidate.scores, evidence: candidate.evidence ?? [], defects: candidate.defects ?? [], decision: candidate.decision, reason: candidate.reviewReason, failureType: candidate.failureType ?? null, promptDelta: candidate.promptDelta ?? null };
+  const requested = { scores: args.scores, evidence: args.evidence ?? [], defects: args.defects ?? [], decision: args.decision, reason: args.reason, failureType: args.failureType ?? null, promptDelta: args.promptDelta ?? null };
+  return JSON.stringify(existing) === JSON.stringify(requested);
+}
+
+function summarizeCandidateReview(run, candidate, browserCanvasUrl) {
+  const pendingCandidateIds = (run.generation?.candidates ?? []).filter((item) => item.status === "awaiting_review").map((item) => item.candidateId);
+  const repairId = candidate?.repairPlanIds?.at(-1) ?? null;
+  const repair = repairId ? run.generationRepairs?.[repairId] ?? null : null;
+  let nextRequiredAction = "directorx_generate_media";
+  if (candidate?.status === "selected") nextRequiredAction = "directorx_build_rough_cut";
+  else if (candidate?.status === "awaiting_review") nextRequiredAction = "directorx_review_media_candidate:review";
+  else if (repair) nextRequiredAction = repair.execution.nextTool;
+  else if (candidate?.status === "rejected") nextRequiredAction = "directorx_generate_media:inspect";
+  return {
+    schemaVersion: "1.0",
+    runId: run.runId,
+    status: run.status,
+    stage: run.stage,
+    candidateId: candidate?.candidateId ?? null,
+    candidateStatus: candidate?.status ?? null,
+    decision: candidate?.decision ?? null,
+    qualityScore: candidate?.qualityScore ?? null,
+    criticalFloor: candidate?.criticalFloor ?? null,
+    selected: candidate?.status === "selected",
+    repair: repair ? { repairId: repair.repairId, disposition: repair.execution.disposition, controlVariable: repair.repair.controlVariable, nextTool: repair.execution.nextTool, requiresNativeApproval: repair.execution.requiresNativeApproval } : null,
+    pendingCandidateIds,
+    nextRequiredAction,
+    browserCanvasUrl
   };
 }
 
@@ -5701,6 +5814,26 @@ function productionGenerationOutputSchema() {
     nextRequiredAction: stringSchema(),
     browserCanvasUrl: stringSchema()
   }, ["schemaVersion", "runId", "status", "stage", "providerId", "modelId", "requestCount", "attemptCount", "jobCount", "candidateCount", "activeJobs", "completedCandidateIds", "blockers", "nextRequiredAction", "browserCanvasUrl"]);
+}
+function productionCandidateReviewOutputSchema() {
+  const nullableString = { anyOf: [stringSchema(), { type: "null" }] };
+  const nullableScore = { anyOf: [{ type: "number", minimum: 0, maximum: 1 }, { type: "null" }] };
+  return objectSchema({
+    schemaVersion: { const: "1.0", type: "string" },
+    runId: stringSchema(),
+    status: stringSchema(),
+    stage: stringSchema(),
+    candidateId: nullableString,
+    candidateStatus: nullableString,
+    decision: nullableString,
+    qualityScore: nullableScore,
+    criticalFloor: nullableScore,
+    selected: { type: "boolean" },
+    repair: { anyOf: [objectSchema({ repairId: stringSchema(), disposition: stringSchema(), controlVariable: stringSchema(), nextTool: stringSchema(), requiresNativeApproval: { type: "boolean" } }, ["repairId", "disposition", "controlVariable", "nextTool", "requiresNativeApproval"]), { type: "null" }] },
+    pendingCandidateIds: { type: "array", items: stringSchema() },
+    nextRequiredAction: stringSchema(),
+    browserCanvasUrl: stringSchema()
+  }, ["schemaVersion", "runId", "status", "stage", "candidateId", "candidateStatus", "decision", "qualityScore", "criticalFloor", "selected", "repair", "pendingCandidateIds", "nextRequiredAction", "browserCanvasUrl"]);
 }
 function nativeQuestionSchema() {
   return objectSchema({
