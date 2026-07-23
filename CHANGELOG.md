@@ -15,6 +15,7 @@ All notable public changes to Director X are recorded here.
 - Added the second completed Facade to the opt-in public tool profile while preserving compatibility mode.
 - Added `directorx_resume_production` to rebind an existing Run without duplicating checkpoints or production work.
 - Added `directorx_research_video` to start or resume the reference-first research lane with a compact parallel handoff.
+- Added `directorx_generate_media` as a strict inspect/submit/poll Facade over the existing billing-safe Provider gateway.
 
 ### Changed
 

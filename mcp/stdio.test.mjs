@@ -162,6 +162,10 @@ test("serves MCP tools over newline-delimited stdio", async () => {
     const researchFacade = message.result.tools.find((tool) => tool.name === "directorx_research_video");
     assert.ok(researchFacade);
     assert.equal(researchFacade._meta["directorx/legacyLooseContract"], false);
+    const generationFacade = message.result.tools.find((tool) => tool.name === "directorx_generate_media");
+    assert.ok(generationFacade);
+    assert.equal(generationFacade._meta["directorx/legacyLooseContract"], false);
+    assert.ok(generationFacade.inputSchema.oneOf);
     assert.equal(message.result.tools.some((tool) => tool.name === "directorx_get_recovery_action"), false);
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_query_director_knowledge"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_query_cinematic_references"));
@@ -313,6 +317,11 @@ test("prepares the complete minimum Intake contract through one MCP tool call", 
     assert.equal(researched.researchStatus, "reference_research_started");
     assert.equal(researched.taskCount, 2);
     assert.deepEqual(researched.generationBlockers, ["budget", "image_model", "video_model", "voice_model"]);
+    const generation = (await send(504, "directorx_generate_media", { projectPath, runId: run.runId, action: "inspect" })).result.structuredContent;
+    assert.equal(generation.runId, run.runId);
+    assert.equal(generation.requestCount, 0);
+    assert.deepEqual(generation.blockers, ["generation_plan_missing"]);
+    assert.equal(generation.nextRequiredAction, "directorx_register_prompt_bound_generation_plan");
   } finally {
     child.kill("SIGTERM");
     await rm(projectPath, { recursive: true, force: true });

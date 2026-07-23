@@ -6,8 +6,8 @@ None observed in the repository-only audit. A live-host installation test is sti
 
 ## P1
 
-1. Add a transport-enforced audience/profile boundary. Default compatibility behavior must remain available during migration, but the public profile must not expose or call unlisted legacy tools.
-2. Implement the next complete lifecycle Facade (`start`) or a generation/review Facade with exact output schemas and durable Run equivalence tests. `get_production_status`, `resume_production`, and `research_video` are complete.
+1. Implement `directorx_review_media_candidate` with exact outputs for accept, retry, reroute, and stop decisions while preserving the existing draw-loop cost caps.
+2. Implement the public `start` Facade and exercise start → research → generation → review as one durable lifecycle. `get_production_status`, `resume_production`, `research_video`, and `generate_media` are complete migration slices.
 3. Make the installed-cache and fresh Codex session test executable and record elapsed time to first successful call.
 4. Convert the remaining recovery, start, resume, and progress skill instructions to the public Facade contract.
 

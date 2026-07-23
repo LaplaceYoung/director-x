@@ -577,6 +577,20 @@ const rawTools = [
     annotations: writeAnnotations()
   },
   {
+    name: "directorx_generate_media",
+    description: "Inspect or execute one approved image/video generation attempt through the existing Director X Provider gateway. Submit and poll are idempotent, keep credentials session-only, preserve official pricing and model approvals, and return only the compact job/candidate state needed to continue production.",
+    inputSchema: { oneOf: [
+      objectSchema({ projectPath: stringSchema(), runId: stringSchema(), action: { const: "inspect", type: "string" } }, ["projectPath", "runId", "action"]),
+      objectSchema({
+        projectPath: stringSchema(), runId: stringSchema(), action: { const: "submit", type: "string" }, requestId: stringSchema(), attemptId: stringSchema(), candidateId: stringSchema(), idempotencyKey: stringSchema(), accountedCost: { type: "number", minimum: 0 },
+        negativePrompt: { type: "string" }, aspectRatio: { type: "string" }, size: { type: "string" }, resolution: { type: "string" }, durationSeconds: { type: "number", minimum: 0 }, imagePaths: { type: "array", items: stringSchema() }, imageUrls: { type: "array", items: stringSchema() }, endImagePath: { type: "string" }, endImageUrl: { type: "string" }, videoPath: { type: "string" }, videoUrl: { type: "string" }, outputCount: { type: "integer", minimum: 1, maximum: 8 }, generateAudio: { type: "boolean" }, providerOptions: { type: "object" }, timeoutMs: { type: "integer", minimum: 1000, maximum: 300000 }
+      }, ["projectPath", "runId", "action", "requestId", "attemptId", "candidateId", "idempotencyKey"]),
+      objectSchema({ projectPath: stringSchema(), runId: stringSchema(), action: { const: "poll", type: "string" }, providerJobId: stringSchema(), timeoutMs: { type: "integer", minimum: 1000, maximum: 300000 } }, ["projectPath", "runId", "action", "providerJobId"])
+    ] },
+    outputSchema: productionGenerationOutputSchema(),
+    annotations: writeAnnotations()
+  },
+  {
     name: "directorx_recover_production",
     description: "Inspect or atomically apply one Director X recovery intent. Inspect returns a compact opaque token; apply binds that token to the exact active failure, writes one checkpoint, clears the gate once, and returns the same result on replay.",
     inputSchema: { oneOf: [
@@ -4410,6 +4424,7 @@ async function executeTool(name, args) {
     } }), args);
   }
   if (name === "directorx_research_video") return await researchVideo(args);
+  if (name === "directorx_generate_media") return await generateMedia(args);
   if (name === "directorx_plan_production_team") {
     const current = await readRun(args);
     if (!current.executionGraph) throw new Error("Register execution_graph.json before planning the DX production team.");
@@ -4981,6 +4996,58 @@ async function researchVideo(args) {
     nextRequiredAction: response.resumeActionPlan?.productionBootstrap?.nextRequiredAction ?? "continue_research",
     browserCanvasUrl: response.browserCanvasUrl,
     resumeActionPlan: response.resumeActionPlan
+  };
+}
+
+async function generateMedia(args) {
+  let canvasResponse;
+  if (args.action === "submit") canvasResponse = await executeDirectMediaSubmission(args);
+  else if (args.action === "poll") canvasResponse = await executeDirectMediaPoll(args);
+  else canvasResponse = await withBrowserCanvas(publicSnapshot(await readRun(args)), args);
+
+  const run = await readRun(args);
+  const generation = run.generation ?? null;
+  const jobs = generation?.providerJobs ?? [];
+  const candidates = generation?.candidates ?? [];
+  const activeJobs = jobs.filter((job) => !["succeeded", "failed", "cancelled"].includes(job.status));
+  const inputRequired = activeJobs.find((job) => job.status === "input_required");
+  const runningAttempts = (generation?.attempts ?? []).filter((attempt) => attempt.status === "running");
+  const blockers = [];
+  let nextRequiredAction;
+
+  if (!generation) {
+    blockers.push("generation_plan_missing");
+    nextRequiredAction = "directorx_register_prompt_bound_generation_plan";
+  } else if (inputRequired) {
+    blockers.push(`provider_input_required:${inputRequired.providerJobId}`);
+    nextRequiredAction = "resolve_native_provider_input";
+  } else if (activeJobs.length) {
+    nextRequiredAction = "directorx_generate_media:poll";
+  } else if (candidates.some((candidate) => candidate.status !== "selected")) {
+    nextRequiredAction = "directorx_review_media_candidate";
+  } else if (runningAttempts.length) {
+    nextRequiredAction = "directorx_generate_media:submit";
+  } else {
+    blockers.push("generation_attempt_missing");
+    nextRequiredAction = "directorx_begin_generation_attempt";
+  }
+
+  return {
+    schemaVersion: "1.0",
+    runId: run.runId,
+    status: run.status,
+    stage: run.stage,
+    providerId: generation?.providerId ?? null,
+    modelId: generation?.modelId ?? null,
+    requestCount: generation?.requests?.length ?? 0,
+    attemptCount: generation?.attempts?.length ?? 0,
+    jobCount: jobs.length,
+    candidateCount: candidates.length,
+    activeJobs: activeJobs.map((job) => ({ providerJobId: job.providerJobId ?? job.submissionId, status: job.status, progress: job.progress ?? 0 })),
+    completedCandidateIds: candidates.filter((candidate) => candidate.status !== "rejected").map((candidate) => candidate.candidateId),
+    blockers,
+    nextRequiredAction,
+    browserCanvasUrl: canvasResponse.browserCanvasUrl
   };
 }
 
@@ -5615,6 +5682,25 @@ function productionResearchOutputSchema() {
     browserCanvasUrl: stringSchema(),
     resumeActionPlan: looseObjectSchema()
   }, ["schemaVersion", "runId", "status", "stage", "researchStatus", "generationBlockers", "taskCount", "readyBatchId", "nextRequiredAction", "browserCanvasUrl", "resumeActionPlan"]);
+}
+function productionGenerationOutputSchema() {
+  return objectSchema({
+    schemaVersion: { const: "1.0", type: "string" },
+    runId: stringSchema(),
+    status: stringSchema(),
+    stage: stringSchema(),
+    providerId: { anyOf: [stringSchema(), { type: "null" }] },
+    modelId: { anyOf: [stringSchema(), { type: "null" }] },
+    requestCount: { type: "integer", minimum: 0 },
+    attemptCount: { type: "integer", minimum: 0 },
+    jobCount: { type: "integer", minimum: 0 },
+    candidateCount: { type: "integer", minimum: 0 },
+    activeJobs: { type: "array", items: objectSchema({ providerJobId: stringSchema(), status: stringSchema(), progress: { type: "number", minimum: 0, maximum: 1 } }, ["providerJobId", "status", "progress"]) },
+    completedCandidateIds: { type: "array", items: stringSchema() },
+    blockers: { type: "array", items: stringSchema() },
+    nextRequiredAction: stringSchema(),
+    browserCanvasUrl: stringSchema()
+  }, ["schemaVersion", "runId", "status", "stage", "providerId", "modelId", "requestCount", "attemptCount", "jobCount", "candidateCount", "activeJobs", "completedCandidateIds", "blockers", "nextRequiredAction", "browserCanvasUrl"]);
 }
 function nativeQuestionSchema() {
   return objectSchema({

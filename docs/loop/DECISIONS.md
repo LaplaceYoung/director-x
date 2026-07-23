@@ -35,3 +35,9 @@ Reason: resume is a recovery boundary; duplicating a Run or replaying completed 
 Decision: `directorx_research_video` can start only after the existing minimum Intake and approval-independent research prerequisites are valid. Provider keys and paid generation approvals remain deferred.
 
 Reason: reference download, media understanding, asset search, and first-script work must begin before provider setup becomes a production black hole.
+
+## 2026-07-23 — Generation Facade reuses the paid-call boundary
+
+Decision: `directorx_generate_media` exposes `inspect`, `submit`, and `poll`, but delegates paid execution to the existing durable Provider gateway instead of implementing a second generation path.
+
+Reason: generation must retain official-price checks, exact approved provider/model routes, session-only credentials, submission reservation, and idempotency protection. A new orchestration path would increase duplicate-billing and state-divergence risk.

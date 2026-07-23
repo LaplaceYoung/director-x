@@ -13,7 +13,7 @@ The main skill establishes the correct order: preflight → side Browser canvas 
 
 ## Friction
 
-- 180 compatibility-mode tool descriptors make the model-facing surface harder to understand than the product itself.
+- 181 compatibility-mode tool descriptors make the model-facing surface harder to understand than the product itself.
 - Many internal activity tools can still be selected directly by name.
 - The distinction between “production action” and “Canvas/app support” is not enforced at transport level.
 - Installation success and live-host readiness are documented, but a clean-host timing benchmark is missing.
@@ -24,3 +24,4 @@ The main skill establishes the correct order: preflight → side Browser canvas 
 - An unavailable legacy name fails as unavailable instead of executing silently.
 - Internal activity remains visible to the Canvas/app profile.
 - Public results explain the next user decision without exposing provider or persistence internals.
+- Generation inspection returns request, attempt, job, candidate, blocker, and next-action counts without leaking credentials or the full Run.

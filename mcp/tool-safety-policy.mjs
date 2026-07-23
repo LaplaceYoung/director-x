@@ -35,6 +35,7 @@ const OPEN_WORLD_TOOLS = new Set([
   "directorx_acquire_web_image_asset",
   "directorx_submit_media_generation",
   "directorx_poll_media_generation",
+  "directorx_generate_media",
   "directorx_generate_mosi_voiceover",
   "directorx_install_builtin_media_runtime"
 ]);
@@ -50,6 +51,7 @@ const IDEMPOTENT_WRITE_TOOLS = new Set([
   "directorx_recover_production",
   "directorx_submit_provider_job",
   "directorx_submit_media_generation",
+  "directorx_generate_media",
   "directorx_install_builtin_media_runtime"
 ]);
 
