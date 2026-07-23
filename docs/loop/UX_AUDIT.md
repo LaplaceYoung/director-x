@@ -26,3 +26,4 @@ The main skill establishes the correct order: preflight → side Browser canvas 
 - Public results explain the next user decision without exposing provider or persistence internals.
 - Generation inspection returns request, attempt, job, candidate, blocker, and next-action counts without leaking credentials or the full Run.
 - Candidate review turns accept → select and fail → repair-plan into one user-facing action, with stable replay behavior.
+- Repair retries return to `directorx_generate_media:prepare`; the user-facing lifecycle no longer exposes attempt bookkeeping.

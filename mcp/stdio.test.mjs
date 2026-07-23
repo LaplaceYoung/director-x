@@ -10,6 +10,7 @@ import { renderCodexAgentRole } from "./codex-agent-roles.mjs";
 import { createRun, updateRun } from "./run-store.mjs";
 import { createOpenCutEditorSession, markOpenCutServiceRunning, recordPostProductionEditDecision } from "./opencut-editor.mjs";
 import { buildWaveformPyramid } from "./waveform-pyramid.mjs";
+import { quoteModelCost } from "./pricing-catalog.mjs";
 
 const availableAgentTypes = DX_SUBAGENT_CATALOG.map((role) => role.agentType);
 const readyHostToolNames = ["create_goal", "get_goal", "update_goal", "request_user_input", "exec", "wait"];
@@ -243,11 +244,15 @@ test("serves MCP tools over newline-delimited stdio", async () => {
 test("reviews and selects an accepted media candidate atomically and idempotently", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "directorx-review-facade-"));
   const created = await createRun({ projectPath, outcome: "Review one generated image" });
+  const pricingQuote = quoteModelCost({ providerId: "openai", modelId: "gpt-image-1.5", mediaType: "image", usage: { outputCount: 1, quality: "high", resolution: "1024x1024" } });
   await updateRun({ projectPath, runId: created.runId, mutate(run) {
     run.status = "production_in_progress";
     run.stage = "generation";
+    run.pipeline = { stageStates: { generation: { status: "active" } } };
+    run.approvals = [{ kind: "budget", status: "approved" }, { kind: "image_model", status: "approved" }];
+    run.decisions = [{ kind: "budget", value: { basis: "official_quotes", currency: "USD", cap: 2, routes: [{ providerId: "openai", modelId: "gpt-image-1.5", mediaType: "image", plannedCalls: 2, pricingQuote }] } }, { kind: "image_model", value: { providerId: "openai", modelId: "gpt-image-1.5" } }];
     run.generation = {
-      generationRequestId: "GEN-REVIEW", currency: "CNY", providerId: "test-provider", modelId: "test-model", requests: [
+      generationRequestId: "GEN-REVIEW", currency: "USD", providerId: "openai", modelId: "gpt-image-1.5", requests: [
         { requestId: "REQ-1", shotId: "SHOT-1", mode: "image", qualityThreshold: 0.75, maxAttempts: 2, maxCost: 2, attemptCostCap: 1, attemptCount: 1, spent: 0.5, status: "awaiting_review", selectedCandidateId: null, negativeConstraints: [], inputAnchorAssets: [], outputAnchorAssets: [], carryForwardRules: [] },
         { requestId: "REQ-2", shotId: "SHOT-2", mode: "image", qualityThreshold: 0.75, maxAttempts: 2, maxCost: 2, attemptCostCap: 1, attemptCount: 1, spent: 0.5, status: "awaiting_review", selectedCandidateId: null, negativeConstraints: [], inputAnchorAssets: [], outputAnchorAssets: [], carryForwardRules: [] }
       ], attempts: [],
@@ -281,9 +286,20 @@ test("reviews and selects an accepted media candidate atomically and idempotentl
     assert.equal(repair.candidateStatus, "needs_action");
     assert.equal(repair.repair.disposition, "retry");
     assert.equal(repair.repair.controlVariable, "composition_clause");
+    assert.equal(repair.nextRequiredAction, "directorx_generate_media:prepare");
+    const prepare = { projectPath, runId: created.runId, action: "prepare", requestId: "REQ-2", attemptId: "ATT-RETRY-2", prompt: "Widen only the approved product composition while preserving identity and lighting.", providerOptions: {}, pricingUsage: { outputCount: 1, quality: "high", resolution: "1024x1024" } };
+    child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 183, method: "tools/call", params: { name: "directorx_generate_media", arguments: prepare } })}\n`);
+    await waitFor(() => messages(output).some((item) => item.id === 183), 1500);
+    const prepared = messages(output).find((item) => item.id === 183).result.structuredContent;
+    assert.equal(prepared.attemptCount, 1);
+    assert.equal(prepared.nextRequiredAction, "directorx_generate_media:submit");
+    child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 184, method: "tools/call", params: { name: "directorx_generate_media", arguments: prepare } })}\n`);
+    await waitFor(() => messages(output).some((item) => item.id === 184), 1500);
+    assert.equal(messages(output).find((item) => item.id === 184).result.structuredContent.attemptCount, 1);
     const persisted = JSON.parse(await readFile(join(projectPath, ".directorx", "plugin-runs", `${created.runId}.json`), "utf8"));
     assert.equal(persisted.events.filter((item) => item.type === "generation.candidate.selected").length, 1);
     assert.equal(persisted.events.filter((item) => item.type === "generation.repair.compiled").length, 1);
+    assert.equal(persisted.events.filter((item) => item.type === "generation.attempt.started").length, 1);
   } finally {
     child.kill("SIGTERM");
     await rm(projectPath, { recursive: true, force: true });

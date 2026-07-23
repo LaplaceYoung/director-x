@@ -2,11 +2,11 @@
 
 ## Current loop
 
-- Loop: 06
+- Loop: 07
 - Date: 2026-07-23
-- Commit baseline: `25242f0`
+- Commit baseline: `69599f4`
 - Release baseline: `v0.1.15`
-- Status: `CANDIDATE_REVIEW_FACADE_IMPLEMENTED`
+- Status: `PUBLIC_GENERATION_RETRY_LOOP_CLOSED`
 - Current focus: plugin discovery, MCP surface, installation truth, and recovery UX
 
 ## Last completed work
@@ -19,7 +19,8 @@
 - Added the `directorx_research_video` reference-first research facade.
 - Added the `directorx_generate_media` inspect/submit/poll facade over the existing billing-safe Provider gateway.
 - Added the `directorx_review_media_candidate` inspect/review facade with atomic accept-and-select and evidence-bound repair compilation.
-- Full Loop 06 CI passed with 576 tests.
+- Added replay-safe `prepare` to `directorx_generate_media`, including official pricing and attempt-budget enforcement.
+- Full Loop 07 CI passed with 576 tests.
 
 ## This loop
 
@@ -35,7 +36,10 @@
 - Made candidate review replay-safe through a stable review fingerprint.
 - Made accepted candidates enter editing in the same durable update.
 - Made rejected candidates produce one single-variable repair plan without consuming another paid attempt.
+- Routed repair retries back to `directorx_generate_media:prepare` instead of exposing `directorx_begin_generation_attempt`.
+- Fixed next-action priority so an active prepared attempt proceeds to submission before older unselected candidates are reconsidered.
+- Reused the same attempt implementation for compatibility and public calls.
 
 ## Exit condition for the next loop
 
-Implement and verify the public `start` boundary, then remove remaining low-level generation-attempt setup from the public lifecycle. Do not claim the public profile is complete until a user can traverse start → research → generation → review → edit → delivery.
+Implement and verify the public `start` boundary. Do not claim the public profile is complete until a user can traverse start → research → generation → review → edit → delivery.

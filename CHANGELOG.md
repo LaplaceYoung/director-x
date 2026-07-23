@@ -17,6 +17,7 @@ All notable public changes to Director X are recorded here.
 - Added `directorx_research_video` to start or resume the reference-first research lane with a compact parallel handoff.
 - Added `directorx_generate_media` as a strict inspect/submit/poll Facade over the existing billing-safe Provider gateway.
 - Added `directorx_review_media_candidate` for atomic candidate review, accepted-candidate selection, and evidence-bound single-variable repair planning.
+- Expanded `directorx_generate_media` with replay-safe, officially priced attempt preparation so repair retries stay inside the public generation Facade.
 
 ### Changed
 

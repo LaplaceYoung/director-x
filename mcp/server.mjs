@@ -578,9 +578,13 @@ const rawTools = [
   },
   {
     name: "directorx_generate_media",
-    description: "Inspect or execute one approved image/video generation attempt through the existing Director X Provider gateway. Submit and poll are idempotent, keep credentials session-only, preserve official pricing and model approvals, and return only the compact job/candidate state needed to continue production.",
+    description: "Prepare, inspect, submit, or poll one approved image/video generation attempt through the existing Director X Provider gateway. Every action is replay-safe, keeps credentials session-only, preserves official pricing and model approvals, and returns only the compact state needed to continue production.",
     inputSchema: { oneOf: [
       objectSchema({ projectPath: stringSchema(), runId: stringSchema(), action: { const: "inspect", type: "string" } }, ["projectPath", "runId", "action"]),
+      objectSchema({
+        projectPath: stringSchema(), runId: stringSchema(), action: { const: "prepare", type: "string" }, requestId: stringSchema(), attemptId: stringSchema(), prompt: { type: "string" }, providerOptions: { type: "object" },
+        pricingUsage: objectSchema({ imageCount: { type: "integer", minimum: 0 }, outputCount: { type: "integer", minimum: 0 }, durationSeconds: { type: "number", minimum: 0 }, requestCount: { type: "integer", minimum: 0 }, characterCount: { type: "integer", minimum: 0 }, quality: { type: "string" }, resolution: { type: "string" }, size: { type: "string" }, generateAudio: { type: "boolean" } })
+      }, ["projectPath", "runId", "action", "requestId", "attemptId"]),
       objectSchema({
         projectPath: stringSchema(), runId: stringSchema(), action: { const: "submit", type: "string" }, requestId: stringSchema(), attemptId: stringSchema(), candidateId: stringSchema(), idempotencyKey: stringSchema(), accountedCost: { type: "number", minimum: 0 },
         negativePrompt: { type: "string" }, aspectRatio: { type: "string" }, size: { type: "string" }, resolution: { type: "string" }, durationSeconds: { type: "number", minimum: 0 }, imagePaths: { type: "array", items: stringSchema() }, imageUrls: { type: "array", items: stringSchema() }, endImagePath: { type: "string" }, endImageUrl: { type: "string" }, videoPath: { type: "string" }, videoUrl: { type: "string" }, outputCount: { type: "integer", minimum: 1, maximum: 8 }, generateAudio: { type: "boolean" }, providerOptions: { type: "object" }, timeoutMs: { type: "integer", minimum: 1000, maximum: 300000 }
@@ -3600,13 +3604,7 @@ async function executeTool(name, args) {
     }, "generation.prompt_pack.bound", `${plan.requests.length} bound requests · ${plan.bindingSha256}`);
   }
   if (name === "directorx_begin_generation_attempt") {
-    return await mutateGeneration(args, (run) => {
-      beginGenerationAttempt(run, args);
-      const request = run.generation.requests.find((item) => item.requestId === args.requestId);
-      const attempt = run.generation.attempts.find((item) => item.attemptId === args.attemptId);
-      upsertExecutionCanvasNode(run, { id: `attempt:${args.attemptId}`, type: "artifact", label: `${request.shotId} · 正在生成`, detail: `${run.generation.providerId}/${run.generation.modelId} · 官方估价 ${run.generation.currency} ${attempt.estimatedCost}`, stage: "generation", status: "active", metadata: { requestId: args.requestId, attemptId: args.attemptId, prompt: attempt.prompt, pricingQuoteId: attempt.pricingQuote.quoteId, pricingSourceUrl: attempt.pricingQuote.sourceUrl } }, `shot:${request.shotId}`);
-      return run;
-    }, "generation.attempt.started", `${args.requestId} · ${args.attemptId} · official price quote`);
+    return await prepareGenerationAttempt(args);
   }
   if (name === "directorx_record_generation_candidate") {
     const candidateArtifactRef = `candidate:${args.candidateId}`;
@@ -4993,7 +4991,8 @@ async function researchVideo(args) {
 
 async function generateMedia(args) {
   let canvasResponse;
-  if (args.action === "submit") canvasResponse = await executeDirectMediaSubmission(args);
+  if (args.action === "prepare") canvasResponse = await prepareGenerationAttempt(args);
+  else if (args.action === "submit") canvasResponse = await executeDirectMediaSubmission(args);
   else if (args.action === "poll") canvasResponse = await executeDirectMediaPoll(args);
   else canvasResponse = await withBrowserCanvas(publicSnapshot(await readRun(args)), args);
 
@@ -5015,10 +5014,10 @@ async function generateMedia(args) {
     nextRequiredAction = "resolve_native_provider_input";
   } else if (activeJobs.length) {
     nextRequiredAction = "directorx_generate_media:poll";
-  } else if (candidates.some((candidate) => candidate.status !== "selected")) {
-    nextRequiredAction = "directorx_review_media_candidate";
   } else if (runningAttempts.length) {
     nextRequiredAction = "directorx_generate_media:submit";
+  } else if (candidates.some((candidate) => candidate.status !== "selected")) {
+    nextRequiredAction = "directorx_review_media_candidate";
   } else {
     blockers.push("generation_attempt_missing");
     nextRequiredAction = "directorx_begin_generation_attempt";
@@ -5041,6 +5040,22 @@ async function generateMedia(args) {
     nextRequiredAction,
     browserCanvasUrl: canvasResponse.browserCanvasUrl
   };
+}
+
+async function prepareGenerationAttempt(args) {
+  const current = await readRun(args);
+  const existing = current.generation?.attempts?.find((attempt) => attempt.attemptId === args.attemptId);
+  if (existing) {
+    if (existing.requestId !== args.requestId) throw new Error("Generation attempt ID already belongs to another request.");
+    return await withBrowserCanvas(publicSnapshot(current), args);
+  }
+  return await mutateGeneration(args, (run) => {
+    beginGenerationAttempt(run, args);
+    const request = run.generation.requests.find((item) => item.requestId === args.requestId);
+    const attempt = run.generation.attempts.find((item) => item.attemptId === args.attemptId);
+    upsertExecutionCanvasNode(run, { id: `attempt:${args.attemptId}`, type: "artifact", label: `${request.shotId} · 正在生成`, detail: `${run.generation.providerId}/${run.generation.modelId} · 官方估价 ${run.generation.currency} ${attempt.estimatedCost}`, stage: "generation", status: "active", metadata: { requestId: args.requestId, attemptId: args.attemptId, prompt: attempt.prompt, pricingQuoteId: attempt.pricingQuote.quoteId, pricingSourceUrl: attempt.pricingQuote.sourceUrl } }, `shot:${request.shotId}`);
+    return run;
+  }, "generation.attempt.started", `${args.requestId} · ${args.attemptId} · official price quote`);
 }
 
 async function reviewMediaCandidate(args) {
@@ -5144,7 +5159,7 @@ function summarizeCandidateReview(run, candidate, browserCanvasUrl) {
   let nextRequiredAction = "directorx_generate_media";
   if (candidate?.status === "selected") nextRequiredAction = "directorx_build_rough_cut";
   else if (candidate?.status === "awaiting_review") nextRequiredAction = "directorx_review_media_candidate:review";
-  else if (repair) nextRequiredAction = repair.execution.nextTool;
+  else if (repair) nextRequiredAction = repair.execution.nextTool === "directorx_begin_generation_attempt" ? "directorx_generate_media:prepare" : repair.execution.nextTool;
   else if (candidate?.status === "rejected") nextRequiredAction = "directorx_generate_media:inspect";
   return {
     schemaVersion: "1.0",

@@ -47,3 +47,9 @@ Reason: generation must retain official-price checks, exact approved provider/mo
 Decision: `directorx_review_media_candidate` selects an accepted candidate for editing in the same durable mutation. Non-accepted candidates receive one evidence-bound repair plan keyed by a stable review fingerprint.
 
 Reason: review and selection are one user intent after the candidate passes the quality threshold. Separating them creates a resumability gap; allowing repeated repair compilation creates duplicate state and unnecessary retries.
+
+## 2026-07-23 — Generation preparation belongs to the generation Facade
+
+Decision: add `prepare` to `directorx_generate_media` and route public repair results there. Compatibility calls to `directorx_begin_generation_attempt` use the same implementation.
+
+Reason: opening a priced, bounded attempt is part of generating media. Exposing it as a separate public tool forces Codex to understand internal draw-loop bookkeeping and creates a recovery gap between review and retry.

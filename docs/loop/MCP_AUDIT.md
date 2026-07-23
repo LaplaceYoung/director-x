@@ -37,8 +37,8 @@ The current implementation treats all tools as registered and callable by the sa
 
 `mcp/tool-registry.mjs` now supports `compatibility` and `public` profiles. The default remains `compatibility`; `DIRECTORX_TOOL_PROFILE=public` lists and dispatches only names in the reserved public Facade set. The boundary is enforced in both `list()` and `call()`.
 
-The public profile currently contains six completed Facades: recovery, status, resume, research, generation, and candidate review. `directorx_review_media_candidate` atomically accepts and selects passing candidates, while failed candidates receive a durable single-variable repair plan. A stable review fingerprint makes identical replays no-ops and blocks evidence overwrite. This remains a migration slice, not a claim that the public profile is production-complete.
+The public profile currently contains six completed Facades: recovery, status, resume, research, generation, and candidate review. `directorx_generate_media` now covers `prepare/inspect/submit/poll`, so evidence-bound retries return to the same public gateway while retaining official pricing, attempt caps, and replay safety. This remains a migration slice, not a claim that the public profile is production-complete.
 
 ## Next implementation slice
 
-Implement the public start boundary and absorb generation-attempt preparation into the public lifecycle so retry plans do not need a low-level attempt tool. Then exercise the complete public path through editing and delivery.
+Implement the public start boundary, then exercise the complete public path through editing and delivery.
