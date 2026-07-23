@@ -9,6 +9,11 @@ All notable public changes to Director X are recorded here.
 - Updated the installation and release references to `v0.1.15`.
 - Started the plugin evolution-loop audit under `docs/loop/`.
 
+### MCP surface
+
+- Added a compact `directorx_get_production_status` Facade and tested it against a durable Run.
+- Added the second completed Facade to the opt-in public tool profile while preserving compatibility mode.
+
 ### Changed
 
 - Started plugin productization work around marketplace installation, validation, CI, public tool contracts, and progressive disclosure.

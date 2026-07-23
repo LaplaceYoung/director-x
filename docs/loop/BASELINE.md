@@ -13,7 +13,7 @@ Commit: `ffa3a06`
 | Marketplace | `.agents/plugins/marketplace.json` selects `directorx@mosi` with `AVAILABLE` / `ON_INSTALL` | Pass |
 | Entry skill | `skills/directorx/agents/openai.yaml` is the only `allow_implicit_invocation: true` skill | Pass |
 | Specialist skills | 33 specialist skills are explicit-only and point to `directorx-production` | Pass with discoverability cost |
-| MCP tools | `tools/list` returns 177 tools | P1 gap |
+| MCP tools | `tools/list` returns 178 tools after the status Facade slice | P1 gap |
 | Public Facades | 16 names are reserved in policy; only `directorx_recover_production` is implemented | P1 gap |
 | Legacy contracts | 174 tools carry `directorx/legacyLooseContract: true` | P1 gap |
 | Native protocol | `initialize`, `tools/list`, `tools/call`, `resources/list`, `resources/read`, and resource templates are implemented | Pass at transport level |

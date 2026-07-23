@@ -580,6 +580,13 @@ const rawTools = [
     annotations: writeAnnotations()
   },
   {
+    name: "directorx_get_production_status",
+    description: "Return one compact, user-facing status projection for a durable Director X Run: current stage, research and production readiness, pending native decisions, creative-output SLA, and the single next action.",
+    inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema() }, ["projectPath", "runId"]),
+    outputSchema: productionStatusOutputSchema(),
+    annotations: readOnlyAnnotations()
+  },
+  {
     name: "directorx_begin_creative_work",
     description: "Complete minimal Intake and immediately enter Research once Goal, essential routes, budget, consent, and required Intake artifacts are ready. Deferred governance moves to Generation.",
     inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema() }, ["projectPath", "runId"]),
@@ -4355,6 +4362,7 @@ async function executeTool(name, args) {
     const run = await readRun(args);
     return { readiness: evaluateFastStartReadiness(run), researchReadiness: evaluateReferenceResearchReadiness(run), creativeProgressSla: evaluateCreativeProgressSla(run) };
   }
+  if (name === "directorx_get_production_status") return await getProductionStatus(args);
   if (name === "directorx_recover_production") return await executeProductionRecovery(args);
   if (name === "directorx_begin_creative_work") {
     const current = await readRun(args);
@@ -4873,6 +4881,43 @@ async function executeProductionRecovery(args) {
     return run;
   } });
   return result;
+}
+
+async function getProductionStatus(args) {
+  const run = await readRun(args);
+  const productionReadiness = evaluateFastStartReadiness(run);
+  const researchReadiness = evaluateReferenceResearchReadiness(run);
+  const creativeProgressSla = evaluateCreativeProgressSla(run);
+  const recoveryBlocked = run.recoveryGate?.status === "blocked";
+  const blockers = [...new Set([
+    ...(recoveryBlocked ? ["recovery_gate_active"] : []),
+    ...researchReadiness.blockers,
+    ...productionReadiness.blockers
+  ])];
+  const artifactEntries = Object.entries(run.artifacts ?? {});
+  const mediaArtifacts = artifactEntries.filter(([, artifact]) => ["image", "video", "audio"].includes(artifact?.mediaKind ?? artifact?.kind));
+  const nextTool = recoveryBlocked
+    ? "directorx_recover_production"
+    : researchReadiness.ready
+      ? "directorx_begin_reference_research"
+      : researchReadiness.nextTool;
+  return {
+    schemaVersion: "1.0",
+    runId: run.runId,
+    status: run.status,
+    stage: run.stage,
+    pipelineId: run.pipeline?.id ?? null,
+    nextTool,
+    blockers,
+    pendingInteractionCount: run.interactions?.pending?.length ?? 0,
+    artifactCount: artifactEntries.length,
+    mediaArtifactCount: mediaArtifacts.length,
+    researchReadiness,
+    productionReadiness,
+    creativeProgressSla,
+    recovery: recoveryBlocked ? { status: "blocked", blockedOperation: run.recoveryGate.toolName } : { status: "clear", blockedOperation: null },
+    updatedAt: run.updatedAt
+  };
 }
 
 async function mutateGeneration(args, mutate, eventType, detail) {
@@ -5458,6 +5503,25 @@ function productionRecoveryOutputSchema() {
     checkpointId: { anyOf: [stringSchema(), { type: "null" }] },
     nextRequiredAction: stringSchema()
   }, ["schemaVersion", "runId", "status", "recovery", "checkpointId", "nextRequiredAction"]);
+}
+function productionStatusOutputSchema() {
+  return objectSchema({
+    schemaVersion: { const: "1.0", type: "string" },
+    runId: stringSchema(),
+    status: stringSchema(),
+    stage: stringSchema(),
+    pipelineId: { anyOf: [stringSchema(), { type: "null" }] },
+    nextTool: stringSchema(),
+    blockers: { type: "array", items: stringSchema() },
+    pendingInteractionCount: { type: "integer", minimum: 0 },
+    artifactCount: { type: "integer", minimum: 0 },
+    mediaArtifactCount: { type: "integer", minimum: 0 },
+    researchReadiness: looseObjectSchema(),
+    productionReadiness: looseObjectSchema(),
+    creativeProgressSla: looseObjectSchema(),
+    recovery: objectSchema({ status: { enum: ["clear", "blocked"], type: "string" }, blockedOperation: { anyOf: [stringSchema(), { type: "null" }] } }, ["status", "blockedOperation"]),
+    updatedAt: stringSchema()
+  }, ["schemaVersion", "runId", "status", "stage", "pipelineId", "nextTool", "blockers", "pendingInteractionCount", "artifactCount", "mediaArtifactCount", "researchReadiness", "productionReadiness", "creativeProgressSla", "recovery", "updatedAt"]);
 }
 function nativeQuestionSchema() {
   return objectSchema({

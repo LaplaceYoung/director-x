@@ -6,9 +6,9 @@ Measured through the stdio `tools/list` response from `mcp/server.mjs`:
 
 ```json
 {
-  "toolCount": 177,
+  "toolCount": 178,
   "publicFacadeNamesReserved": 16,
-  "implementedPublicFacades": 1,
+  "implementedPublicFacades": 2,
   "legacyLooseContracts": 174,
   "modelAndAppExplicitVisibility": 2,
   "appOnlyExplicitVisibility": 1
@@ -37,7 +37,7 @@ The current implementation treats all tools as registered and callable by the sa
 
 `mcp/tool-registry.mjs` now supports `compatibility` and `public` profiles. The default remains `compatibility`; `DIRECTORX_TOOL_PROFILE=public` lists and dispatches only names in the reserved public Facade set. The boundary is enforced in both `list()` and `call()`.
 
-The public profile currently contains only the completed `directorx_recover_production` Facade. This is intentionally a migration slice, not a claim that the public profile is production-complete.
+The public profile currently contains the completed `directorx_recover_production` and `directorx_get_production_status` Facades. The status Facade has an exact top-level output schema and is verified against a real durable Run. This remains a migration slice, not a claim that the public profile is production-complete.
 
 ## Next implementation slice
 

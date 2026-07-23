@@ -41,6 +41,7 @@ export function assertLegacyToolSurfaceBudget(definitions, budget = LEGACY_TOOL_
   const audit = auditToolSurface(definitions);
   const effectiveBudget = {
     ...budget,
+    total: budget.total + audit.publicFacades,
     writeVisible: budget.writeVisible + audit.publicFacades,
     descriptorBytes: budget.descriptorBytes + (audit.publicFacades * 4_000)
   };

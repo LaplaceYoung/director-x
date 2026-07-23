@@ -151,6 +151,10 @@ test("serves MCP tools over newline-delimited stdio", async () => {
     assert.ok(recoveryFacade);
     assert.equal(recoveryFacade._meta["directorx/legacyLooseContract"], false);
     assert.ok(recoveryFacade.inputSchema.oneOf);
+    const statusFacade = message.result.tools.find((tool) => tool.name === "directorx_get_production_status");
+    assert.ok(statusFacade);
+    assert.equal(statusFacade._meta["directorx/legacyLooseContract"], false);
+    assert.equal(statusFacade.annotations.readOnlyHint, true);
     assert.equal(message.result.tools.some((tool) => tool.name === "directorx_get_recovery_action"), false);
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_query_director_knowledge"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_query_cinematic_references"));
@@ -1133,6 +1137,12 @@ test("persists, deduplicates, and enforces native request_user_input gates", asy
     });
     const run = (await send(202, "directorx_create_run", { projectPath, outcome, preflightId: preflight.preflightId, goalInteractionRequestId: openedPreflight.nextHostInteraction.request.requestId, confirmedBy: "request_user_input", goalAccepted: true })).result.structuredContent;
     await send(2021, "directorx_bind_goal", { projectPath, runId: run.runId, codexGoalId: "goal-native-gate-test" });
+    const compactStatus = (await send(2022, "directorx_get_production_status", { projectPath, runId: run.runId })).result.structuredContent;
+    assert.equal(compactStatus.runId, run.runId);
+    assert.equal(compactStatus.stage, "intake");
+    assert.equal(compactStatus.status, "awaiting_approval");
+    assert.equal(compactStatus.recovery.status, "clear");
+    assert.equal(compactStatus.nextTool, "directorx_create_and_ask_native_question");
     const interactionInput = {
       projectPath, runId: run.runId, kind: "run_mode", reason: "运行模式会改变阶段批准频率。",
       questions: [{ header: "运行模式", id: "run_mode", question: "请选择 Director X 运行模式。", options: [{ label: "引导自治 (Recommended)", description: "自动推进安全步骤，只在硬门等待确认。" }, { label: "逐阶段确认", description: "每个阶段开始前都需要确认。" }] }]
