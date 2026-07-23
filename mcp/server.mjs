@@ -748,7 +748,7 @@ const rawTools = [
     name: "directorx_plan_production_team",
     description: "RECOMMENDED Director X delegation path. Compile the registered execution graph and production-complexity profile into a bounded canonical DX production team, then return directly executable concurrent spawn_agent host actions. This removes hand-authored task arrays and blocks overstaffed or fake-parallel plans.",
     inputSchema: objectSchema({
-      projectPath: stringSchema(), runId: stringSchema(), planId: stringSchema(), objective: stringSchema(), availableAgentTypes: { type: "array", minItems: 1, items: stringSchema() }, hostConcurrencyLimit: { type: "integer", minimum: 2, maximum: 32 },
+        projectPath: stringSchema(), runId: stringSchema(), planId: stringSchema(), objective: stringSchema(), availableAgentTypes: { type: "array", minItems: 1, items: stringSchema() }, hostConcurrencyLimit: { type: "integer", minimum: 1, maximum: 32 },
       stages: { type: "array", minItems: 1, items: { enum: ["intake", "research", "script", "storyboard", "generation", "edit", "review", "delivery"], type: "string" } },
       currency: { type: "string", minLength: 3, maxLength: 8 }
     }, ["projectPath", "runId", "planId", "objective", "availableAgentTypes"]),
@@ -758,7 +758,7 @@ const rawTools = [
     name: "directorx_plan_parallel_subagents",
     description: "MANDATORY before Director X delegation. Compile dependency-layered parallel work into the current Codex spawn_agent contract: typed agent_type hosts or task_name/fork_turns collaboration hosts. Preserve canonical DX identities, bounded prompts, artifact ownership, and synchronization barriers.",
     inputSchema: objectSchema({
-      projectPath: stringSchema(), runId: stringSchema(), planId: stringSchema(), objective: stringSchema(), availableAgentTypes: { type: "array", minItems: 1, items: stringSchema() }, hostConcurrencyLimit: { type: "integer", minimum: 2, maximum: 32 },
+        projectPath: stringSchema(), runId: stringSchema(), planId: stringSchema(), objective: stringSchema(), availableAgentTypes: { type: "array", minItems: 1, items: stringSchema() }, hostConcurrencyLimit: { type: "integer", minimum: 1, maximum: 32 },
       tasks: { type: "array", minItems: 2, items: objectSchema({
         taskId: stringSchema(), roleId: stringSchema(), stage: stringSchema(), mission: stringSchema(),
         inputArtifactRefs: { type: "array", items: stringSchema() }, outputArtifactRefs: { type: "array", minItems: 1, items: stringSchema() }, dependsOnTaskIds: { type: "array", items: stringSchema() },

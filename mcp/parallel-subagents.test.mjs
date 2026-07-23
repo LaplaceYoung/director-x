@@ -246,10 +246,12 @@ test("blocks owned stage work until the complete DX wave is dispatched and overl
 });
 
 test("rejects fake parallelism, duplicate roles, and output ownership", () => {
-  assert.throws(() => planParallelSubagents({ runId: "dx-test" }, input({
+  const serialPlan = planParallelSubagents({ runId: "dx-test" }, input({
     planId: "serial", objective: "serial",
     tasks: [task("a", "reference_analyst", ["a.json"]), task("b", "asset_manager", ["b.json"], ["a"])]
-  })), /no independent tasks/);
+  }));
+  assert.equal(serialPlan.strategy, "bounded_sequential_fast_path");
+  assert.deepEqual(serialPlan.batches.map((batch) => batch.taskIds), [["a"], ["b"]]);
   assert.throws(() => planParallelSubagents({ runId: "dx-test" }, input({
     planId: "roles", objective: "roles",
     tasks: [task("a", "asset_manager", ["a.json"]), task("b", "asset_manager", ["b.json"])]

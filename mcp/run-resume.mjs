@@ -78,8 +78,9 @@ function productionBootstrapState(snapshot, dispatch) {
       state = "awaiting_team_plan";
       nextRequiredAction = "plan_production_team";
     } else if (dispatch?.actions?.length) {
-      state = "ready_for_parallel_dispatch";
-      nextRequiredAction = "spawn_ready_wave";
+      const sequential = plan?.strategy === "bounded_sequential_fast_path";
+      state = sequential ? "ready_for_sequential_dispatch" : "ready_for_parallel_dispatch";
+      nextRequiredAction = sequential ? "spawn_ready_task" : "spawn_ready_wave";
     } else if (running > 0) {
       state = "team_active";
       nextRequiredAction = "wait_for_wave";

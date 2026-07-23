@@ -45,7 +45,9 @@ export function compileExecutionGraphSubagentTasks(run, input = {}) {
   const stageFilter = new Set(input.stages?.length ? input.stages : STAGE_ORDER);
   const graphNodes = run.executionGraph.nodes;
   const agentNodes = graphNodes.filter((node) => node.kind === "agent" && stageFilter.has(node.stage));
-  if (agentNodes.length < 2) throw new Error("The execution graph must expose at least two DX agent nodes for automatic production-team planning.");
+  // Short jobs can have one legitimate owner. Keep the contract durable
+  // without manufacturing a second subagent solely to claim parallelism.
+  if (agentNodes.length < 1) throw new Error("The execution graph must expose at least one DX agent node for automatic production-team planning.");
   const roleByDisplayName = new Map(DX_SUBAGENT_CATALOG.map((role) => [role.displayName, role]));
   // Migrate old execution graphs in memory. Routing and budget nodes now
   // belong to DX-Director, so old persisted owners remain resumable without
@@ -103,7 +105,7 @@ export function compileExecutionGraphSubagentTasks(run, input = {}) {
       approvalBoundary: "Do not ask the user directly or cross rights, credential, provider, model, budget, generation, edit, or delivery gates; escalate to the parent Director X agent."
     };
   }).sort((left, right) => STAGE_ORDER.indexOf(left.stage) - STAGE_ORDER.indexOf(right.stage) || left.taskId.localeCompare(right.taskId));
-  if (tasks.length < 2) throw new Error("Automatic production-team planning requires at least two bounded DX tasks.");
+  if (tasks.length < 1) throw new Error("Automatic production-team planning requires at least one bounded DX task.");
   return tasks;
 }
 
@@ -182,11 +184,11 @@ export function planParallelSubagents(run, input, now = new Date().toISOString()
     }
   }
   const independentWidth = Math.max(...dependencyLayers.map((batch) => batch.length));
-  if (independentWidth < 2) throw new Error("The proposed work has no independent tasks to run in parallel; keep it sequential instead of claiming a speed-up.");
-  const requestedHostConcurrency = input.hostConcurrencyLimit ?? Math.min(4, independentWidth);
+  const sequential = tasks.length === 1 || independentWidth < 2;
+  const requestedHostConcurrency = input.hostConcurrencyLimit ?? (sequential ? 1 : Math.min(4, independentWidth));
   const complexityConcurrencyLimit = run.productionComplexityPlan?.settings?.maxConcurrency ?? 32;
   const hostConcurrencyLimit = Math.min(requestedHostConcurrency, complexityConcurrencyLimit);
-  if (!Number.isInteger(hostConcurrencyLimit) || hostConcurrencyLimit < 2 || hostConcurrencyLimit > 32) throw new Error("hostConcurrencyLimit must be an integer from 2 to 32.");
+  if (!Number.isInteger(hostConcurrencyLimit) || hostConcurrencyLimit < 1 || hostConcurrencyLimit > 32) throw new Error("hostConcurrencyLimit must be an integer from 1 to 32.");
   const batches = dependencyLayers.flatMap((layer) => chunk(layer, hostConcurrencyLimit));
   const maxConcurrency = Math.min(independentWidth, hostConcurrencyLimit);
   const plan = {
@@ -194,7 +196,7 @@ export function planParallelSubagents(run, input, now = new Date().toISOString()
     planId: input.planId,
     runId: run.runId,
     objective: input.objective,
-    strategy: "capacity_bounded_dependency_layered_parallelism",
+    strategy: sequential ? "bounded_sequential_fast_path" : "capacity_bounded_dependency_layered_parallelism",
     delegationDepth: 0,
     childDelegationDepth: MAX_DELEGATION_DEPTH,
     maxDelegationDepth: MAX_DELEGATION_DEPTH,
@@ -205,12 +207,14 @@ export function planParallelSubagents(run, input, now = new Date().toISOString()
     independentWidth,
     maxConcurrency,
     estimatedDispatchWaves: batches.length,
-    schedulingPolicy: "dispatch every task in the current wave without awaiting individual results; wait for the wave barrier before releasing dependent work",
+    schedulingPolicy: sequential
+      ? "dispatch the required task immediately; do not create synthetic parallel work"
+      : "dispatch every task in the current wave without awaiting individual results; wait for the wave barrier before releasing dependent work",
     tasks,
     batches: batches.map((batch, index) => ({
       batchId: `${input.planId}-batch-${index + 1}`,
       order: index + 1,
-      dispatch: "parallel",
+      dispatch: sequential ? "sequential" : "parallel",
       waitFor: "all",
       status: "pending",
       parallelGroupId: `${input.planId}:wave:${index + 1}`,
@@ -305,6 +309,17 @@ export function assertStageParallelismObserved(run, stageId) {
   const plan = run.subagentOrchestrationPlan;
   const stageTasks = new Set((plan?.tasks ?? []).filter((task) => task.stage === stageId).map((task) => task.taskId));
   if (!stageTasks.size) return { required: false, status: "not_planned" };
+  if (plan.strategy === "bounded_sequential_fast_path") {
+    const evidence = compileParallelSubagentDispatchEvidence(plan);
+    const stageBatches = evidence.batches.filter((batch) => {
+      const sourceBatch = plan.batches.find((candidate) => candidate.batchId === batch.batchId);
+      return sourceBatch?.taskIds.some((taskId) => stageTasks.has(taskId));
+    });
+    if (!stageBatches.length || stageBatches.some((batch) => batch.dispatchedCount < batch.requiredConcurrency)) {
+      throw new Error(`Complete ${stageId} after dispatching its sequential DX task; no synthetic parallel wave is required.`);
+    }
+    return { required: true, status: "sequential_complete", batchIds: stageBatches.map((batch) => batch.batchId) };
+  }
   const evidence = compileParallelSubagentDispatchEvidence(plan);
   const concurrentBatches = evidence.batches.filter((batch) => {
     const sourceBatch = plan.batches.find((candidate) => candidate.batchId === batch.batchId);
@@ -328,7 +343,7 @@ export async function writeParallelSubagentDispatchEvidence({ projectPath, runId
 function validatePlanInput(input) {
   if (!input?.planId || !TASK_ID_PATTERN.test(input.planId)) throw new Error("planId must use letters, numbers, hyphens, or underscores.");
   if (!String(input.objective ?? "").trim()) throw new Error("Parallel subagent planning requires an objective.");
-  if (!Array.isArray(input.tasks) || input.tasks.length < 2) throw new Error("Parallel subagent planning requires at least two tasks.");
+  if (!Array.isArray(input.tasks) || input.tasks.length < 1) throw new Error("Subagent planning requires at least one task.");
   if (!Array.isArray(input.availableAgentTypes) || !input.availableAgentTypes.length) throw new Error("Parallel subagent planning requires the agent types visible in the current spawn_agent schema.");
   const ids = new Set();
   for (const task of input.tasks) {
