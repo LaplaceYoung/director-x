@@ -23,3 +23,9 @@ Reason: existing runs, tests, and expert operators need a rollback path; public 
 Decision: `directorx_get_production_status` returns readiness, blockers, next action, creative SLA, and counts; it does not return `publicSnapshot(run)`.
 
 Reason: a status check should help Codex choose the next user-facing action without filling context with provider, canvas, artifact, or internal execution state.
+
+## 2026-07-23 — Resume Facade rebinds, it does not recreate
+
+Decision: `directorx_resume_production` reads the existing checkpoint, rebinds the side Browser, and returns the existing resume action plan. It never creates a new Run or writes a replacement checkpoint.
+
+Reason: resume is a recovery boundary; duplicating a Run or replaying completed work would recreate the long-running workflow failure this loop is designed to remove.

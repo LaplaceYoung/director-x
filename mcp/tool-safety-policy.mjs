@@ -8,6 +8,7 @@ const READ_ONLY_TOOLS = new Set([
   "directorx_get_benchmark_baselines",
   "directorx_get_fast_start_status",
   "directorx_get_production_status",
+  "directorx_resume_production",
   "directorx_query_director_knowledge",
   "directorx_query_cinematic_references",
   "directorx_get_opencut_editor_status",

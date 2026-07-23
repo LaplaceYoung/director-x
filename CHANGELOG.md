@@ -13,6 +13,7 @@ All notable public changes to Director X are recorded here.
 
 - Added a compact `directorx_get_production_status` Facade and tested it against a durable Run.
 - Added the second completed Facade to the opt-in public tool profile while preserving compatibility mode.
+- Added `directorx_resume_production` to rebind an existing Run without duplicating checkpoints or production work.
 
 ### Changed
 

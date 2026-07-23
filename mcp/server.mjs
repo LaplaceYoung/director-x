@@ -587,6 +587,13 @@ const rawTools = [
     annotations: readOnlyAnnotations()
   },
   {
+    name: "directorx_resume_production",
+    description: "Rebind the existing durable Director X Run to the side Browser canvas and return one resume action plan without creating a replacement Run, repeating native questions, or replaying completed work.",
+    inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema() }, ["projectPath", "runId"]),
+    outputSchema: productionResumeOutputSchema(),
+    annotations: readOnlyAnnotations()
+  },
+  {
     name: "directorx_begin_creative_work",
     description: "Complete minimal Intake and immediately enter Research once Goal, essential routes, budget, consent, and required Intake artifacts are ready. Deferred governance moves to Generation.",
     inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema() }, ["projectPath", "runId"]),
@@ -4363,6 +4370,7 @@ async function executeTool(name, args) {
     return { readiness: evaluateFastStartReadiness(run), researchReadiness: evaluateReferenceResearchReadiness(run), creativeProgressSla: evaluateCreativeProgressSla(run) };
   }
   if (name === "directorx_get_production_status") return await getProductionStatus(args);
+  if (name === "directorx_resume_production") return await resumeProduction(args);
   if (name === "directorx_recover_production") return await executeProductionRecovery(args);
   if (name === "directorx_begin_creative_work") {
     const current = await readRun(args);
@@ -4917,6 +4925,25 @@ async function getProductionStatus(args) {
     creativeProgressSla,
     recovery: recoveryBlocked ? { status: "blocked", blockedOperation: run.recoveryGate.toolName } : { status: "clear", blockedOperation: null },
     updatedAt: run.updatedAt
+  };
+}
+
+async function resumeProduction(args) {
+  const run = await readRun(args);
+  if (!run.checkpoints?.length) throw new Error("This Run has no durable checkpoint to resume from.");
+  const response = await withRunResumeActions(run, args);
+  const plan = response.resumeActionPlan;
+  return {
+    schemaVersion: "1.0",
+    runId: run.runId,
+    status: run.status,
+    stage: run.stage,
+    browserCanvasUrl: response.browserCanvasUrl,
+    canvasTabKey: response.canvasTabKey,
+    blockedBy: plan.blockedBy,
+    nextRequiredAction: plan.productionBootstrap.nextRequiredAction,
+    pendingInteractionCount: run.interactions?.pending?.length ?? 0,
+    resumeActionPlan: plan
   };
 }
 
@@ -5522,6 +5549,20 @@ function productionStatusOutputSchema() {
     recovery: objectSchema({ status: { enum: ["clear", "blocked"], type: "string" }, blockedOperation: { anyOf: [stringSchema(), { type: "null" }] } }, ["status", "blockedOperation"]),
     updatedAt: stringSchema()
   }, ["schemaVersion", "runId", "status", "stage", "pipelineId", "nextTool", "blockers", "pendingInteractionCount", "artifactCount", "mediaArtifactCount", "researchReadiness", "productionReadiness", "creativeProgressSla", "recovery", "updatedAt"]);
+}
+function productionResumeOutputSchema() {
+  return objectSchema({
+    schemaVersion: { const: "1.0", type: "string" },
+    runId: stringSchema(),
+    status: stringSchema(),
+    stage: stringSchema(),
+    browserCanvasUrl: stringSchema(),
+    canvasTabKey: stringSchema(),
+    blockedBy: { anyOf: [stringSchema(), { type: "null" }] },
+    nextRequiredAction: stringSchema(),
+    pendingInteractionCount: { type: "integer", minimum: 0 },
+    resumeActionPlan: looseObjectSchema()
+  }, ["schemaVersion", "runId", "status", "stage", "browserCanvasUrl", "canvasTabKey", "blockedBy", "nextRequiredAction", "pendingInteractionCount", "resumeActionPlan"]);
 }
 function nativeQuestionSchema() {
   return objectSchema({

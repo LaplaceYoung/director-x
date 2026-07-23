@@ -13,7 +13,7 @@ The main skill establishes the correct order: preflight → side Browser canvas 
 
 ## Friction
 
-- 178 compatibility-mode tool descriptors make the model-facing surface harder to understand than the product itself.
+- 179 compatibility-mode tool descriptors make the model-facing surface harder to understand than the product itself.
 - Many internal activity tools can still be selected directly by name.
 - The distinction between “production action” and “Canvas/app support” is not enforced at transport level.
 - Installation success and live-host readiness are documented, but a clean-host timing benchmark is missing.
