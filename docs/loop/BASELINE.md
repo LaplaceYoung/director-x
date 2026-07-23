@@ -13,14 +13,14 @@ Commit: `ffa3a06`
 | Marketplace | `.agents/plugins/marketplace.json` selects `directorx@mosi` with `AVAILABLE` / `ON_INSTALL` | Pass |
 | Entry skill | `skills/directorx/agents/openai.yaml` is the only `allow_implicit_invocation: true` skill | Pass |
 | Specialist skills | 33 specialist skills are explicit-only and point to `directorx-production` | Pass with discoverability cost |
-| MCP tools | `tools/list` returns 182 tools after the candidate-review Facade slice | P1 gap |
-| Public Facades | 16 names are reserved in policy; recovery, status, resume, research, generation, and candidate review are implemented | P1 gap |
+| MCP tools | `tools/list` returns 183 tools after the native-start Facade slice | P1 gap |
+| Public Facades | 16 names are reserved in policy; start, recovery, status, resume, research, generation, and candidate review are implemented | P1 gap |
 | Legacy contracts | 174 tools carry `directorx/legacyLooseContract: true` | P1 gap |
 | Native protocol | `initialize`, `tools/list`, `tools/call`, `resources/list`, `resources/read`, and resource templates are implemented | Pass at transport level |
 | Installation docs | Marketplace commands exist in both READMEs | Pass |
 | Release docs | README badges and integration line were stale at `v0.1.14` | Fixed in loop 01 |
 | Runtime doctor | Planning profile reports identity, Node, workspace, and media binaries; host capabilities are unverified outside a live Codex session | Expected host-dependent state |
-| Regression suite | `pnpm run ci` passed: 575 tests, 0 failures | Pass |
+| Regression suite | `pnpm run ci` passed: 577 tests, 0 failures | Pass |
 
 ## Installation path
 

@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DX_SUBAGENT_CATALOG } from "./subagent-registry.mjs";
 import { renderCodexAgentRole } from "./codex-agent-roles.mjs";
-import { createRun, updateRun } from "./run-store.mjs";
+import { createRun, readRun, updateRun } from "./run-store.mjs";
 import { createOpenCutEditorSession, markOpenCutServiceRunning, recordPostProductionEditDecision } from "./opencut-editor.mjs";
 import { buildWaveformPyramid } from "./waveform-pyramid.mjs";
 import { quoteModelCost } from "./pricing-catalog.mjs";
@@ -152,6 +152,11 @@ test("serves MCP tools over newline-delimited stdio", async () => {
     assert.ok(recoveryFacade);
     assert.equal(recoveryFacade._meta["directorx/legacyLooseContract"], false);
     assert.ok(recoveryFacade.inputSchema.oneOf);
+    const startFacade = message.result.tools.find((tool) => tool.name === "directorx_start_production");
+    assert.ok(startFacade);
+    assert.equal(startFacade._meta["directorx/legacyLooseContract"], false);
+    assert.equal(startFacade.annotations.idempotentHint, true);
+    assert.ok(startFacade.inputSchema.oneOf);
     const statusFacade = message.result.tools.find((tool) => tool.name === "directorx_get_production_status");
     assert.ok(statusFacade);
     assert.equal(statusFacade._meta["directorx/legacyLooseContract"], false);
@@ -444,6 +449,79 @@ test("routes the first preflight to a standalone browser canvas", async () => {
     assert.equal(opened.nextHostInteraction.hostAction.tool, "request_user_input");
   } finally {
     child.kill("SIGTERM");
+  }
+});
+
+test("starts one production Run through the public native Goal facade", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-public-start-"));
+  const child = spawn(process.execPath, [new URL("./server.mjs", import.meta.url).pathname], { stdio: ["pipe", "pipe", "pipe"] });
+  let output = "";
+  child.stdout.setEncoding("utf8");
+  child.stdout.on("data", (chunk) => { output += chunk; });
+  const send = async (id, arguments_) => {
+    child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id, method: "tools/call", params: { name: "directorx_start_production", arguments: arguments_ } })}\n`);
+    await waitFor(() => messages(output).some((item) => item.id === id), 1000);
+    return messages(output).find((item) => item.id === id).result.structuredContent;
+  };
+  const outcome = "Deliver one replay-safe product film";
+
+  try {
+    const started = await send(351, { ...preflightArgs(projectPath, outcome), action: "begin" });
+    assert.equal(started.phase, "preflight");
+    assert.equal(started.status, "awaiting_canvas_open");
+    assert.equal(started.nextRequiredAction, "directorx_start_production:status");
+    assert.equal(started.hostAction.afterCanvasOpen.tool, "directorx_start_production");
+    assert.equal(started.hostAction.afterCanvasOpen.arguments.action, "status");
+
+    await claimBrowserCanvas(started.browserCanvasUrl);
+    const awaitingAnswer = await send(352, { projectPath, action: "status", preflightId: started.preflightId });
+    assert.equal(awaitingAnswer.status, "awaiting_goal_confirmation");
+    assert.equal(awaitingAnswer.hostAction.tool, "request_user_input");
+    assert.deepEqual(awaitingAnswer.hostAction.afterAnswer.actions.map((action) => action.tool), ["directorx_start_production", "create_goal", "directorx_start_production"]);
+    assert.equal(awaitingAnswer.hostAction.afterAnswer.actions[0].arguments.action, "resolve_goal");
+    assert.equal(awaitingAnswer.hostAction.afterAnswer.actions[2].arguments.action, "create");
+
+    const resolved = await send(353, {
+      projectPath,
+      action: "resolve_goal",
+      preflightId: started.preflightId,
+      requestId: awaitingAnswer.goalInteractionRequestId,
+      confirmedBy: "request_user_input",
+      answers: { enter_directorx_goal: { answers: ["进入制作 (Recommended)"] } }
+    });
+    assert.equal(resolved.status, "awaiting_goal_creation");
+    assert.equal(resolved.nextRequiredAction, "create_goal");
+    assert.equal(resolved.hostAction.tool, "create_goal");
+    assert.equal(resolved.hostAction.afterSuccess.tool, "directorx_start_production");
+
+    const createArguments = {
+      projectPath,
+      action: "create",
+      outcome,
+      preflightId: started.preflightId,
+      goalInteractionRequestId: awaitingAnswer.goalInteractionRequestId,
+      codexGoalId: "goal-public-start",
+      confirmedBy: "request_user_input",
+      goalAccepted: true
+    };
+    const created = await send(354, createArguments);
+    assert.equal(created.phase, "run_ready");
+    assert.match(created.runId, /^dx-/);
+    assert.equal(created.goalBound, true);
+    assert.equal(created.hostAction, null);
+    assert.equal(created.nextRequiredAction, "directorx_resume_production");
+
+    const replayed = await send(355, createArguments);
+    assert.equal(replayed.runId, created.runId);
+    const resumedStart = await send(356, { projectPath, action: "status", preflightId: started.preflightId });
+    assert.equal(resumedStart.runId, created.runId);
+    assert.equal(resumedStart.goalBound, true);
+    assert.equal(resumedStart.hostAction, null);
+    const stored = await readRun({ projectPath, runId: created.runId });
+    assert.equal(stored.events.filter((item) => item.type === "goal.bound").length, 1);
+  } finally {
+    child.kill("SIGTERM");
+    await rm(projectPath, { recursive: true, force: true });
   }
 });
 

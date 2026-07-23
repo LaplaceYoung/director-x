@@ -570,6 +570,18 @@ const rawTools = [
     annotations: writeAnnotations()
   },
   {
+    name: "directorx_start_production",
+    description: "Start or continue the single durable Director X boot transaction. It opens the side canvas first, preserves native Goal and request_user_input boundaries, creates and binds exactly one Run after acceptance, and returns the next Codex host action without repeating questions.",
+    inputSchema: { oneOf: [
+      objectSchema({ projectPath: stringSchema(), action: { const: "begin", type: "string" }, outcome: stringSchema(), availableAgentTypes: { type: "array", minItems: 1, items: stringSchema() }, hostToolNames: { type: "array", minItems: 1, items: stringSchema() }, hostSkillNames: { type: "array", items: stringSchema() } }, ["projectPath", "action", "outcome", "availableAgentTypes", "hostToolNames"]),
+      objectSchema({ projectPath: stringSchema(), action: { const: "status", type: "string" }, preflightId: stringSchema() }, ["projectPath", "action", "preflightId"]),
+      objectSchema({ projectPath: stringSchema(), action: { const: "resolve_goal", type: "string" }, preflightId: stringSchema(), requestId: stringSchema(), confirmedBy: { const: "request_user_input", type: "string" }, answers: { type: "object" } }, ["projectPath", "action", "preflightId", "requestId", "confirmedBy", "answers"]),
+      objectSchema({ projectPath: stringSchema(), action: { const: "create", type: "string" }, outcome: stringSchema(), preflightId: stringSchema(), goalInteractionRequestId: stringSchema(), codexGoalId: stringSchema(), confirmedBy: { const: "request_user_input", type: "string" }, goalAccepted: { const: true, type: "boolean" } }, ["projectPath", "action", "outcome", "preflightId", "goalInteractionRequestId", "codexGoalId", "confirmedBy", "goalAccepted"])
+    ] },
+    outputSchema: productionStartOutputSchema(),
+    annotations: writeAnnotations()
+  },
+  {
     name: "directorx_research_video",
     description: "Start or resume the reference-first video research lane after minimum Intake. Returns a compact research state, generation blockers, and the parallel dispatch plan without exposing the full Run snapshot.",
     inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema() }, ["projectPath", "runId"]),
@@ -2169,52 +2181,7 @@ async function executeTool(name, args) {
   if (name === "directorx_get_benchmark_baselines") return await readBaselineStore(args.projectPath);
   if (name === "directorx_list_benchmark_fixture_templates") return { schemaVersion: "1.0", templates: BENCHMARK_FIXTURE_TEMPLATES };
   if (name === "directorx_capability_preflight") {
-    const subagentNamingStatus = await inspectCodexAgentRoles(args.projectPath, { availableAgentTypes: args.availableAgentTypes });
-    const hostCapabilities = detectCodexHostCapabilities({ toolNames: args.hostToolNames ?? [], skillNames: args.hostSkillNames ?? [], availableAgentTypes: args.availableAgentTypes });
-    const setupHealth = await diagnosePluginHealth({ projectPath: args.projectPath, profile: "planning_only", sourceKind: "local", hostToolNames: args.hostToolNames, hostSkillNames: args.hostSkillNames, availableAgentTypes: args.availableAgentTypes });
-    const invalidAgentTypeEvidence = !subagentNamingStatus.agentTypeEvidence.valid;
-    const { browserCanvasUrl, sessionId: preflightId, canvasService } = await createBrowserSession({ projectPath: args.projectPath, outcome: args.outcome });
-    const goalInteractionRequestId = `dxq-goal-${preflightId}`;
-    const roleInstallInteractionRequestId = `dxq-role-${preflightId}`;
-    const goalQuestions = [{ header: "制作模式", id: "enter_directorx_goal", question: "是否进入 Director X Goal 并持续制作到可播放成片？", options: [{ label: "进入制作 (Recommended)", description: "创建 Codex Goal、保持画布和生产状态，持续推进到成片。" }, { label: "暂不进入", description: "不创建制作 Run，也不启动生成或下载。" }] }];
-    const roleInstallQuestions = [{ header: "DX 子智能体", id: "install_dx_roles", question: "当前用户尚未安装完整的 DX 子智能体。是否安装一次并供所有项目使用？", options: [{ label: "安装到当前用户 (Recommended)", description: "非破坏性写入 ~/.codex/agents；重新打开 Codex 后所有项目均可使用 DX 命名角色。" }, { label: "暂不安装", description: "不创建 Director X Goal，也不以普通代理替代 DX 子智能体。" }] }];
-    const goalInteraction = { requestId: goalInteractionRequestId, kind: "goal_entry", questions: goalQuestions, status: "pending", interactionSurface: "codex_request_user_input" };
-    const roleInstallInteraction = { requestId: roleInstallInteractionRequestId, kind: "role_install", questions: roleInstallQuestions, status: "pending", interactionSurface: "codex_request_user_input" };
-    const preflightSession = preflightSessions.get(preflightId);
-    Object.assign(preflightSession, { subagentNamingStatus, hostCapabilities, setupHealthSummary: summarizeSetupHealth(setupHealth), subagentSessionReady: subagentNamingStatus.sessionReady, invalidAgentTypeEvidence, goalInteractionRequestId, roleInstallInteractionRequestId, goalInteraction, roleInstallInteraction });
-    await savePreflightSession(preflightId, preflightSession);
-    const bootTransaction = projectPreflightBootTransaction(preflightId, projectPreflightSession(preflightId, preflightSession));
-    return {
-      mode: "Director X Goal",
-      conversationExperience: DIRECTORX_CONVERSATION_POLICY,
-      hostMechanism: "Codex Goal",
-      requestUserInput: { required: true, fallback: null },
-      requiredApprovals: ["goal_entry", "production_budget", "image_provider_and_model", "video_provider_and_model", "voice_provider_model_and_voice", "background_music_strategy"],
-      credentialPolicy: "Collect keys only through the browser-canvas password field, inject them into the current MCP process, and persist only credential references.",
-      canvasUri: CANVAS_URI,
-      browserCanvasUrl,
-      preflightId,
-      canvasService,
-      canvasMustOpenBeforeRun: true,
-      preferredSurface: "codex_in_app_browser",
-      canvasTabKey: `directorx:${preflightId}`,
-      requiredHostSurface: "iab",
-      requiredVisibility: true,
-      hostAction: { type: "open_url", url: browserCanvasUrl, browser: "iab", visibility: true, persistence: "handoff", requiredBefore: "directorx_get_preflight_status" },
-      hostActionInstructions: ["Use browser:control-in-app-browser. Browser may be Skill-backed and absent from direct ALL_TOOLS names; an empty name search is not an unavailable capability.", "Claim an existing Director X canvas tab or create an IAB tab and navigate it to browserCanvasUrl.", "Call the Browser visibility capability with true.", "As the final Browser action of this turn, call browser.tabs.finalize({keep:[{tab,status:'handoff'}]})."],
-      canvasTurnEndAction: { type: "browser_tabs_finalize", keepStatus: "handoff", required: true, deliverableOnlyAfterFinalDelivery: true },
-      nextHostInteraction: null,
-      bootTransaction,
-      afterCanvasOpen: { type: "mcp_tool", tool: "directorx_get_preflight_status", required: true, arguments: { projectPath: args.projectPath, preflightId } },
-      status: "awaiting_canvas_open",
-      subagentNamingStatus,
-      hostCapabilities,
-      setupHealth: summarizeSetupHealth(setupHealth),
-      requiredAgentTypes: subagentNamingStatus.unroutableRoleIds,
-      stage: "intake",
-      goal: { displayMode: "Director X Goal", outcome: args.outcome },
-      events: [{ sequence: 1, type: "preflight.canvas_service.ready", stage: "intake", detail: "Director X canvas service is ready; open the side Browser before Goal confirmation." }]
-    };
+    return await capabilityPreflight(args);
   }
   if (name === "directorx_get_preflight_status") {
     const preflight = await getOrRecoverPreflightSession(args.projectPath, args.preflightId);
@@ -2222,29 +2189,7 @@ async function executeTool(name, args) {
     return await preflightStatusPayload(preflight, args.preflightId);
   }
   if (name === "directorx_create_run") {
-    const preflight = await getOrRecoverPreflightSession(args.projectPath, args.preflightId);
-    if (!preflight || preflight.projectPath !== args.projectPath || preflight.outcome !== args.outcome) throw new Error("Run creation requires the matching Director X capability preflight.");
-    if (!preflight.canvasOpenedAt || preflight.surface !== "browser") throw new Error("Open the Director X side Browser canvas before creating the production Run.");
-    if (preflight.hostCapabilities?.productionReadiness?.mayCreateRun !== true) {
-      throw new Error(`Director X cannot create a production Run because the current Codex host is missing required capabilities: ${preflight.hostCapabilities.productionReadiness.blockers.join(", ")}. Refresh the host inventory after enabling Goal, request_user_input, agent dispatch, and durable execution support.`);
-    }
-    if (!preflight.subagentSessionReady) throw new Error(`Director X cannot create a Goal Run until the current Codex session can route every production role through a custom dx_* or built-in Codex agent: ${preflight.subagentNamingStatus?.unroutableRoleIds?.join(", ") ?? "unknown roles"}.`);
-    if (args.confirmedBy !== "request_user_input" || args.goalInteractionRequestId !== preflight.goalInteractionRequestId || args.goalAccepted !== true) throw new Error("Director X Goal entry must be confirmed through the preflight request_user_input interaction.");
-    if (preflight.goalInteraction?.status !== "resolved" || !String(preflight.goalInteraction.answers?.enter_directorx_goal ?? "").startsWith("进入制作")) {
-      throw new Error(`Resolve the Director X Goal entry through directorx_resolve_user_interaction with runId preflight:${args.preflightId} before creating the Run.`);
-    }
-    const createdRun = await createRun(args);
-    const run = await updateRun({ ...args, runId: createdRun.runId, mutate(current) {
-      current.hostCapabilities = preflight.hostCapabilities ?? null;
-      current.subagentNamingStatus = preflight.subagentNamingStatus ?? null;
-      current.events.push(event(current, "host.capabilities.negotiated", "intake", preflight.hostCapabilities?.observed ? `${preflight.hostCapabilities.observedToolCount} Codex host tools observed` : "Codex host inventory not supplied; capability-specific checks remain unknown"));
-      return current;
-    } });
-    preflight.runId = run.runId;
-    preflight.codexGoalId = args.codexGoalId ?? null;
-    await savePreflightSession(args.preflightId, preflight);
-    canvasSurfaceHost.bind("canvas", args.preflightId, { projectPath: args.projectPath, runId: run.runId }, { rotateClaim: true });
-    return await withBrowserCanvas(publicSnapshot(run), args);
+    return await createProductionRun(args);
   }
   if (["directorx_request_user_interaction", "directorx_create_and_ask_native_question"].includes(name)) {
     requireNativeGoalBound(await readRun(args), "Director X Intake and production questions");
@@ -4412,6 +4357,7 @@ async function executeTool(name, args) {
       return run;
     } }), args);
   }
+  if (name === "directorx_start_production") return await startProduction(args);
   if (name === "directorx_research_video") return await researchVideo(args);
   if (name === "directorx_generate_media") return await generateMedia(args);
   if (name === "directorx_review_media_candidate") return await reviewMediaCandidate(args);
@@ -4768,27 +4714,7 @@ async function executeTool(name, args) {
     return await withRunResumeActions(snapshot, args);
   }
   if (name === "directorx_bind_goal") {
-    const snapshot = await updateRun({ ...args, mutate(run) {
-      if (run.goal.codexGoalId && run.goal.codexGoalId !== args.codexGoalId) throw new Error(`Run is already bound to a different Codex Goal: ${run.goal.codexGoalId}`);
-      run.goal.codexGoalId = args.codexGoalId;
-      if (!run.goal.boundAt) {
-        run.goal.boundAt = new Date().toISOString();
-        run.events.push(event(run, "goal.bound", "intake", `Bound Codex Goal ${args.codexGoalId}`));
-      }
-      if (run.status === "awaiting_goal_binding") run.status = "awaiting_approval";
-      return run;
-    } });
-    const preflightBinding = canvasSurfaceHost.findCanvasByRun(args.projectPath, args.runId);
-    if (preflightBinding) {
-      const [preflightId] = preflightBinding;
-      const preflight = preflightSessions.get(preflightId);
-      if (preflight) {
-        preflight.codexGoalId = args.codexGoalId;
-        preflight.goalBoundAt = snapshot.goal.boundAt;
-        await savePreflightSession(preflightId, preflight);
-      }
-    }
-    return await withBrowserCanvas(publicSnapshot(snapshot), args);
+    return await bindGoal(args);
   }
   if (name === "directorx_record_decision") {
     return await withBrowserCanvas(publicSnapshot(await updateRun({ ...args, mutate(run) {
@@ -4902,6 +4828,129 @@ async function executeProductionRecovery(args) {
     return run;
   } });
   return result;
+}
+
+async function capabilityPreflight(args) {
+  const subagentNamingStatus = await inspectCodexAgentRoles(args.projectPath, { availableAgentTypes: args.availableAgentTypes });
+  const hostCapabilities = detectCodexHostCapabilities({ toolNames: args.hostToolNames ?? [], skillNames: args.hostSkillNames ?? [], availableAgentTypes: args.availableAgentTypes });
+  const setupHealth = await diagnosePluginHealth({ projectPath: args.projectPath, profile: "planning_only", sourceKind: "local", hostToolNames: args.hostToolNames, hostSkillNames: args.hostSkillNames, availableAgentTypes: args.availableAgentTypes });
+  const invalidAgentTypeEvidence = !subagentNamingStatus.agentTypeEvidence.valid;
+  const { browserCanvasUrl, sessionId: preflightId, canvasService } = await createBrowserSession({ projectPath: args.projectPath, outcome: args.outcome });
+  const goalInteractionRequestId = `dxq-goal-${preflightId}`;
+  const roleInstallInteractionRequestId = `dxq-role-${preflightId}`;
+  const goalQuestions = [{ header: "制作模式", id: "enter_directorx_goal", question: "是否进入 Director X Goal 并持续制作到可播放成片？", options: [{ label: "进入制作 (Recommended)", description: "创建 Codex Goal、保持画布和生产状态，持续推进到成片。" }, { label: "暂不进入", description: "不创建制作 Run，也不启动生成或下载。" }] }];
+  const roleInstallQuestions = [{ header: "DX 子智能体", id: "install_dx_roles", question: "当前用户尚未安装完整的 DX 子智能体。是否安装一次并供所有项目使用？", options: [{ label: "安装到当前用户 (Recommended)", description: "非破坏性写入 ~/.codex/agents；重新打开 Codex 后所有项目均可使用 DX 命名角色。" }, { label: "暂不安装", description: "不创建 Director X Goal，也不以普通代理替代 DX 子智能体。" }] }];
+  const goalInteraction = { requestId: goalInteractionRequestId, kind: "goal_entry", questions: goalQuestions, status: "pending", interactionSurface: "codex_request_user_input" };
+  const roleInstallInteraction = { requestId: roleInstallInteractionRequestId, kind: "role_install", questions: roleInstallQuestions, status: "pending", interactionSurface: "codex_request_user_input" };
+  const preflightSession = preflightSessions.get(preflightId);
+  Object.assign(preflightSession, { subagentNamingStatus, hostCapabilities, setupHealthSummary: summarizeSetupHealth(setupHealth), subagentSessionReady: subagentNamingStatus.sessionReady, invalidAgentTypeEvidence, goalInteractionRequestId, roleInstallInteractionRequestId, goalInteraction, roleInstallInteraction });
+  await savePreflightSession(preflightId, preflightSession);
+  const bootTransaction = projectPreflightBootTransaction(preflightId, projectPreflightSession(preflightId, preflightSession));
+  return {
+    mode: "Director X Goal", conversationExperience: DIRECTORX_CONVERSATION_POLICY, hostMechanism: "Codex Goal", requestUserInput: { required: true, fallback: null },
+    requiredApprovals: ["goal_entry", "production_budget", "image_provider_and_model", "video_provider_and_model", "voice_provider_model_and_voice", "background_music_strategy"],
+    credentialPolicy: "Collect keys only through the browser-canvas password field, inject them into the current MCP process, and persist only credential references.",
+    canvasUri: CANVAS_URI, browserCanvasUrl, preflightId, canvasService, canvasMustOpenBeforeRun: true, preferredSurface: "codex_in_app_browser", canvasTabKey: `directorx:${preflightId}`, requiredHostSurface: "iab", requiredVisibility: true,
+    hostAction: { type: "open_url", url: browserCanvasUrl, browser: "iab", visibility: true, persistence: "handoff", requiredBefore: "directorx_get_preflight_status" },
+    hostActionInstructions: ["Use browser:control-in-app-browser. Browser may be Skill-backed and absent from direct ALL_TOOLS names; an empty name search is not an unavailable capability.", "Claim an existing Director X canvas tab or create an IAB tab and navigate it to browserCanvasUrl.", "Call the Browser visibility capability with true.", "As the final Browser action of this turn, call browser.tabs.finalize({keep:[{tab,status:'handoff'}]})."],
+    canvasTurnEndAction: { type: "browser_tabs_finalize", keepStatus: "handoff", required: true, deliverableOnlyAfterFinalDelivery: true }, nextHostInteraction: null, bootTransaction,
+    afterCanvasOpen: { type: "mcp_tool", tool: "directorx_get_preflight_status", required: true, arguments: { projectPath: args.projectPath, preflightId } }, status: "awaiting_canvas_open",
+    subagentNamingStatus, hostCapabilities, setupHealth: summarizeSetupHealth(setupHealth), requiredAgentTypes: subagentNamingStatus.unroutableRoleIds, stage: "intake",
+    goal: { displayMode: "Director X Goal", outcome: args.outcome }, events: [{ sequence: 1, type: "preflight.canvas_service.ready", stage: "intake", detail: "Director X canvas service is ready; open the side Browser before Goal confirmation." }]
+  };
+}
+
+async function createProductionRun(args) {
+  const preflight = await getOrRecoverPreflightSession(args.projectPath, args.preflightId);
+  if (!preflight || preflight.projectPath !== args.projectPath || preflight.outcome !== args.outcome) throw new Error("Run creation requires the matching Director X capability preflight.");
+  if (preflight.runId) return await withBrowserCanvas(publicSnapshot(await readRun({ projectPath: args.projectPath, runId: preflight.runId })), { ...args, runId: preflight.runId });
+  if (!preflight.canvasOpenedAt || preflight.surface !== "browser") throw new Error("Open the Director X side Browser canvas before creating the production Run.");
+  if (preflight.hostCapabilities?.productionReadiness?.mayCreateRun !== true) throw new Error(`Director X cannot create a production Run because the current Codex host is missing required capabilities: ${preflight.hostCapabilities.productionReadiness.blockers.join(", ")}. Refresh the host inventory after enabling Goal, request_user_input, agent dispatch, and durable execution support.`);
+  if (!preflight.subagentSessionReady) throw new Error(`Director X cannot create a Goal Run until the current Codex session can route every production role through a custom dx_* or built-in Codex agent: ${preflight.subagentNamingStatus?.unroutableRoleIds?.join(", ") ?? "unknown roles"}.`);
+  if (args.confirmedBy !== "request_user_input" || args.goalInteractionRequestId !== preflight.goalInteractionRequestId || args.goalAccepted !== true) throw new Error("Director X Goal entry must be confirmed through the preflight request_user_input interaction.");
+  if (preflight.goalInteraction?.status !== "resolved" || !String(preflight.goalInteraction.answers?.enter_directorx_goal ?? "").startsWith("进入制作")) throw new Error(`Resolve the Director X Goal entry through request_user_input before creating the Run.`);
+  const createdRun = await createRun(args);
+  const run = await updateRun({ ...args, runId: createdRun.runId, mutate(current) {
+    current.hostCapabilities = preflight.hostCapabilities ?? null;
+    current.subagentNamingStatus = preflight.subagentNamingStatus ?? null;
+    current.events.push(event(current, "host.capabilities.negotiated", "intake", preflight.hostCapabilities?.observed ? `${preflight.hostCapabilities.observedToolCount} Codex host tools observed` : "Codex host inventory not supplied; capability-specific checks remain unknown"));
+    return current;
+  } });
+  preflight.runId = run.runId;
+  preflight.codexGoalId = args.codexGoalId ?? null;
+  await savePreflightSession(args.preflightId, preflight);
+  canvasSurfaceHost.bind("canvas", args.preflightId, { projectPath: args.projectPath, runId: run.runId }, { rotateClaim: true });
+  return await withBrowserCanvas(publicSnapshot(run), { ...args, runId: run.runId });
+}
+
+async function bindGoal(args) {
+  const snapshot = await updateRun({ ...args, mutate(run) {
+    if (run.goal.codexGoalId && run.goal.codexGoalId !== args.codexGoalId) throw new Error(`Run is already bound to a different Codex Goal: ${run.goal.codexGoalId}`);
+    run.goal.codexGoalId = args.codexGoalId;
+    if (!run.goal.boundAt) { run.goal.boundAt = new Date().toISOString(); run.events.push(event(run, "goal.bound", "intake", `Bound Codex Goal ${args.codexGoalId}`)); }
+    if (run.status === "awaiting_goal_binding") run.status = "awaiting_approval";
+    return run;
+  } });
+  const preflightBinding = canvasSurfaceHost.findCanvasByRun(args.projectPath, args.runId);
+  if (preflightBinding) {
+    const [preflightId] = preflightBinding;
+    const preflight = preflightSessions.get(preflightId);
+    if (preflight) { preflight.codexGoalId = args.codexGoalId; preflight.goalBoundAt = snapshot.goal.boundAt; await savePreflightSession(preflightId, preflight); }
+  }
+  return await withBrowserCanvas(publicSnapshot(snapshot), args);
+}
+
+async function startProduction(args) {
+  if (args.action === "begin") return summarizeProductionStart(await capabilityPreflight(args), args);
+  const preflight = await getOrRecoverPreflightSession(args.projectPath, args.preflightId);
+  if (!preflight || preflight.projectPath !== args.projectPath) throw new Error("Unknown or mismatched Director X preflight.");
+  if (args.action === "resolve_goal") {
+    if (!preflight.canvasOpenedAt || preflight.surface !== "browser") throw new Error("Open the Director X side Browser canvas before resolving Goal entry.");
+    const interactionRun = { runId: `preflight:${args.preflightId}`, interactions: { pending: [preflight.goalInteraction], history: [] } };
+    preflight.goalInteraction = resolveNativeInteraction(interactionRun, { ...args, runId: interactionRun.runId });
+    await savePreflightSession(args.preflightId, preflight);
+    return summarizeProductionStart(await preflightStatusPayload(preflight, args.preflightId), args, preflight);
+  }
+  if (args.action === "create") {
+    const created = await createProductionRun(args);
+    const bound = await bindGoal({ projectPath: args.projectPath, runId: created.runId, codexGoalId: args.codexGoalId });
+    return summarizeProductionStart(bound, { ...args, runId: created.runId }, preflight);
+  }
+  if (args.action === "status") {
+    if (preflight.runId) {
+      const run = await readRun({ projectPath: args.projectPath, runId: preflight.runId });
+      const recoverableGoalId = run.goal?.codexGoalId ?? preflight.codexGoalId;
+      const snapshot = !run.goal?.boundAt && recoverableGoalId
+        ? await bindGoal({ projectPath: args.projectPath, runId: preflight.runId, codexGoalId: recoverableGoalId })
+        : await withBrowserCanvas(publicSnapshot(run), { projectPath: args.projectPath, runId: preflight.runId });
+      return summarizeProductionStart(snapshot, { ...args, runId: preflight.runId }, preflight);
+    }
+    return summarizeProductionStart(await preflightStatusPayload(preflight, args.preflightId), args, preflight);
+  }
+  throw new Error(`Unsupported production start action: ${args.action}`);
+}
+
+function summarizeProductionStart(payload, args, preflight = null) {
+  const preflightId = args.preflightId ?? payload.preflightId ?? null;
+  const runId = payload.runId ?? preflight?.runId ?? null;
+  const status = runId ? payload.status : payload.status ?? "awaiting_canvas_open";
+  const goalInteractionRequestId = preflight?.goalInteractionRequestId ?? payload.bootTransaction?.goalInteractionRequestId ?? null;
+  let hostAction = payload.hostAction ?? payload.nextHostInteraction?.hostAction ?? payload.goalLifecycle?.hostAction ?? payload.canvasHostAction ?? null;
+  if (runId) hostAction = null;
+  if (status === "awaiting_canvas_open" && hostAction) hostAction = { ...hostAction, afterCanvasOpen: { type: "mcp_tool", tool: "directorx_start_production", required: true, arguments: { projectPath: args.projectPath, action: "status", preflightId } } };
+  if (status === "awaiting_goal_confirmation" && preflight) {
+    const protocol = compileDirectorXGoalBootProtocol({ projectPath: preflight.projectPath, outcome: preflight.outcome, preflightId, goalInteractionRequestId: preflight.goalInteractionRequestId, questions: preflight.goalInteraction.questions });
+    hostAction = { ...protocol.requestUserInputAction, afterAnswer: { type: "host_action_sequence", actions: [
+      { type: "mcp_tool", tool: "directorx_start_production", required: true, arguments: { projectPath: preflight.projectPath, action: "resolve_goal", preflightId, requestId: preflight.goalInteractionRequestId, confirmedBy: "request_user_input", answers: "$request_user_input.answers" } },
+      protocol.createGoalAction,
+      { type: "mcp_tool", tool: "directorx_start_production", required: true, arguments: { projectPath: preflight.projectPath, action: "create", outcome: preflight.outcome, preflightId, goalInteractionRequestId: preflight.goalInteractionRequestId, codexGoalId: "$create_goal.result.goal.threadId", confirmedBy: "request_user_input", goalAccepted: true } }
+    ] } };
+  } else if (status === "awaiting_goal_creation" && preflight) {
+    const protocol = compileDirectorXGoalBootProtocol({ projectPath: preflight.projectPath, outcome: preflight.outcome, preflightId, goalInteractionRequestId: preflight.goalInteractionRequestId, questions: preflight.goalInteraction.questions, goalAccepted: true });
+    hostAction = { ...protocol.createGoalAction, afterSuccess: { type: "mcp_tool", tool: "directorx_start_production", required: true, arguments: { projectPath: preflight.projectPath, action: "create", outcome: preflight.outcome, preflightId, goalInteractionRequestId: preflight.goalInteractionRequestId, codexGoalId: "$create_goal.result.goal.threadId", confirmedBy: "request_user_input", goalAccepted: true } } };
+  }
+  const nextRequiredAction = runId ? "directorx_resume_production" : status === "awaiting_canvas_open" ? "directorx_start_production:status" : status === "awaiting_goal_confirmation" ? "request_user_input" : status === "awaiting_goal_creation" ? "create_goal" : status === "goal_declined" ? "stop" : "repair_host_capabilities";
+  return { schemaVersion: "1.0", phase: runId ? "run_ready" : "preflight", status, preflightId, runId, stage: payload.stage ?? "intake", browserCanvasUrl: payload.browserCanvasUrl, goalInteractionRequestId, goalBound: Boolean(payload.goal?.boundAt), hostAction, nextRequiredAction };
 }
 
 async function getProductionStatus(args) {
@@ -5762,6 +5811,22 @@ function productionRecoveryOutputSchema() {
     checkpointId: { anyOf: [stringSchema(), { type: "null" }] },
     nextRequiredAction: stringSchema()
   }, ["schemaVersion", "runId", "status", "recovery", "checkpointId", "nextRequiredAction"]);
+}
+function productionStartOutputSchema() {
+  const nullableString = { anyOf: [stringSchema(), { type: "null" }] };
+  return objectSchema({
+    schemaVersion: { const: "1.0", type: "string" },
+    phase: { enum: ["preflight", "run_ready"], type: "string" },
+    status: stringSchema(),
+    preflightId: nullableString,
+    runId: nullableString,
+    stage: stringSchema(),
+    browserCanvasUrl: stringSchema(),
+    goalInteractionRequestId: nullableString,
+    goalBound: { type: "boolean" },
+    hostAction: nullableLooseObjectSchema(),
+    nextRequiredAction: stringSchema()
+  }, ["schemaVersion", "phase", "status", "preflightId", "runId", "stage", "browserCanvasUrl", "goalInteractionRequestId", "goalBound", "hostAction", "nextRequiredAction"]);
 }
 function productionStatusOutputSchema() {
   return objectSchema({

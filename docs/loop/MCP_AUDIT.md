@@ -6,9 +6,9 @@ Measured through the stdio `tools/list` response from `mcp/server.mjs`:
 
 ```json
 {
-  "toolCount": 182,
+  "toolCount": 183,
   "publicFacadeNamesReserved": 16,
-  "implementedPublicFacades": 6,
+  "implementedPublicFacades": 7,
   "legacyLooseContracts": 174,
   "modelAndAppExplicitVisibility": 2,
   "appOnlyExplicitVisibility": 1
@@ -37,8 +37,8 @@ The current implementation treats all tools as registered and callable by the sa
 
 `mcp/tool-registry.mjs` now supports `compatibility` and `public` profiles. The default remains `compatibility`; `DIRECTORX_TOOL_PROFILE=public` lists and dispatches only names in the reserved public Facade set. The boundary is enforced in both `list()` and `call()`.
 
-The public profile currently contains six completed Facades: recovery, status, resume, research, generation, and candidate review. `directorx_generate_media` now covers `prepare/inspect/submit/poll`, so evidence-bound retries return to the same public gateway while retaining official pricing, attempt caps, and replay safety. This remains a migration slice, not a claim that the public profile is production-complete.
+The public profile currently contains seven completed Facades: start, recovery, status, resume, research, generation, and candidate review. `directorx_start_production` owns one durable preflight transaction while returning native `request_user_input` and `create_goal` host actions; it never claims MCP can execute those Codex-native operations itself. `directorx_generate_media` covers `prepare/inspect/submit/poll`, so evidence-bound retries return to the same public gateway while retaining official pricing, attempt caps, and replay safety. This remains a migration slice, not a claim that the public profile is production-complete.
 
 ## Next implementation slice
 
-Implement the public start boundary, then exercise the complete public path through editing and delivery.
+Implement the first edit/render Facade, then exercise the complete public path through delivery.

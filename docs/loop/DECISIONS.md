@@ -53,3 +53,9 @@ Reason: review and selection are one user intent after the candidate passes the 
 Decision: add `prepare` to `directorx_generate_media` and route public repair results there. Compatibility calls to `directorx_begin_generation_attempt` use the same implementation.
 
 Reason: opening a priced, bounded attempt is part of generating media. Exposing it as a separate public tool forces Codex to understand internal draw-loop bookkeeping and creates a recovery gap between review and retry.
+
+## 2026-07-23 — Public startup coordinates native actions without impersonating them
+
+Decision: `directorx_start_production` owns the durable preflight, interaction resolution, Run creation, and Goal binding, but returns `request_user_input` and `create_goal` as explicit Codex host actions.
+
+Reason: MCP cannot truthfully invoke Codex-native Goal or input UI by itself. Keeping those boundaries visible preserves the native experience, while routing every MCP continuation back through one Facade prevents repeated questions, duplicate Runs, and public dependence on hidden low-level tools.

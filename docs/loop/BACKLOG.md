@@ -6,10 +6,9 @@ None observed in the repository-only audit. A live-host installation test is sti
 
 ## P1
 
-1. Implement the public `start` Facade and exercise start → research → generation → review as one durable lifecycle. Status, resume, research, generation, and candidate review are complete migration slices.
-2. Implement the first edit/render public Facade after the start boundary is stable.
-3. Make the installed-cache and fresh Codex session test executable and record elapsed time to first successful call.
-4. Convert the remaining recovery, start, resume, and progress skill instructions to the public Facade contract.
+1. Implement the first edit/render public Facade and exercise start → research → generation → review → edit as one durable lifecycle. Start, status, resume, research, generation, candidate review, and recovery are complete migration slices.
+2. Make the installed-cache and fresh Codex session test executable and record elapsed time to first successful call.
+3. Convert the remaining recovery, start, resume, and progress skill instructions to the public Facade contract.
 
 ## P2
 

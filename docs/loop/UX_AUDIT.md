@@ -13,7 +13,7 @@ The main skill establishes the correct order: preflight → side Browser canvas 
 
 ## Friction
 
-- 182 compatibility-mode tool descriptors make the model-facing surface harder to understand than the product itself.
+- 183 compatibility-mode tool descriptors make the model-facing surface harder to understand than the product itself.
 - Many internal activity tools can still be selected directly by name.
 - The distinction between “production action” and “Canvas/app support” is not enforced at transport level.
 - Installation success and live-host readiness are documented, but a clean-host timing benchmark is missing.
@@ -27,3 +27,5 @@ The main skill establishes the correct order: preflight → side Browser canvas 
 - Generation inspection returns request, attempt, job, candidate, blocker, and next-action counts without leaking credentials or the full Run.
 - Candidate review turns accept → select and fail → repair-plan into one user-facing action, with stable replay behavior.
 - Repair retries return to `directorx_generate_media:prepare`; the user-facing lifecycle no longer exposes attempt bookkeeping.
+- Public startup returns one next action at a time and keeps all MCP continuations inside `directorx_start_production`; only native `request_user_input` and `create_goal` remain host actions.
+- Replaying the public create action reuses the same Run and Goal binding instead of asking again or creating parallel state.

@@ -48,6 +48,7 @@ const DESTRUCTIVE_TOOLS = new Set([
 ]);
 
 const IDEMPOTENT_WRITE_TOOLS = new Set([
+  "directorx_start_production",
   "directorx_recover_production",
   "directorx_submit_provider_job",
   "directorx_submit_media_generation",

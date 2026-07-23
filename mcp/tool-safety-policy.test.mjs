@@ -30,6 +30,7 @@ test("classifies reads, runtime mutation, network access, idempotency, and destr
   assert.equal(generationFacade.openWorldHint, true);
   assert.equal(generationFacade.idempotentHint, true);
   assert.equal(directorXToolSafetyAnnotations("directorx_review_media_candidate").idempotentHint, true);
+  assert.equal(directorXToolSafetyAnnotations("directorx_start_production").idempotentHint, true);
   assert.equal(directorXToolSafetyAnnotations("directorx_poll_media_generation").openWorldHint, true);
   assert.equal(directorXToolSafetyAnnotations("directorx_generate_mosi_voiceover").openWorldHint, true);
   assert.equal(directorXToolSafetyAnnotations("directorx_install_builtin_media_runtime").openWorldHint, true);
@@ -56,7 +57,7 @@ function requiredPolicyDefinitions(excludedName) {
   const names = [
     "directorx_list_subagent_roles", "directorx_get_subagent_naming_status", "directorx_list_video_capabilities",
     "directorx_list_benchmark_verifiers", "directorx_list_benchmark_fixture_templates", "directorx_get_benchmark_baselines",
-    "directorx_get_fast_start_status", "directorx_get_production_status", "directorx_resume_production", "directorx_research_video", "directorx_generate_media", "directorx_review_media_candidate", "directorx_query_director_knowledge",
+    "directorx_get_fast_start_status", "directorx_start_production", "directorx_get_production_status", "directorx_resume_production", "directorx_research_video", "directorx_generate_media", "directorx_review_media_candidate", "directorx_query_director_knowledge",
     "directorx_query_cinematic_references", "directorx_get_opencut_editor_status", "directorx_validate_research_package",
     "directorx_get_stage_requirements", "directorx_list_media_providers", "directorx_get_media_provider_setup",
     "directorx_get_custom_media_provider_intake", "directorx_get_custom_media_provider_setup", "directorx_get_mosi_voice_setup",
