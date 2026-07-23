@@ -159,6 +159,9 @@ test("serves MCP tools over newline-delimited stdio", async () => {
     assert.ok(resumeFacade);
     assert.equal(resumeFacade._meta["directorx/legacyLooseContract"], false);
     assert.equal(resumeFacade.annotations.readOnlyHint, true);
+    const researchFacade = message.result.tools.find((tool) => tool.name === "directorx_research_video");
+    assert.ok(researchFacade);
+    assert.equal(researchFacade._meta["directorx/legacyLooseContract"], false);
     assert.equal(message.result.tools.some((tool) => tool.name === "directorx_get_recovery_action"), false);
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_query_director_knowledge"));
     assert.ok(message.result.tools.some((tool) => tool.name === "directorx_query_cinematic_references"));
@@ -304,6 +307,12 @@ test("prepares the complete minimum Intake contract through one MCP tool call", 
     assert.equal(dispatchActions.length, 2);
     assert.ok(dispatchActions.every((action) => action.tool === "spawn_agent"));
     assert.deepEqual(started.fastStart.generationBlockers, ["budget", "image_model", "video_model", "voice_model"]);
+    const researched = (await send(503, "directorx_research_video", { projectPath, runId: run.runId })).result.structuredContent;
+    assert.equal(researched.runId, run.runId);
+    assert.equal(researched.stage, "research");
+    assert.equal(researched.researchStatus, "reference_research_started");
+    assert.equal(researched.taskCount, 2);
+    assert.deepEqual(researched.generationBlockers, ["budget", "image_model", "video_model", "voice_model"]);
   } finally {
     child.kill("SIGTERM");
     await rm(projectPath, { recursive: true, force: true });

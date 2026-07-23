@@ -29,3 +29,9 @@ Reason: a status check should help Codex choose the next user-facing action with
 Decision: `directorx_resume_production` reads the existing checkpoint, rebinds the side Browser, and returns the existing resume action plan. It never creates a new Run or writes a replacement checkpoint.
 
 Reason: resume is a recovery boundary; duplicating a Run or replaying completed work would recreate the long-running workflow failure this loop is designed to remove.
+
+## 2026-07-23 — Research Facade starts after minimum Intake
+
+Decision: `directorx_research_video` can start only after the existing minimum Intake and approval-independent research prerequisites are valid. Provider keys and paid generation approvals remain deferred.
+
+Reason: reference download, media understanding, asset search, and first-script work must begin before provider setup becomes a production black hole.

@@ -570,6 +570,13 @@ const rawTools = [
     annotations: writeAnnotations()
   },
   {
+    name: "directorx_research_video",
+    description: "Start or resume the reference-first video research lane after minimum Intake. Returns a compact research state, generation blockers, and the parallel dispatch plan without exposing the full Run snapshot.",
+    inputSchema: objectSchema({ projectPath: stringSchema(), runId: stringSchema() }, ["projectPath", "runId"]),
+    outputSchema: productionResearchOutputSchema(),
+    annotations: writeAnnotations()
+  },
+  {
     name: "directorx_recover_production",
     description: "Inspect or atomically apply one Director X recovery intent. Inspect returns a compact opaque token; apply binds that token to the exact active failure, writes one checkpoint, clears the gate once, and returns the same result on replay.",
     inputSchema: { oneOf: [
@@ -4402,6 +4409,7 @@ async function executeTool(name, args) {
       return run;
     } }), args);
   }
+  if (name === "directorx_research_video") return await researchVideo(args);
   if (name === "directorx_plan_production_team") {
     const current = await readRun(args);
     if (!current.executionGraph) throw new Error("Register execution_graph.json before planning the DX production team.");
@@ -4944,6 +4952,35 @@ async function resumeProduction(args) {
     nextRequiredAction: plan.productionBootstrap.nextRequiredAction,
     pendingInteractionCount: run.interactions?.pending?.length ?? 0,
     resumeActionPlan: plan
+  };
+}
+
+async function researchVideo(args) {
+  const current = await readRun(args);
+  let run = current;
+  if (!(current.stage === "research" && current.fastStart?.status === "reference_research_started")) {
+    run = await updateRun({ ...args, mutate: async (next) => {
+      const fastStart = beginReferenceResearch(next);
+      if (!fastStart.dispatchPlan && !next.subagentOrchestrationPlan) fastStart.dispatchPlan = compileFastStartResearchPlan(next, args);
+      next.events.push(event(next, "reference.research.started", "research", `Reference-first lane started · generation blockers ${fastStart.generationBlockers.join(", ") || "none"}`));
+      return next;
+    } });
+  }
+  const response = await withRunResumeActions(run, args);
+  const fastStart = run.fastStart ?? {};
+  const plan = fastStart.dispatchPlan ?? run.subagentOrchestrationPlan ?? null;
+  return {
+    schemaVersion: "1.0",
+    runId: run.runId,
+    status: run.status,
+    stage: run.stage,
+    researchStatus: fastStart.status ?? "research_not_started",
+    generationBlockers: fastStart.generationBlockers ?? [],
+    taskCount: plan?.tasks?.length ?? 0,
+    readyBatchId: response.resumeActionPlan?.readyBatchId ?? null,
+    nextRequiredAction: response.resumeActionPlan?.productionBootstrap?.nextRequiredAction ?? "continue_research",
+    browserCanvasUrl: response.browserCanvasUrl,
+    resumeActionPlan: response.resumeActionPlan
   };
 }
 
@@ -5563,6 +5600,21 @@ function productionResumeOutputSchema() {
     pendingInteractionCount: { type: "integer", minimum: 0 },
     resumeActionPlan: looseObjectSchema()
   }, ["schemaVersion", "runId", "status", "stage", "browserCanvasUrl", "canvasTabKey", "blockedBy", "nextRequiredAction", "pendingInteractionCount", "resumeActionPlan"]);
+}
+function productionResearchOutputSchema() {
+  return objectSchema({
+    schemaVersion: { const: "1.0", type: "string" },
+    runId: stringSchema(),
+    status: stringSchema(),
+    stage: stringSchema(),
+    researchStatus: stringSchema(),
+    generationBlockers: { type: "array", items: stringSchema() },
+    taskCount: { type: "integer", minimum: 0 },
+    readyBatchId: { anyOf: [stringSchema(), { type: "null" }] },
+    nextRequiredAction: stringSchema(),
+    browserCanvasUrl: stringSchema(),
+    resumeActionPlan: looseObjectSchema()
+  }, ["schemaVersion", "runId", "status", "stage", "researchStatus", "generationBlockers", "taskCount", "readyBatchId", "nextRequiredAction", "browserCanvasUrl", "resumeActionPlan"]);
 }
 function nativeQuestionSchema() {
   return objectSchema({
