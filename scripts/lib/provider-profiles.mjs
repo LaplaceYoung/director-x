@@ -4,6 +4,7 @@ import { mkdir } from "node:fs/promises";
 import { initProject, projectPaths } from "./project.mjs";
 
 const MODALITIES = new Set(["image", "video"]);
+const AUTH_SCHEMES = new Set(["bearer", "raw"]);
 const SECRET_FIELDS = ["apiKey", "key", "secret", "token"];
 
 export async function configureProvider(projectPath, input) {
@@ -43,9 +44,16 @@ export async function doctorProvider(projectPath, id, options = {}) {
     model: profile.model,
     docsUrl: profile.docsUrl,
     endpoint: profile.endpoint || null,
+    authHeader: profile.authHeader || null,
+    authScheme: profile.authScheme || null,
     authEnv: profile.authEnv,
     credentialAvailable: Boolean(env[profile.authEnv]),
-    readyForAdapter: Boolean(profile.endpoint && env[profile.authEnv])
+    readyForAdapter: Boolean(
+      profile.endpoint &&
+      profile.authHeader &&
+      profile.authScheme &&
+      env[profile.authEnv]
+    )
   };
 }
 
@@ -74,8 +82,20 @@ function normalizeProfile(input) {
   }
   const docsUrl = validateHttpsUrl(required(input.docsUrl, "docsUrl"), "Official documentation URL");
   const endpoint = input.endpoint
-    ? validateHttpsUrl(String(input.endpoint), "Provider endpoint")
+    ? validateHttpsUrl(String(input.endpoint), "Provider endpoint", { rejectSecrets: true })
     : undefined;
+  const authHeader = input.authHeader
+    ? validateHeaderName(String(input.authHeader))
+    : undefined;
+  const authScheme = input.authScheme
+    ? required(input.authScheme, "authScheme")
+    : undefined;
+  if (Boolean(authHeader) !== Boolean(authScheme)) {
+    throw new Error("Provider authHeader and authScheme must be configured together.");
+  }
+  if (authScheme && !AUTH_SCHEMES.has(authScheme)) {
+    throw new Error("Provider authScheme must be bearer or raw.");
+  }
   const authEnv = required(input.authEnv, "authEnv");
   if (!/^[A-Z][A-Z0-9_]*$/.test(authEnv)) {
     throw new Error("Provider authEnv must be an uppercase environment variable name.");
@@ -87,6 +107,7 @@ function normalizeProfile(input) {
     model: required(input.model, "model"),
     docsUrl,
     ...(endpoint ? { endpoint } : {}),
+    ...(authHeader ? { authHeader, authScheme } : {}),
     authEnv
   };
 }
@@ -118,7 +139,7 @@ function required(value, label) {
   return value.trim();
 }
 
-function validateHttpsUrl(value, label) {
+function validateHttpsUrl(value, label, options = {}) {
   let url;
   try {
     url = new URL(value);
@@ -126,5 +147,21 @@ function validateHttpsUrl(value, label) {
     throw new Error(`${label} must be a valid URL.`);
   }
   if (url.protocol !== "https:") throw new Error(`${label} must use HTTPS.`);
+  if (url.username || url.password) throw new Error(`${label} must not contain URL credentials.`);
+  if (options.rejectSecrets) {
+    for (const key of url.searchParams.keys()) {
+      if (/(?:api[-_]?key|authorization|credential|secret|signature|access[-_]?token)$/i.test(key)) {
+        throw new Error(`${label} must not contain credential query parameters.`);
+      }
+    }
+  }
   return url.toString();
+}
+
+function validateHeaderName(value) {
+  const header = value.trim();
+  if (!/^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.test(header)) {
+    throw new Error("Provider authHeader must be a valid HTTP header name.");
+  }
+  return header;
 }

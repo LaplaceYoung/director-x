@@ -11,6 +11,7 @@ import {
   doctorProvider,
   listProviders
 } from "./lib/provider-profiles.mjs";
+import { requestProvider } from "./lib/provider-request.mjs";
 
 const [command = "help", ...rawArgs] = process.argv.slice(2);
 const providerAction = command === "provider" && rawArgs[0] && !rawArgs[0].startsWith("--")
@@ -73,6 +74,8 @@ try {
       model: options.model,
       docsUrl: options.docs,
       endpoint: options.endpoint,
+      authHeader: options["auth-header"],
+      authScheme: options["auth-scheme"],
       authEnv: options["auth-env"]
     });
     process.stdout.write(`${JSON.stringify(profile, null, 2)}\n`);
@@ -83,6 +86,21 @@ try {
     const result = await doctorProvider(projectPath, options.id);
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     if (!result.credentialAvailable) process.exitCode = 1;
+  } else if (command === "provider" && providerAction === "request") {
+    if (!options.id) throw new Error("provider request requires --id ID");
+    if (!options.approved) throw new Error("provider request requires --approved after user confirmation");
+    const result = await requestProvider(projectPath, {
+      id: options.id,
+      approved: true,
+      method: options.method,
+      endpoint: options.endpoint,
+      bodyPath: options.body ? resolve(options.body) : undefined,
+      output: options.output ? resolve(options.output) : undefined,
+      title: options.title,
+      timeoutMs: options.timeout
+    });
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    if (!result.ok) process.exitCode = 1;
   } else {
     printHelp();
   }
@@ -113,9 +131,10 @@ function printHelp() {
     "  directorx doctor",
     "  directorx compose --project PATH [--title TITLE] [--width PX] [--height PX] [--fps FPS] [--seconds-per-item N]",
     "  directorx render --project PATH [--quality preview|final] [--output PROJECT_FILE]",
-    "  directorx provider configure --project PATH --id ID --provider NAME --modality image|video --model MODEL --docs HTTPS_URL --auth-env ENV_NAME [--endpoint HTTPS_URL]",
+    "  directorx provider configure --project PATH --id ID --provider NAME --modality image|video --model MODEL --docs HTTPS_URL --auth-env ENV_NAME [--endpoint HTTPS_URL --auth-header HEADER --auth-scheme bearer|raw]",
     "  directorx provider list --project PATH",
     "  directorx provider doctor --project PATH --id ID",
+    "  directorx provider request --project PATH --id ID --approved [--method GET|POST] [--body PROJECT_JSON] [--endpoint SAME_ORIGIN_URL] [--output PROJECT_FILE] [--title TITLE]",
     ""
   ].join("\n"));
 }

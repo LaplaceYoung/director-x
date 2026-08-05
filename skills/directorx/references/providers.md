@@ -27,6 +27,8 @@ node <plugin-root>/scripts/directorx.mjs provider configure \
   --model "<exact model>" \
   --docs "<official HTTPS documentation URL>" \
   --endpoint "<documented HTTPS endpoint>" \
+  --auth-header "Authorization" \
+  --auth-scheme bearer \
   --auth-env "<UPPERCASE_ENV_NAME>"
 ```
 
@@ -54,3 +56,19 @@ Before making a paid request, verify:
 - output ownership and retention behavior
 
 Keep each provider adapter thin. Redact credentials and authorization headers from errors and logs. Save request metadata, provider job IDs, costs, outputs, and failures under `.directorx/`, but never save the key.
+
+For a documented JSON-over-HTTPS endpoint, place the documented request body in a project-local JSON file. After the user explicitly approves the paid or external request, run:
+
+```bash
+node <plugin-root>/scripts/directorx.mjs provider request \
+  --project <project-path> \
+  --id <provider-id> \
+  --approved \
+  --body <project-local-request.json>
+```
+
+The request command injects authentication from the configured environment variable, refuses credential-like fields in the JSON body, blocks redirects and cross-origin endpoint overrides, and stores a redacted run record under `.directorx/provider-runs/`.
+
+For asynchronous video jobs, inspect the saved JSON response, then use `--method GET --endpoint <same-origin-status-url>` for documented polling. Do not poll faster or longer than the official documentation permits.
+
+Direct image or video responses are saved and added to the canvas automatically. JSON responses remain technical evidence; download or decode only the documented output field, then add the resulting media to the canvas.

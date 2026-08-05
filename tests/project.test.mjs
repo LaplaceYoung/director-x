@@ -22,6 +22,7 @@ import {
   doctorProvider,
   listProviders
 } from "../scripts/lib/provider-profiles.mjs";
+import { requestProvider } from "../scripts/lib/provider-request.mjs";
 
 test("initializes a canvas and stores only supported content objects", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "directorx-"));
@@ -187,6 +188,8 @@ test("stores provider metadata without storing credentials", async () => {
     model: "image-v1",
     docsUrl: "https://example.com/docs",
     endpoint: "https://api.example.com/images",
+    authHeader: "Authorization",
+    authScheme: "bearer",
     authEnv: "EXAMPLE_API_KEY"
   });
 
@@ -201,6 +204,7 @@ test("stores provider metadata without storing credentials", async () => {
   });
   assert.equal(missing.credentialAvailable, false);
   assert.equal(available.credentialAvailable, true);
+  assert.equal(available.readyForAdapter, true);
   assert.doesNotMatch(JSON.stringify(available), /actual-secret/);
 });
 
@@ -229,4 +233,120 @@ test("rejects provider secrets and insecure documentation URLs", async () => {
     }),
     /Do not pass apiKey/
   );
+});
+
+test("sends an approved provider request without persisting credentials", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-provider-request-"));
+  await configureProvider(projectPath, {
+    id: "example-image",
+    provider: "Example",
+    modality: "image",
+    model: "image-v1",
+    docsUrl: "https://example.com/docs",
+    endpoint: "https://api.example.com/images",
+    authHeader: "X-Api-Key",
+    authScheme: "raw",
+    authEnv: "EXAMPLE_API_KEY"
+  });
+  let received;
+  const result = await requestProvider(projectPath, {
+    id: "example-image",
+    approved: true,
+    body: { model: "image-v1", prompt: "A red paper kite" },
+    env: { EXAMPLE_API_KEY: "actual-secret" },
+    fetchImpl: async (url, options) => {
+      received = { url, options };
+      return new Response(Buffer.from("fake-png"), {
+        status: 200,
+        headers: { "Content-Type": "image/png" }
+      });
+    }
+  });
+
+  assert.equal(received.url, "https://api.example.com/images");
+  assert.equal(received.options.headers["X-Api-Key"], "actual-secret");
+  assert.equal(result.ok, true);
+  assert.match(result.responsePath, /\.png$/);
+  const state = await readFile(join(projectPath, result.recordPath), "utf8");
+  const request = await readFile(join(projectPath, result.requestPath), "utf8");
+  assert.doesNotMatch(state, /actual-secret/);
+  assert.doesNotMatch(request, /actual-secret/);
+  assert.equal((await readCanvas(projectPath)).objects.at(-1).type, "image");
+});
+
+test("blocks unapproved, credential-bearing, and cross-origin provider requests", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-provider-request-"));
+  await configureProvider(projectPath, {
+    id: "example-video",
+    provider: "Example",
+    modality: "video",
+    model: "video-v1",
+    docsUrl: "https://example.com/docs",
+    endpoint: "https://api.example.com/videos",
+    authHeader: "Authorization",
+    authScheme: "bearer",
+    authEnv: "EXAMPLE_API_KEY"
+  });
+  const base = {
+    id: "example-video",
+    env: { EXAMPLE_API_KEY: "actual-secret" },
+    fetchImpl: async () => {
+      throw new Error("must not fetch");
+    }
+  };
+  await assert.rejects(requestProvider(projectPath, base), /explicit user approval/);
+  await assert.rejects(
+    requestProvider(projectPath, {
+      ...base,
+      approved: true,
+      body: { api_key: "inline-secret" }
+    }),
+    /must not contain credentials/
+  );
+  await assert.rejects(
+    requestProvider(projectPath, {
+      ...base,
+      approved: true,
+      method: "GET",
+      endpoint: "https://attacker.example/jobs/1"
+    }),
+    /configured origin/
+  );
+  await assert.rejects(
+    requestProvider(projectPath, {
+      ...base,
+      approved: true,
+      method: "GET",
+      endpoint: "https://api.example.com/jobs/1?access_token=inline-secret"
+    }),
+    /credential query parameters/
+  );
+});
+
+test("redacts a credential echoed by a provider error", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-provider-redaction-"));
+  await configureProvider(projectPath, {
+    id: "example-image",
+    provider: "Example",
+    modality: "image",
+    model: "image-v1",
+    docsUrl: "https://example.com/docs",
+    endpoint: "https://api.example.com/images",
+    authHeader: "X-Api-Key",
+    authScheme: "raw",
+    authEnv: "EXAMPLE_API_KEY"
+  });
+  const result = await requestProvider(projectPath, {
+    id: "example-image",
+    approved: true,
+    body: { prompt: "test" },
+    env: { EXAMPLE_API_KEY: "actual-secret" },
+    fetchImpl: async () => new Response(
+      JSON.stringify({ error: "rejected actual-secret" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    )
+  });
+  const response = await readFile(join(projectPath, result.responsePath), "utf8");
+  assert.doesNotMatch(response, /actual-secret/);
+  assert.match(response, /\[REDACTED\]/);
 });
