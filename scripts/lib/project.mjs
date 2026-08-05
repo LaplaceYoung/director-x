@@ -13,6 +13,7 @@ export function projectPaths(projectPath) {
     root,
     stateRoot,
     canvasPath: join(stateRoot, CANVAS_FILE),
+    providersPath: join(stateRoot, "providers.json"),
     mediaRoot: join(stateRoot, "media"),
     analysisRoot: join(stateRoot, "analysis"),
     renderRoot: join(stateRoot, "renders")

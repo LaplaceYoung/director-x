@@ -6,8 +6,17 @@ import { startCanvasServer } from "./canvas-server.mjs";
 import { analyzeVideo } from "./analyze-video.mjs";
 import { doctorMediaTools } from "./lib/media-tools.mjs";
 import { composeRemotionProject, renderRemotionProject } from "./lib/remotion-project.mjs";
+import {
+  configureProvider,
+  doctorProvider,
+  listProviders
+} from "./lib/provider-profiles.mjs";
 
-const [command = "help", ...args] = process.argv.slice(2);
+const [command = "help", ...rawArgs] = process.argv.slice(2);
+const providerAction = command === "provider" && rawArgs[0] && !rawArgs[0].startsWith("--")
+  ? rawArgs.shift()
+  : null;
+const args = rawArgs;
 const options = parseArgs(args);
 const projectPath = resolve(options.project || process.cwd());
 
@@ -52,6 +61,28 @@ try {
       output: options.output
     });
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  } else if (command === "provider" && providerAction === "configure") {
+    const secretOption = ["key", "api-key", "secret", "token"].find((name) => options[name] !== undefined);
+    if (secretOption) {
+      throw new Error(`Do not pass --${secretOption}. Set the credential in --auth-env locally.`);
+    }
+    const profile = await configureProvider(projectPath, {
+      id: options.id,
+      provider: options.provider,
+      modality: options.modality,
+      model: options.model,
+      docsUrl: options.docs,
+      endpoint: options.endpoint,
+      authEnv: options["auth-env"]
+    });
+    process.stdout.write(`${JSON.stringify(profile, null, 2)}\n`);
+  } else if (command === "provider" && providerAction === "list") {
+    process.stdout.write(`${JSON.stringify(await listProviders(projectPath), null, 2)}\n`);
+  } else if (command === "provider" && providerAction === "doctor") {
+    if (!options.id) throw new Error("provider doctor requires --id ID");
+    const result = await doctorProvider(projectPath, options.id);
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    if (!result.credentialAvailable) process.exitCode = 1;
   } else {
     printHelp();
   }
@@ -82,6 +113,9 @@ function printHelp() {
     "  directorx doctor",
     "  directorx compose --project PATH [--title TITLE] [--width PX] [--height PX] [--fps FPS] [--seconds-per-item N]",
     "  directorx render --project PATH [--quality preview|final] [--output PROJECT_FILE]",
+    "  directorx provider configure --project PATH --id ID --provider NAME --modality image|video --model MODEL --docs HTTPS_URL --auth-env ENV_NAME [--endpoint HTTPS_URL]",
+    "  directorx provider list --project PATH",
+    "  directorx provider doctor --project PATH --id ID",
     ""
   ].join("\n"));
 }

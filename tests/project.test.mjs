@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmod, mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -17,6 +17,11 @@ import {
   extractDominantColors,
   parseSceneCutTimes
 } from "../scripts/lib/video-analysis.mjs";
+import {
+  configureProvider,
+  doctorProvider,
+  listProviders
+} from "../scripts/lib/provider-profiles.mjs";
 
 test("initializes a canvas and stores only supported content objects", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "directorx-"));
@@ -171,4 +176,57 @@ test("extracts a compact color system and renders an SVG card", () => {
   assert.equal(colors[0].role, "dominant");
   assert.match(svg, /Reference &amp; palette/);
   assert.match(svg, /<svg/);
+});
+
+test("stores provider metadata without storing credentials", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-provider-"));
+  const profile = await configureProvider(projectPath, {
+    id: "example-image",
+    provider: "Example",
+    modality: "image",
+    model: "image-v1",
+    docsUrl: "https://example.com/docs",
+    endpoint: "https://api.example.com/images",
+    authEnv: "EXAMPLE_API_KEY"
+  });
+
+  assert.equal(profile.id, "example-image");
+  assert.equal((await listProviders(projectPath)).length, 1);
+  const contents = await readFile(join(projectPath, ".directorx", "providers.json"), "utf8");
+  assert.doesNotMatch(contents, /actual-secret/);
+
+  const missing = await doctorProvider(projectPath, profile.id, { env: {} });
+  const available = await doctorProvider(projectPath, profile.id, {
+    env: { EXAMPLE_API_KEY: "actual-secret" }
+  });
+  assert.equal(missing.credentialAvailable, false);
+  assert.equal(available.credentialAvailable, true);
+  assert.doesNotMatch(JSON.stringify(available), /actual-secret/);
+});
+
+test("rejects provider secrets and insecure documentation URLs", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-provider-"));
+  await assert.rejects(
+    configureProvider(projectPath, {
+      id: "unsafe",
+      provider: "Unsafe",
+      modality: "video",
+      model: "video-v1",
+      docsUrl: "http://example.com/docs",
+      authEnv: "UNSAFE_API_KEY"
+    }),
+    /must use HTTPS/
+  );
+  await assert.rejects(
+    configureProvider(projectPath, {
+      id: "unsafe",
+      provider: "Unsafe",
+      modality: "video",
+      model: "video-v1",
+      docsUrl: "https://example.com/docs",
+      authEnv: "UNSAFE_API_KEY",
+      apiKey: "actual-secret"
+    }),
+    /Do not pass apiKey/
+  );
 });

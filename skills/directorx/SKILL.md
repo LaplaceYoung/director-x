@@ -40,7 +40,8 @@ Read `references/video-understanding.md` before analysis. Inspect the contact sh
 - Load `$directorx-prompt-writer` before writing image or video prompts.
 - Read `references/multi-agent.md` before delegating research, visual direction, or editing.
 - Read `references/remotion.md` before composition.
-- Ask whether the user has an image/video generation provider only when generation is needed. Ask for provider name, model, and official documentation through native questions. Never ask the user to paste an API key into chat; collect it through a secure local input or environment variable.
+- Read `references/providers.md` before configuring or calling an image/video generation provider.
+- Ask whether the user has an image/video generation provider only when generation is needed. Ask for provider name, model, official documentation, and whether a key is available through native questions. Never ask the user to paste an API key into chat; read it only from the configured local environment variable.
 - A plan, analysis, script, or storyboard is never completion. After the user answers a question, continue in the same task toward a playable video.
 
 ## Canvas contract
