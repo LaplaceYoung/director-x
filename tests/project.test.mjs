@@ -109,6 +109,45 @@ test("media doctor reports managed tool availability without installing anything
   assert.equal(result.tools["yt-dlp"].available, false);
 });
 
+test("media tools resolve packaged dependencies and the macOS universal yt-dlp", async () => {
+  const root = await mkdtemp(join(tmpdir(), "directorx-packaged-tools-"));
+  const ffmpegPackage = join(root, "node_modules", "ffmpeg-static");
+  const runtimeRoot = join(root, "runtime", "bin", "darwin-universal");
+  await Promise.all([
+    mkdir(ffmpegPackage, { recursive: true }),
+    mkdir(runtimeRoot, { recursive: true })
+  ]);
+  const ffmpegPath = join(ffmpegPackage, "ffmpeg");
+  const ytdlpPath = join(runtimeRoot, "yt-dlp");
+  await writeFile(join(root, "package.json"), "{\"type\":\"module\"}\n");
+  await writeFile(
+    join(ffmpegPackage, "package.json"),
+    "{\"name\":\"ffmpeg-static\",\"main\":\"index.cjs\"}\n"
+  );
+  await writeFile(join(ffmpegPackage, "index.cjs"), `module.exports = ${JSON.stringify(ffmpegPath)};\n`);
+  await writeFile(ffmpegPath, "#!/bin/sh\necho ffmpeg-packaged\n");
+  await writeFile(ytdlpPath, "#!/bin/sh\necho yt-dlp-packaged\n");
+  await Promise.all([chmod(ffmpegPath, 0o755), chmod(ytdlpPath, 0o755)]);
+
+  const ffmpeg = await inspectMediaTool("ffmpeg", {
+    env: { PATH: "" },
+    pluginRoot: root,
+    homeDir: root
+  });
+  const ytdlp = await inspectMediaTool("yt-dlp", {
+    env: { PATH: "" },
+    pluginRoot: root,
+    homeDir: root,
+    platform: "darwin",
+    arch: "arm64"
+  });
+
+  assert.equal(ffmpeg.path, ffmpegPath);
+  assert.equal(ffmpeg.source, "plugin-dependency");
+  assert.equal(ytdlp.path, ytdlpPath);
+  assert.equal(ytdlp.source, "plugin-runtime");
+});
+
 test("builds a minimal Remotion spec from canvas media and text", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "directorx-remotion-"));
   const mediaRoot = join(projectPath, ".directorx", "media");

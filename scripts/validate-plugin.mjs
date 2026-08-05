@@ -1,4 +1,5 @@
 import { access, readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -64,10 +65,18 @@ for (const path of [
   "scripts/lib/provider-request.mjs",
   "scripts/lib/video-analysis.mjs",
   "scripts/lib/remotion-project.mjs",
-  "skills/directorx/references/providers.md"
+  "skills/directorx/references/providers.md",
+  "runtime/THIRD_PARTY.md",
+  "runtime/bin/darwin-universal/yt-dlp",
+  "runtime/licenses/yt-dlp-UNLICENSE"
 ]) {
   await requirePath(`./${path}`, path);
 }
+
+await requireChecksum(
+  "runtime/bin/darwin-universal/yt-dlp",
+  "498bd0dae17855c599d371d68ec5bafc439a9d8640e838be25c765a9792f261b"
+);
 
 if (errors.length) {
   process.stderr.write(`Director X validation failed:\n- ${errors.join("\n- ")}\n`);
@@ -101,5 +110,15 @@ async function requirePath(relativePath, label) {
     await access(resolve(root, relativePath));
   } catch {
     errors.push(`${label} points to a missing path`);
+  }
+}
+
+async function requireChecksum(relativePath, expected) {
+  try {
+    const contents = await readFile(join(root, relativePath));
+    const actual = createHash("sha256").update(contents).digest("hex");
+    if (actual !== expected) errors.push(`${relativePath} checksum does not match the pinned release`);
+  } catch (error) {
+    errors.push(`${relativePath}: ${error.message}`);
   }
 }
