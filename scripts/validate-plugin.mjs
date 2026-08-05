@@ -44,6 +44,9 @@ if (!skill.startsWith("---\n") || !/\nname:\s*directorx\s*\n/.test(skill)) {
   errors.push("skills/directorx/SKILL.md must contain valid directorx frontmatter");
 }
 if (!/request_user_input/.test(skill)) errors.push("Director X Skill must use Codex native request_user_input");
+if (!/references\/native-questioning\.md/.test(skill)) {
+  errors.push("Director X Skill must load the native questioning reference");
+}
 if (!/spawn_agent|native subagents/i.test(skill)) errors.push("Director X Skill must document native subagent use");
 if (!/image[\s\S]*video[\s\S]*audio[\s\S]*text/.test(skill)) {
   errors.push("Director X Skill must restrict canvas content to image, video, audio, and text");
@@ -74,11 +77,23 @@ for (const path of [
   "scripts/lib/video-analysis.mjs",
   "scripts/lib/remotion-project.mjs",
   "skills/directorx/references/providers.md",
+  "skills/directorx/references/native-questioning.md",
   "runtime/THIRD_PARTY.md",
   "runtime/bin/darwin-universal/yt-dlp",
   "runtime/licenses/yt-dlp-UNLICENSE"
 ]) {
   await requirePath(`./${path}`, path);
+}
+
+const nativeQuestioning = await readText("skills/directorx/references/native-questioning.md");
+if (!/one question at a time/i.test(nativeQuestioning)) {
+  errors.push("native questioning must require one question at a time");
+}
+if (!/recommended answer/i.test(nativeQuestioning)) {
+  errors.push("native questioning must require a recommended answer");
+}
+if (!/discoverable facts/i.test(nativeQuestioning)) {
+  errors.push("native questioning must distinguish facts from user decisions");
 }
 
 await requireChecksum(

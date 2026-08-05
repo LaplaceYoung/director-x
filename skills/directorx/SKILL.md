@@ -13,7 +13,18 @@ Director X is a lightweight Codex-native video workspace. Keep the conversation 
 2. Run `node <plugin-root>/scripts/directorx.mjs doctor` before media download or analysis.
 3. Run `node <plugin-root>/scripts/directorx.mjs canvas --project <project-path>` in a persistent terminal.
 4. Open the returned loopback URL in the Codex side Browser and keep that tab available.
-5. Use native `request_user_input` only for choices that materially change the result. Do not invent a second interaction protocol.
+5. Read `references/native-questioning.md` before the first user-facing production question.
+6. Use native `request_user_input` only for choices that materially change the result. Do not invent a second interaction protocol.
+
+## Clarify one decision at a time
+
+- Ask one native question at a time and wait for the answer before selecting the next branch.
+- Put the recommended answer first and explain its visible result or tradeoff.
+- Inspect the project, source material, and official documentation for discoverable facts instead of asking the user.
+- Ask the user for decisions: outcome, rights, creative direction, production route, cost/risk acceptance, and final approval.
+- Follow dependency order and skip questions already answered by the user.
+- Do not execute a disputed direction or paid/external action before shared understanding.
+- Stop questioning when the current stage is clear enough to act. Continue producing immediately in the same task.
 
 ## Work with Codex, not around it
 

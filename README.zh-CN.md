@@ -33,7 +33,7 @@ Director X 是一个轻量、贴合 Codex 原生设计的视频插件。对话�
 ## 当前能力
 
 - 打开无限侧边栏画布，预览项目内的图片、视频、音频和制作文本。
-- 通过 Codex 原生 `request_user_input` 询问真正会改变结果的问题。
+- 通过 Codex 原生 `request_user_input` 询问真正会改变结果的问题：一次只问一个决策，先调查可获得的事实，并把推荐答案放在首位。
 - 使用 Codex 原生子 Agent 并行处理研究、参考片分析、视觉方向、素材和剪辑等边界明确的任务。
 - 使用 Codex 联网能力，并以项目内置的 `web-access` Skill 补齐动态页面、登录态页面和媒体地址提取。
 - 内置固定版本的 macOS `yt-dlp`，并使用项目依赖提供 FFmpeg/FFprobe。

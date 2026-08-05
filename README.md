@@ -33,7 +33,7 @@ Version 0.2.0 is a clean foundation. It intentionally does **not** add an MCP ru
 ## What it does
 
 - Opens an infinite side canvas that previews project images, videos, audio, and production text.
-- Uses Codex native `request_user_input` for decisions that materially change the result.
+- Uses Codex native `request_user_input` for decisions that materially change the result: one question at a time, with a recommended answer, after discoverable facts have been researched.
 - Uses Codex native subagents for bounded research, reference analysis, visual direction, asset work, and editing tasks.
 - Combines Codex web capabilities with the vendored `web-access` skill for browser-rendered or difficult pages.
 - Bundles a pinned macOS `yt-dlp` executable and uses packaged FFmpeg/FFprobe dependencies.

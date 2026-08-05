@@ -4,13 +4,15 @@ Director X keeps provider setup small and auditable. It does not guess undocumen
 
 ## Clarify with native questions
 
+Follow `native-questioning.md`. Ask one unresolved provider decision at a time and recommend the best-supported route.
+
 Ask only when image or video generation is needed:
 
-1. provider name
-2. image or video modality
-3. exact model name
-4. official documentation URL
-5. whether the user already has an API key
+1. confirm the generation route;
+2. recommend and confirm the exact model;
+3. find the official documentation yourself when it is publicly discoverable;
+4. ask whether a key is available only after the route is selected;
+5. confirm the paid or external submission immediately before calling it.
 
 Do not ask the user to paste a key into chat or place it on the canvas.
 
