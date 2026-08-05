@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Director X Canvas</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #111; color: #eee; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body { background: #111; }
+    header { position: fixed; z-index: 20; top: 0; left: 0; right: 0; height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; border-bottom: 1px solid #2c2c2c; background: #151515; }
+    header strong { font-size: 13px; font-weight: 600; }
+    header span { color: #777; font-size: 10px; }
+    #viewport { position: absolute; inset: 48px 0 0; overflow: hidden; cursor: grab; background-color: #101010; background-image: radial-gradient(#343434 1px, transparent 1px); background-size: 24px 24px; }
+    #viewport.dragging { cursor: grabbing; }
+    #plane { position: absolute; width: 8000px; height: 8000px; transform-origin: 0 0; }
+    .card { position: absolute; display: flex; flex-direction: column; min-width: 180px; min-height: 120px; overflow: hidden; border: 1px solid #383838; border-radius: 8px; background: #1a1a1a; box-shadow: 0 12px 30px rgb(0 0 0 / 22%); resize: both; }
+    .card.selected { border-color: #e85d3f; }
+    .card-head { height: 32px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 9px; border-bottom: 1px solid #303030; cursor: move; user-select: none; }
+    .card-head strong { min-width: 0; overflow: hidden; font-size: 10px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
+    .card-head span { color: #777; font-size: 8px; text-transform: uppercase; }
+    .content { min-height: 0; flex: 1; overflow: auto; background: #131313; }
+    img, video { display: block; width: 100%; height: 100%; object-fit: contain; background: #0a0a0a; }
+    audio { width: calc(100% - 20px); margin: 24px 10px; }
+    pre { margin: 0; padding: 14px; color: #d0d0d0; font: 11px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; }
+    .empty { position: absolute; top: 42%; left: 50%; width: min(420px, calc(100% - 40px)); transform: translate(-50%, -50%); color: #777; text-align: center; }
+    .empty strong { display: block; margin-bottom: 7px; color: #bbb; font-size: 14px; }
+    .empty p { margin: 0; font-size: 11px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Director X</strong>
+    <span id="status">Connecting</span>
+  </header>
+  <div id="viewport">
+    <div id="plane"></div>
+  </div>
+  <script>
+    const viewport = document.querySelector("#viewport");
+    const plane = document.querySelector("#plane");
+    const status = document.querySelector("#status");
+    let view = { x: 80, y: 60, scale: 1 };
+    let canvasVersion = "";
+    let pan = null;
+
+    function applyView() {
+      plane.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
+      viewport.style.backgroundPosition = `${view.x}px ${view.y}px`;
+      viewport.style.backgroundSize = `${24 * view.scale}px ${24 * view.scale}px`;
+    }
+
+    viewport.addEventListener("wheel", (event) => {
+      event.preventDefault();
+      const previous = view.scale;
+      view.scale = Math.max(.25, Math.min(2.5, view.scale * (event.deltaY > 0 ? .9 : 1.1)));
+      const rect = viewport.getBoundingClientRect();
+      const px = event.clientX - rect.left;
+      const py = event.clientY - rect.top;
+      view.x = px - ((px - view.x) / previous) * view.scale;
+      view.y = py - ((py - view.y) / previous) * view.scale;
+      applyView();
+    }, { passive: false });
+
+    viewport.addEventListener("pointerdown", (event) => {
+      if (event.target !== viewport && event.target !== plane) return;
+      pan = { x: event.clientX, y: event.clientY, vx: view.x, vy: view.y };
+      viewport.classList.add("dragging");
+      viewport.setPointerCapture(event.pointerId);
+    });
+    viewport.addEventListener("pointermove", (event) => {
+      if (!pan) return;
+      view.x = pan.vx + event.clientX - pan.x;
+      view.y = pan.vy + event.clientY - pan.y;
+      applyView();
+    });
+    viewport.addEventListener("pointerup", () => {
+      pan = null;
+      viewport.classList.remove("dragging");
+    });
+
+    async function refresh() {
+      try {
+        const response = await fetch("/api/canvas", { cache: "no-store" });
+        const canvas = await response.json();
+        const version = `${canvas.updatedAt}:${canvas.objects.length}`;
+        if (version !== canvasVersion) {
+          canvasVersion = version;
+          render(canvas.objects);
+        }
+        status.textContent = `${canvas.objects.length} objects`;
+      } catch {
+        status.textContent = "Disconnected";
+      }
+    }
+
+    function render(objects) {
+      plane.replaceChildren();
+      if (!objects.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.innerHTML = "<strong>空白制作画布</strong><p>Codex 获取、分析或生成的图片、视频、音频和制作文本会出现在这里。</p>";
+        plane.append(empty);
+        return;
+      }
+      for (const object of objects) plane.append(createCard(object));
+    }
+
+    function createCard(object) {
+      const card = document.createElement("article");
+      card.className = "card";
+      card.style.left = `${object.x}px`;
+      card.style.top = `${object.y}px`;
+      card.style.width = `${object.width}px`;
+      card.style.height = `${object.height}px`;
+      card.dataset.id = object.id;
+
+      const head = document.createElement("div");
+      head.className = "card-head";
+      const title = document.createElement("strong");
+      title.textContent = object.title;
+      const kind = document.createElement("span");
+      kind.textContent = object.type;
+      head.append(title, kind);
+
+      const content = document.createElement("div");
+      content.className = "content";
+      if (object.type === "text") {
+        const pre = document.createElement("pre");
+        pre.textContent = object.text || "";
+        content.append(pre);
+      } else {
+        const media = document.createElement(object.type);
+        media.src = `/media/${encodeURIComponent(object.path)}`;
+        if (object.type === "video" || object.type === "audio") media.controls = true;
+        if (object.type === "video") media.preload = "metadata";
+        content.append(media);
+      }
+      card.append(head, content);
+      bindDrag(card, head, object);
+      return card;
+    }
+
+    function bindDrag(card, handle, object) {
+      let drag = null;
+      handle.addEventListener("pointerdown", (event) => {
+        event.stopPropagation();
+        drag = { x: event.clientX, y: event.clientY, left: object.x, top: object.y };
+        handle.setPointerCapture(event.pointerId);
+      });
+      handle.addEventListener("pointermove", (event) => {
+        if (!drag) return;
+        object.x = drag.left + (event.clientX - drag.x) / view.scale;
+        object.y = drag.top + (event.clientY - drag.y) / view.scale;
+        card.style.left = `${object.x}px`;
+        card.style.top = `${object.y}px`;
+      });
+      handle.addEventListener("pointerup", async () => {
+        if (!drag) return;
+        drag = null;
+        await fetch(`/api/objects/${encodeURIComponent(object.id)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ x: object.x, y: object.y })
+        });
+      });
+    }
+
+    applyView();
+    refresh();
+    setInterval(refresh, 1200);
+  </script>
+</body>
+</html>

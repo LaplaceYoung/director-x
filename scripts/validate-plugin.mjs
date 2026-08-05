@@ -1,0 +1,86 @@
+import { access, readFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const errors = [];
+const manifest = await readJson(".codex-plugin/plugin.json");
+const packageJson = await readJson("package.json");
+
+requireText(manifest, "name");
+requireText(manifest, "version");
+requireText(manifest, "description");
+requireText(manifest?.author, "name", "author.name");
+requireText(manifest?.interface, "displayName", "interface.displayName");
+requireText(manifest?.interface, "shortDescription", "interface.shortDescription");
+requireText(manifest?.interface, "longDescription", "interface.longDescription");
+requireText(manifest?.interface, "developerName", "interface.developerName");
+requireText(manifest?.interface, "category", "interface.category");
+
+if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(manifest?.name || "")) {
+  errors.push("plugin name must be lower-case kebab-case");
+}
+if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(manifest?.version || "")) {
+  errors.push("plugin version must be valid semver");
+}
+if (manifest?.version !== packageJson?.version) {
+  errors.push("plugin and package versions must match");
+}
+if (manifest?.mcpServers) {
+  errors.push("the new Director X foundation must not declare an MCP server");
+}
+if (manifest?.skills) await requirePath(manifest.skills, "skills");
+
+const skill = await readText("skills/directorx/SKILL.md");
+if (!skill.startsWith("---\n") || !/\nname:\s*directorx\s*\n/.test(skill)) {
+  errors.push("skills/directorx/SKILL.md must contain valid directorx frontmatter");
+}
+if (!/request_user_input/.test(skill)) errors.push("Director X Skill must use Codex native request_user_input");
+if (!/spawn_agent|native subagents/i.test(skill)) errors.push("Director X Skill must document native subagent use");
+if (!/image[\s\S]*video[\s\S]*audio[\s\S]*text/.test(skill)) {
+  errors.push("Director X Skill must restrict canvas content to image, video, audio, and text");
+}
+
+for (const path of [
+  "app/canvas.html",
+  "scripts/directorx.mjs",
+  "scripts/canvas-server.mjs",
+  "scripts/analyze-video.mjs"
+]) {
+  await requirePath(`./${path}`, path);
+}
+
+if (errors.length) {
+  process.stderr.write(`Director X validation failed:\n- ${errors.join("\n- ")}\n`);
+  process.exit(1);
+}
+process.stdout.write(`Director X ${manifest.version} plugin structure is valid.\n`);
+
+async function readJson(path) {
+  try {
+    return JSON.parse(await readText(path));
+  } catch (error) {
+    errors.push(`${path}: ${error.message}`);
+    return {};
+  }
+}
+
+async function readText(path) {
+  return readFile(join(root, path), "utf8");
+}
+
+function requireText(value, key, label = key) {
+  if (typeof value?.[key] !== "string" || !value[key].trim()) errors.push(`${label} is required`);
+}
+
+async function requirePath(relativePath, label) {
+  if (!relativePath.startsWith("./")) {
+    errors.push(`${label} must be a plugin-relative path`);
+    return;
+  }
+  try {
+    await access(resolve(root, relativePath));
+  } catch {
+    errors.push(`${label} points to a missing path`);
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "name": "director-x",
+  "version": "0.2.0",
+  "description": "Create and understand videos in Codex with an infinite media canvas.",
+  "author": {
+    "name": "LaplaceYoung",
+    "url": "https://github.com/LaplaceYoung"
+  },
+  "homepage": "https://github.com/LaplaceYoung/director-x",
+  "repository": "https://github.com/LaplaceYoung/director-x",
+  "license": "AGPL-3.0-or-later",
+  "keywords": [
+    "video",
+    "canvas",
+    "remotion",
+    "ffmpeg",
+    "codex"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Director X",
+    "shortDescription": "Video creation canvas",
+    "longDescription": "Director X gives Codex a focused video workspace: an infinite canvas for media and production text, reference-video understanding with FFmpeg and yt-dlp, visual prompt-writing guidance, native multi-agent collaboration, and Remotion-based composition.",
+    "developerName": "LaplaceYoung",
+    "category": "Creative",
+    "capabilities": [
+      "Interactive",
+      "Write",
+      "Skills"
+    ],
+    "defaultPrompt": [
+      "Use $directorx to make a video from my idea",
+      "Use $directorx to analyze and remake a reference video",
+      "Use $directorx to create an MV from a song"
+    ],
+    "brandColor": "#E85D3F"
+  }
+}
