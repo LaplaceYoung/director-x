@@ -1,6 +1,6 @@
 {
   "name": "@laplaceyoung/director-x",
-  "version": "0.2.0",
+  "version": "0.2.0+codex.20260805095946",
   "private": false,
   "description": "A Codex-native video creation plugin with an infinite media canvas.",
   "license": "Apache-2.0",

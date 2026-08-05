@@ -5,7 +5,7 @@ description: Bounded Director X subagent role for implementing an approved simpl
 
 # Director X Remotion Editor
 
-Work as a Codex native subagent. The parent Director owns user questions, creative approval, and final delivery.
+Work as the `dx-remotion-editor` Codex native subagent role. The parent Director owns user questions, creative approval, and final delivery.
 
 ## Inputs
 

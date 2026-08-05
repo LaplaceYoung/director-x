@@ -109,6 +109,36 @@ test("ships canvas controls for Markdown, DAG navigation, and zoom", async () =>
   assert.match(html, /classList\.add\("dag-edge"\)/);
   assert.match(html, /function renderGenerationPlaceholder/);
   assert.match(html, /className = "model-button"/);
+  assert.match(html, /object\.metadata\?\.kind === "color-card"/);
+  assert.match(html, /card\.classList\.add\("color-card"\)/);
+});
+
+test("preserves color-card metadata and its reference dependency", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-color-card-"));
+  const mediaRoot = join(projectPath, ".directorx", "media");
+  await mkdir(mediaRoot, { recursive: true });
+  const referencePath = join(mediaRoot, "reference.mp4");
+  const colorCardPath = join(mediaRoot, "color-system.svg");
+  await Promise.all([
+    writeFile(referencePath, "video"),
+    writeFile(colorCardPath, "<svg></svg>")
+  ]);
+  const reference = await addCanvasObject(projectPath, {
+    type: "video",
+    path: referencePath,
+    metadata: { kind: "reference-source" }
+  });
+  const colorCard = await addCanvasObject(projectPath, {
+    type: "image",
+    path: colorCardPath,
+    dependsOn: reference.id,
+    metadata: { kind: "color-card", creativeDecisionEvidence: true }
+  });
+
+  const stored = (await readCanvas(projectPath)).objects.find((item) => item.id === colorCard.id);
+  assert.deepEqual(stored.dependsOn, [reference.id]);
+  assert.equal(stored.metadata.kind, "color-card");
+  assert.equal(stored.metadata.creativeDecisionEvidence, true);
 });
 
 test("rejects unsupported canvas object types", async () => {

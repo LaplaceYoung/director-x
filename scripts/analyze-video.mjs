@@ -174,19 +174,54 @@ export async function analyzeVideo({ projectPath, input, title = "Reference vide
   ].join("\n");
   await writeFile(summaryPath, `${summary}\n`, "utf8");
 
-  await addCanvasObject(projectPath, { type: "video", title, path: sourcePath, sourceUrl: isUrl(input) ? input : undefined });
+  const sourceObject = await addCanvasObject(projectPath, {
+    type: "video",
+    title,
+    path: sourcePath,
+    sourceUrl: isUrl(input) ? input : undefined,
+    metadata: { kind: "reference-source" }
+  });
   if (await exists(audioPath)) {
-    await addCanvasObject(projectPath, { type: "audio", title: `${title} — separated audio`, path: audioPath });
+    await addCanvasObject(projectPath, {
+      type: "audio",
+      title: `${title} — separated audio`,
+      path: audioPath,
+      dependsOn: sourceObject.id,
+      metadata: { kind: "reference-audio" }
+    });
   }
   for (const [filePath, objectTitle] of [
     [contactSheetPath, `${title} — contact sheet`],
     ...shotBoardPaths.map((filePath, index) => [filePath, `${title} — shot board ${index + 1}`]),
     [colorCardPath, `${title} — color system`]
   ]) {
-    if (await exists(filePath)) await addCanvasObject(projectPath, { type: "image", title: objectTitle, path: filePath });
+    if (!(await exists(filePath))) continue;
+    const colorCard = filePath === colorCardPath;
+    await addCanvasObject(projectPath, {
+      type: "image",
+      title: objectTitle,
+      path: filePath,
+      dependsOn: sourceObject.id,
+      width: colorCard ? 520 : undefined,
+      height: colorCard ? 300 : undefined,
+      metadata: {
+        kind: colorCard ? "color-card" : filePath === contactSheetPath ? "contact-sheet" : "shot-board",
+        creativeDecisionEvidence: colorCard
+      }
+    });
   }
-  await addCanvasObject(projectPath, { type: "text", title: `${title} — shot worksheet`, text: shotList });
-  await addCanvasObject(projectPath, { type: "text", title: `${title} — analysis guide`, text: summary });
+  await addCanvasObject(projectPath, {
+    type: "text",
+    title: `${title} — shot worksheet`,
+    text: shotList,
+    dependsOn: sourceObject.id
+  });
+  await addCanvasObject(projectPath, {
+    type: "text",
+    title: `${title} — analysis guide`,
+    text: summary,
+    dependsOn: sourceObject.id
+  });
   return {
     outputRoot,
     sourcePath,

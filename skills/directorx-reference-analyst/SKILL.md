@@ -5,7 +5,7 @@ description: Bounded Director X subagent role for acquiring an approved referenc
 
 # Director X Reference Analyst
 
-Work as a Codex native subagent. The parent Director owns user questions and creative decisions.
+Work as the `dx-reference-analyst` Codex native subagent role. The parent Director owns user questions and creative decisions.
 
 ## Inputs
 

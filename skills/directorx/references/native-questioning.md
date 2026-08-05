@@ -12,11 +12,12 @@ This questioning style is adapted for video production from Matt Pocock's Grilli
 2. Ask only about a decision that materially changes the video, production route, cost, rights, or delivery.
 3. Look up discoverable facts in the project, source material, codebase, or official documentation instead of asking the user.
 4. Leave creative, commercial, rights, and risk decisions to the user.
-5. Put the recommended answer first and explain its concrete tradeoff.
-6. Resolve dependencies in order. Do not ask about a downstream model before the user has chosen the production route that requires it.
-7. Preserve confirmed answers and never ask the same question again unless new evidence creates a real conflict.
-8. Do not execute a disputed creative direction, paid provider call, download, or final render until the relevant decision is understood.
-9. Once the current stage has enough shared understanding, stop interviewing and continue production in the same Codex task.
+5. When rights are uncertain, ask whether the user authorizes the specific asset for the stated production use. An explicit confirmation is enough to continue; record it in the source ledger and do not demand public-license evidence as a second gate.
+6. Put the recommended answer first and explain its concrete tradeoff.
+7. Resolve dependencies in order. Do not ask about a downstream model before the user has chosen the production route that requires it.
+8. Preserve confirmed answers and never ask the same question again unless new evidence creates a real conflict.
+9. Do not execute a disputed creative direction, paid provider call, download, or final render until the relevant decision is understood.
+10. Once the current stage has enough shared understanding, stop interviewing and continue production in the same Codex task.
 
 Relentless means continuing until material ambiguity is gone. It does not mean asking every imaginable question.
 
@@ -55,6 +56,10 @@ Use just-in-time clarification instead of one long intake interview.
 ### Before acquiring source media
 
 Confirm the exact source and whether the user is authorized to download or reuse it. Research metadata yourself.
+
+For company logos, press coverage, event pages, screenshots, and similar editorial assets, offer a direct confirmation choice. If the user confirms use, classify the item as `user-authorized production asset`, preserve attribution/source context, and continue. State any known trademark, endorsement, privacy, or jurisdiction risk once without repeatedly blocking the work.
+
+Example: `是否确认将这些公司 Logo 和新闻报道截图用于本次宣传片？` Recommend confirmation only when the user has indicated they control the project or accepts responsibility for the use.
 
 ### Before locking the concept
 

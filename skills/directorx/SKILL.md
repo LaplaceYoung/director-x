@@ -21,7 +21,7 @@ Director X is a lightweight Codex-native video workspace. Keep the conversation 
 - Ask one native question at a time and wait for the answer before selecting the next branch.
 - Put the recommended answer first and explain its visible result or tradeoff.
 - Inspect the project, source material, and official documentation for discoverable facts instead of asking the user.
-- Ask the user for decisions: outcome, rights, creative direction, production route, cost/risk acceptance, and final approval.
+- Ask the user for decisions: outcome, rights, creative direction, production route, cost/risk acceptance, and final approval. Treat an explicit user confirmation that a specific asset may be used as sufficient authorization to continue production; record that basis instead of blocking for public-license proof.
 - Follow dependency order and skip questions already answered by the user.
 - Do not execute a disputed direction or paid/external action before shared understanding.
 - Stop questioning when the current stage is clear enough to act. Continue producing immediately in the same task.
@@ -29,8 +29,9 @@ Director X is a lightweight Codex-native video workspace. Keep the conversation 
 ## Work with Codex, not around it
 
 - Use Codex web search/fetch first. Load `$directorx-web-access` when a page requires browser rendering, login state, scrolling, DOM inspection, or media URL extraction.
-- Use `yt-dlp` only after the source and download intent are clear. Preserve source URLs and warn about rights; downloading does not grant reuse rights.
+- Use `yt-dlp` only after the source and download intent are clear. Preserve source URLs and warn about rights; downloading alone does not grant reuse rights, while explicit user confirmation can authorize the working use requested in the task.
 - Use Codex native subagents for independent specialist work. The parent remains the director and the only agent that asks the user questions or decides the final direction.
+- Use the canonical `dx-*` role labels from `references/multi-agent.md` in every delegated task and report. Codex currently controls native subagent display nicknames, so do not claim the system nickname itself was renamed when the tool offers no naming field.
 - Never display agents, workflow nodes, approvals, provider jobs, logs, or internal state on the canvas.
 
 ## Understand reference video
@@ -44,7 +45,7 @@ node <plugin-root>/scripts/directorx.mjs analyze \
   --title "<reference title>"
 ```
 
-Read `references/video-understanding.md` before analysis. Inspect the contact sheet first, then denser frame ranges shot by shot. Analyze timing, composition, camera motion, subject motion, typography, lighting, color, transitions, audio, and transferable creative principles. Add concise findings, storyboard text, and useful visual references to the canvas.
+Read `references/video-understanding.md` before analysis. Inspect the contact sheet first, then denser frame ranges shot by shot. Analyze timing, composition, camera motion, subject motion, typography, lighting, color, transitions, audio, and transferable creative principles. Add concise findings, storyboard text, and useful visual references to the canvas. The generated color-card node is creative-decision evidence: keep it visible and connected to the reference, including during canvas cleanup.
 
 ## Direct and produce
 
@@ -77,6 +78,8 @@ The canvas contains only:
 - text: brief, research, lyrics, script, screenplay, storyboard, shot list, visual system, prompt, or edit note
 
 Keep technical artifacts in `.directorx/`; put them on the canvas only when they help the user understand or make a creative decision.
+
+Reference color cards are always useful creative-decision evidence. Do not remove, collapse into a text summary, or hide a node with `metadata.kind=color-card` while tidying the canvas.
 
 Use Markdown for structured production text. Nodes may stay isolated or depend on upstream material. Dependencies must remain acyclic. Connect existing nodes with:
 

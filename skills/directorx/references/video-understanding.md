@@ -24,3 +24,4 @@ Use FFprobe and FFmpeg as evidence preparation for Codex, not as a substitute fo
    - dialogue, music, effects, silence, and beat sync
 7. Separate transferable technique from protected expression. Recreate principles, not source pixels, brand assets, performances, or copy.
 8. Put the reference, audio, shot boards, color card, completed shot analysis, visual system, and original remake plan on the canvas.
+9. Keep the generated `metadata.kind=color-card` node visible and connected to its reference. It is a required creative-decision artifact, not disposable extraction output.

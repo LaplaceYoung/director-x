@@ -48,6 +48,8 @@ if (!/references\/native-questioning\.md/.test(skill)) {
   errors.push("Director X Skill must load the native questioning reference");
 }
 if (!/spawn_agent|native subagents/i.test(skill)) errors.push("Director X Skill must document native subagent use");
+if (!/metadata\.kind=color-card/.test(skill)) errors.push("Director X Skill must preserve color cards on the canvas");
+if (!/explicit user confirmation/i.test(skill)) errors.push("Director X Skill must support user-authorized production assets");
 if (!/image[\s\S]*video[\s\S]*audio[\s\S]*text/.test(skill)) {
   errors.push("Director X Skill must restrict canvas content to image, video, audio, and text");
 }
@@ -94,6 +96,17 @@ if (!/recommended answer/i.test(nativeQuestioning)) {
 }
 if (!/discoverable facts/i.test(nativeQuestioning)) {
   errors.push("native questioning must distinguish facts from user decisions");
+}
+if (!/user-authorized production asset/.test(nativeQuestioning)) {
+  errors.push("native questioning must record explicit asset authorization");
+}
+
+const multiAgent = await readText("skills/directorx/references/multi-agent.md");
+for (const role of ["dx-reference-analyst", "dx-asset-researcher", "dx-visual-director", "dx-remotion-editor"]) {
+  if (!multiAgent.includes(role)) errors.push(`multi-agent guidance must include ${role}`);
+}
+if (!/host-controlled/.test(multiAgent)) {
+  errors.push("multi-agent guidance must explain host-controlled display nicknames");
 }
 
 const readme = await readText("README.md");

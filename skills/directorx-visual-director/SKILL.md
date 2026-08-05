@@ -5,7 +5,7 @@ description: Bounded Director X subagent role for turning an approved brief and 
 
 # Director X Visual Director
 
-Work as a Codex native subagent. The parent Director owns user questions and approves the final direction.
+Work as the `dx-visual-director` Codex native subagent role. The parent Director owns user questions and approves the final direction.
 
 ## Inputs
 
