@@ -20,6 +20,7 @@
   <a href="#demo-films">Demos</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#current-architecture">Architecture</a> ·
+  <a href="#acknowledgements-and-third-party-tools">Acknowledgements</a> ·
   <a href="README.zh-CN.md">中文</a> ·
   <a href="skills/directorx/SKILL.md">Core skill</a>
 </p>
@@ -268,6 +269,22 @@ flowchart LR
 | Provider boundary | `scripts/lib/provider-profiles.mjs` and `scripts/lib/provider-request.mjs` |
 
 Project-local state is stored under `.directorx/`, including the canvas, analysis artifacts, provider profiles, generated Remotion files, provider request records, and renders.
+
+## Acknowledgements and third-party tools
+
+Director X is built with and inspired by excellent third-party projects. Thank you to their maintainers and contributors.
+
+| Project | Used for | License or notice |
+| --- | --- | --- |
+| [yt-dlp](https://github.com/yt-dlp/yt-dlp) | Acquiring user-approved online video and audio sources | The Unlicense; Director X bundles a pinned macOS executable and its license text |
+| [FFmpeg](https://ffmpeg.org/) and [ffmpeg-static](https://github.com/eugeneware/ffmpeg-static) | Audio separation, frame extraction, scene evidence, transcoding, and media inspection | Packaged through `ffmpeg-static` and `@derhuerst/ffprobe-static`, declared `GPL-3.0-or-later` |
+| [web-access](https://github.com/eze-is/web-access) by eze-is | Browser-backed research and media URL extraction for difficult pages | MIT; the adapted upstream version and commit are recorded in `skills/directorx-web-access/UPSTREAM.md` |
+| [React](https://github.com/facebook/react) | Remotion compositions and rendering components | MIT |
+| [Remotion](https://github.com/remotion-dev/remotion) | Programmatic video composition, preview, and MP4 rendering | Remotion's own license applies; some organizations require a Company License |
+
+The Codex-native questioning approach is also inspired by Matt Pocock's [Grilling Skill](https://github.com/mattpocock/skills/blob/main/skills/productivity/grilling/SKILL.md).
+
+Each third-party project remains governed by its own license and terms. See [runtime/THIRD_PARTY.md](runtime/THIRD_PARTY.md), bundled license files, package license files, and the upstream notices for exact details.
 
 ## Development
 

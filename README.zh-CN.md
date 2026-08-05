@@ -20,6 +20,7 @@
   <a href="#demo-成片">Demo 成片</a> ·
   <a href="#快速开始">快速开始</a> ·
   <a href="#当前架构">当前架构</a> ·
+  <a href="#致谢与第三方工具">致谢</a> ·
   <a href="README.md">English</a> ·
   <a href="skills/directorx/SKILL.md">核心 Skill</a>
 </p>
@@ -268,6 +269,22 @@ flowchart LR
 | Provider 边界 | `scripts/lib/provider-profiles.mjs` 与 `scripts/lib/provider-request.mjs` |
 
 项目状态保存在项目自己的 `.directorx/` 目录，包括画布、分析工件、Provider 配置、生成的 Remotion 文件、Provider 请求记录和渲染结果。
+
+## 致谢与第三方工具
+
+Director X 的实现离不开以下优秀的第三方项目，感谢所有维护者和贡献者。
+
+| 项目 | 用途 | 许可证或说明 |
+| --- | --- | --- |
+| [yt-dlp](https://github.com/yt-dlp/yt-dlp) | 获取用户确认过的在线视频与音频来源 | The Unlicense；Director X 内置固定版本的 macOS 可执行文件及许可证文本 |
+| [FFmpeg](https://ffmpeg.org/) 与 [ffmpeg-static](https://github.com/eugeneware/ffmpeg-static) | 音频分离、抽帧、镜头证据、转码和媒体检查 | 通过 `ffmpeg-static` 与 `@derhuerst/ffprobe-static` 提供，包声明为 `GPL-3.0-or-later` |
+| eze-is 的 [web-access](https://github.com/eze-is/web-access) | 困难网页的浏览器研究和媒体地址提取 | MIT；适配的上游版本与提交记录在 `skills/directorx-web-access/UPSTREAM.md` |
+| [React](https://github.com/facebook/react) | Remotion 合成和渲染组件 | MIT |
+| [Remotion](https://github.com/remotion-dev/remotion) | 程序化视频合成、预览和 MP4 渲染 | 使用 Remotion 自有许可证；部分组织需要购买 Company License |
+
+Codex 原生提问方式还参考了 Matt Pocock 的 [Grilling Skill](https://github.com/mattpocock/skills/blob/main/skills/productivity/grilling/SKILL.md)。
+
+每个第三方项目仍由其自身许可证和使用条款约束。准确说明请查看 [runtime/THIRD_PARTY.md](runtime/THIRD_PARTY.md)、内置许可证文件、npm 包许可证以及上游声明。
 
 ## 本地开发
 

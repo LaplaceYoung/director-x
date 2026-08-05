@@ -96,6 +96,15 @@ if (!/discoverable facts/i.test(nativeQuestioning)) {
   errors.push("native questioning must distinguish facts from user decisions");
 }
 
+const readme = await readText("README.md");
+const chineseReadme = await readText("README.zh-CN.md");
+if (!/## Acknowledgements and third-party tools[\s\S]*yt-dlp[\s\S]*FFmpeg[\s\S]*web-access[\s\S]*Remotion/.test(readme)) {
+  errors.push("README.md must acknowledge core third-party tools");
+}
+if (!/## 致谢与第三方工具[\s\S]*yt-dlp[\s\S]*FFmpeg[\s\S]*web-access[\s\S]*Remotion/.test(chineseReadme)) {
+  errors.push("README.zh-CN.md must acknowledge core third-party tools");
+}
+
 await requireChecksum(
   "runtime/bin/darwin-universal/yt-dlp",
   "498bd0dae17855c599d371d68ec5bafc439a9d8640e838be25c765a9792f261b"
