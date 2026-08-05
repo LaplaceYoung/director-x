@@ -13,6 +13,7 @@
   <img alt="Node.js 22+" src="https://img.shields.io/badge/node-%3E%3D22-339933" />
   <img alt="Codex plugin" src="https://img.shields.io/badge/Codex-plugin-E85D3F" />
   <img alt="Version 0.2.0" src="https://img.shields.io/badge/version-0.2.0-111111" />
+  <a href="https://github.com/LaplaceYoung/director-x/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/LaplaceYoung/director-x/actions/workflows/ci.yml/badge.svg" /></a>
 </p>
 
 <p align="center">
