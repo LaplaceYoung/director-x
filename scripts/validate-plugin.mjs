@@ -43,7 +43,11 @@ if (!/image[\s\S]*video[\s\S]*audio[\s\S]*text/.test(skill)) {
 
 for (const path of [
   "skills/directorx-prompt-writer/SKILL.md",
-  "skills/directorx-web-access/SKILL.md"
+  "skills/directorx-web-access/SKILL.md",
+  "skills/directorx-reference-analyst/SKILL.md",
+  "skills/directorx-asset-researcher/SKILL.md",
+  "skills/directorx-visual-director/SKILL.md",
+  "skills/directorx-remotion-editor/SKILL.md"
 ]) {
   await requirePath(`./${path}`, path);
 }
@@ -56,6 +60,7 @@ for (const path of [
   "scripts/directorx.mjs",
   "scripts/canvas-server.mjs",
   "scripts/analyze-video.mjs",
+  "scripts/lib/video-analysis.mjs",
   "scripts/lib/remotion-project.mjs"
 ]) {
   await requirePath(`./${path}`, path);

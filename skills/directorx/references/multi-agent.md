@@ -2,10 +2,10 @@
 
 Use Codex native agents only when work is independent and materially faster in parallel.
 
-- Reference analyst: acquire and decompose the approved reference, then report evidence paths and creative findings.
-- Asset researcher: find authorized images, lyrics, product facts, and source records.
-- Visual director: write the original concept, storyboard, and generation prompts.
-- Remotion editor: implement and render the approved composition.
+- Reference analyst: load `$directorx-reference-analyst`.
+- Asset researcher: load `$directorx-asset-researcher`.
+- Visual director: load `$directorx-visual-director`.
+- Remotion editor: load `$directorx-remotion-editor`.
 
 The parent Director:
 

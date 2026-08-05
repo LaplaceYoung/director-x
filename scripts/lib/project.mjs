@@ -102,7 +102,7 @@ export function resolveProjectMediaPath(projectPath, storedPath) {
 
 export function inferObjectType(filePath) {
   const extension = extname(filePath).toLowerCase();
-  if ([".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"].includes(extension)) return "image";
+  if ([".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif", ".svg"].includes(extension)) return "image";
   if ([".mp4", ".mov", ".m4v", ".webm"].includes(extension)) return "video";
   if ([".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg"].includes(extension)) return "audio";
   return "text";

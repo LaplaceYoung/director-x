@@ -11,6 +11,12 @@ import {
 } from "../scripts/lib/project.mjs";
 import { doctorMediaTools, inspectMediaTool } from "../scripts/lib/media-tools.mjs";
 import { composeRemotionProject } from "../scripts/lib/remotion-project.mjs";
+import {
+  buildShotRanges,
+  colorSystemSvg,
+  extractDominantColors,
+  parseSceneCutTimes
+} from "../scripts/lib/video-analysis.mjs";
 
 test("initializes a canvas and stores only supported content objects", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "directorx-"));
@@ -132,4 +138,37 @@ test("builds a minimal Remotion spec from canvas media and text", async () => {
   assert.equal(result.spec.durationInFrames, 96);
   assert.equal(result.spec.clips.length, 2);
   assert.equal(result.spec.clips[0].src, "media/000-cover.jpg");
+});
+
+test("parses scene cuts and builds continuous shot ranges", () => {
+  const cuts = parseSceneCutTimes([
+    "showinfo pts_time:1.250",
+    "showinfo pts_time:3.5",
+    "showinfo pts_time:3.500"
+  ].join("\n"));
+  const shots = buildShotRanges(5, cuts);
+
+  assert.deepEqual(cuts, [1.25, 3.5]);
+  assert.deepEqual(
+    shots.map((shot) => [shot.startSeconds, shot.endSeconds]),
+    [[0, 1.25], [1.25, 3.5], [3.5, 5]]
+  );
+  assert.equal(shots[1].representativeSeconds, 2.375);
+});
+
+test("extracts a compact color system and renders an SVG card", () => {
+  const pixels = Buffer.from([
+    240, 80, 40,
+    242, 82, 42,
+    20, 24, 30,
+    21, 25, 31,
+    50, 120, 200
+  ]);
+  const colors = extractDominantColors(pixels, 3);
+  const svg = colorSystemSvg("Reference & palette", colors);
+
+  assert.equal(colors.length, 3);
+  assert.equal(colors[0].role, "dominant");
+  assert.match(svg, /Reference &amp; palette/);
+  assert.match(svg, /<svg/);
 });
