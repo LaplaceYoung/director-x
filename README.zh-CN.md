@@ -207,7 +207,7 @@ node scripts/directorx.mjs placeholder \
   --prompt "从产品剪影开场，摄影机缓慢升起，城市天际线逐渐显现。"
 ```
 
-生成的文本节点会明确标记为“等待生成权限”，并包含可直接使用的提示词、根据镜头需要排序的主流模型路线、目标参数、核验状态和官方文档链接。推荐目录会考虑 Seedance/Seedream、Kling、Veo、Sora、GPT Image 和 Imagen。Happy Horse 在获得权威官方文档前只作为明确标注的未核验实验候选。Remotion 会忽略这些占位节点；Director X 不会把用户要求的生成镜头静默替换成动效合成。
+生成的文本节点会明确标记为“等待生成权限”。折叠状态只展示预期输出；展开后显示详细提示词、排除条件、模型选择按钮、模型对应规格参数、核验状态和官方文档链接。推荐目录会考虑 Seedance/Seedream、Kling、Veo、Sora、GPT Image 和 Imagen。Happy Horse 在获得权威官方文档前只作为明确标注的未核验实验候选。Remotion 会忽略这些占位节点；Director X 不会把用户要求的生成镜头静默替换成动效合成。
 
 ### 合成与渲染
 

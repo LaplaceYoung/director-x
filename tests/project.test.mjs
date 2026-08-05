@@ -107,6 +107,8 @@ test("ships canvas controls for Markdown, DAG navigation, and zoom", async () =>
   assert.match(html, /id="zoom-in"/);
   assert.match(html, /function renderMarkdown/);
   assert.match(html, /classList\.add\("dag-edge"\)/);
+  assert.match(html, /function renderGenerationPlaceholder/);
+  assert.match(html, /className = "model-button"/);
 });
 
 test("rejects unsupported canvas object types", async () => {
@@ -133,6 +135,7 @@ test("adds a generation placeholder with prompt, model recommendations, and spec
   assert.equal(object.type, "text");
   assert.equal(object.metadata.kind, "generation-placeholder");
   assert.equal(object.metadata.status, "awaiting-generation-access");
+  assert.equal(object.metadata.renderer, "generation-placeholder");
   assert.equal(object.metadata.desiredSpecs.durationSeconds, 6);
   assert.equal(object.metadata.recommendations[0].model, "Kling 3.0 / Kling Omni family");
   assert.equal(object.metadata.recommendations[1].model, "Seedance 2.5 family");

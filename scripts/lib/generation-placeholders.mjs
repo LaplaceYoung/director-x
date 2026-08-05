@@ -11,12 +11,12 @@ export async function addGenerationPlaceholder(projectPath, input) {
     title: placeholder.title,
     text: formatGenerationPlaceholder(placeholder),
     width: 420,
-    height: 520,
+    height: 360,
     dependsOn: input.dependsOn,
     metadata: {
       kind: "generation-placeholder",
       status: "awaiting-generation-access",
-      renderer: "none",
+      renderer: "generation-placeholder",
       ...placeholder
     }
   });

@@ -31,13 +31,33 @@
     .card.generation-placeholder .card-head { border-bottom-color: #4a3521; }
     .card.generation-placeholder .card-head span { color: #e5a15d; }
     .card.generation-placeholder .content { background: #17130f; }
+    .placeholder-shell { padding: 12px; color: #d8d0c7; font-size: 10px; line-height: 1.55; }
     .card-head { height: 32px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: 0 0 auto; padding: 0 9px; border-bottom: 1px solid #303030; cursor: move; user-select: none; }
     .card-head strong { min-width: 0; overflow: hidden; font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
     .card-head span { color: #777; font-size: 8px; text-transform: uppercase; }
     .content { min-height: 0; flex: 1; overflow: auto; background: #131313; }
     img, video { display: block; width: 100%; height: 100%; object-fit: contain; background: #0a0a0a; }
     audio { width: calc(100% - 20px); margin: 24px 10px; }
-    .placeholder-status { margin: 12px 12px 0; padding: 7px 9px; border: 1px solid #65431f; border-radius: 5px; color: #f0b36f; background: #2b1f13; font: 600 9px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; text-transform: uppercase; }
+    .placeholder-status { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; padding: 7px 9px; border: 1px solid #65431f; border-radius: 5px; color: #f0b36f; background: #2b1f13; font: 600 9px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .04em; text-transform: uppercase; }
+    .placeholder-section-title { margin: 0 0 7px; color: #f0e4d7; font-size: 10px; font-weight: 650; }
+    .placeholder-specs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 10px; border-top: 1px solid #3b3025; border-left: 1px solid #3b3025; }
+    .placeholder-spec { min-width: 0; padding: 7px 8px; border-right: 1px solid #3b3025; border-bottom: 1px solid #3b3025; background: #1d1813; }
+    .placeholder-spec dt { margin: 0 0 2px; color: #8f8173; font-size: 8px; text-transform: uppercase; }
+    .placeholder-spec dd { margin: 0; overflow-wrap: anywhere; color: #e2d8cd; }
+    .placeholder-toggle { width: 100%; min-height: 32px; border: 1px solid #5d4128; border-radius: 5px; color: #efb171; background: #241b13; cursor: pointer; font-size: 10px; text-align: left; }
+    .placeholder-toggle:hover { border-color: #8a6038; background: #2b2016; }
+    .placeholder-details { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #403326; }
+    .placeholder-details.expanded { display: block; }
+    .placeholder-copy { margin: 0 0 12px; padding: 9px; border-left: 2px solid #74502f; color: #d9d0c7; background: #14110e; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .placeholder-copy.negative { color: #a99f95; }
+    .model-buttons { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
+    .model-button { padding: 6px 8px; border: 1px solid #493a2d; border-radius: 4px; color: #ae9e8e; background: #1a1612; cursor: pointer; font-size: 9px; text-align: left; }
+    .model-button:hover, .model-button.active { border-color: #b4773e; color: #f1c08c; background: #2b2016; }
+    .model-detail { padding: 9px; border: 1px solid #3d3227; background: #15120f; }
+    .model-detail strong { display: block; margin-bottom: 5px; color: #eee2d4; font-size: 10px; }
+    .model-detail p { margin: 6px 0; color: #aaa096; }
+    .model-detail a { color: #d69b61; text-decoration: none; }
+    .model-detail a:hover { text-decoration: underline; }
     .markdown { padding: 14px; color: #d0d0d0; font-size: 11px; line-height: 1.65; overflow-wrap: anywhere; }
     .markdown > :first-child { margin-top: 0; }
     .markdown > :last-child { margin-bottom: 0; }
@@ -289,12 +309,10 @@
       content.className = "content";
       if (object.type === "text") {
         if (generationPlaceholder) {
-          const placeholderStatus = document.createElement("div");
-          placeholderStatus.className = "placeholder-status";
-          placeholderStatus.textContent = "Awaiting generation access";
-          content.append(placeholderStatus);
+          content.append(renderGenerationPlaceholder(object.metadata));
+        } else {
+          content.append(renderMarkdown(object.text || ""));
         }
-        content.append(renderMarkdown(object.text || ""));
       } else {
         const media = document.createElement(object.type);
         media.src = `/media/${encodeURIComponent(object.path)}`;
@@ -321,6 +339,141 @@
       resizeObserver.observe(card);
       resizeObservers.push(resizeObserver);
       return card;
+    }
+
+    function renderGenerationPlaceholder(metadata) {
+      const shell = document.createElement("div");
+      shell.className = "placeholder-shell";
+
+      const statusRow = document.createElement("div");
+      statusRow.className = "placeholder-status";
+      const statusText = document.createElement("span");
+      statusText.textContent = "等待生成";
+      const mode = document.createElement("span");
+      mode.textContent = metadata.mode || metadata.modality;
+      statusRow.append(statusText, mode);
+
+      const outputTitle = sectionTitle("预期输出");
+      const outputSpecs = renderSpecs(metadata.desiredSpecs || {});
+      const toggle = document.createElement("button");
+      toggle.className = "placeholder-toggle";
+      toggle.type = "button";
+      toggle.textContent = "查看详细提示词与推荐模型 ↓";
+      toggle.setAttribute("aria-expanded", "false");
+
+      const details = document.createElement("div");
+      details.className = "placeholder-details";
+      details.append(
+        sectionTitle("详细提示词"),
+        copyBlock(metadata.prompt || ""),
+        sectionTitle("排除条件"),
+        copyBlock(metadata.negativePrompt || "", "negative"),
+        sectionTitle("推荐模型")
+      );
+
+      const modelButtons = document.createElement("div");
+      modelButtons.className = "model-buttons";
+      const modelDetail = document.createElement("div");
+      modelDetail.className = "model-detail";
+      const recommendations = metadata.recommendations || [];
+
+      function selectModel(index) {
+        modelButtons.querySelectorAll(".model-button").forEach((button, buttonIndex) => {
+          const active = buttonIndex === index;
+          button.classList.toggle("active", active);
+          button.setAttribute("aria-pressed", String(active));
+        });
+        modelDetail.replaceChildren();
+        const recommendation = recommendations[index];
+        if (!recommendation) {
+          modelDetail.textContent = "暂无推荐模型。";
+          return;
+        }
+        const name = document.createElement("strong");
+        name.textContent = `${recommendation.provider} — ${recommendation.model}`;
+        const use = document.createElement("p");
+        use.textContent = recommendation.use;
+        modelDetail.append(name, use, renderSpecs(recommendation.specs || {}));
+        const status = document.createElement("p");
+        status.textContent = recommendation.status;
+        modelDetail.append(status);
+        if (recommendation.docsUrl) {
+          const docs = document.createElement("a");
+          docs.href = recommendation.docsUrl;
+          docs.target = "_blank";
+          docs.rel = "noreferrer";
+          docs.textContent = "查看官方文档 ↗";
+          modelDetail.append(docs);
+        }
+      }
+
+      recommendations.forEach((recommendation, index) => {
+        const button = document.createElement("button");
+        button.className = "model-button";
+        button.type = "button";
+        button.textContent = recommendation.model;
+        button.addEventListener("click", () => selectModel(index));
+        modelButtons.append(button);
+      });
+      details.append(modelButtons, modelDetail);
+      selectModel(0);
+
+      toggle.addEventListener("click", () => {
+        const expanded = !details.classList.contains("expanded");
+        details.classList.toggle("expanded", expanded);
+        toggle.setAttribute("aria-expanded", String(expanded));
+        toggle.textContent = expanded
+          ? "收起详细提示词与推荐模型 ↑"
+          : "查看详细提示词与推荐模型 ↓";
+      });
+
+      shell.append(statusRow, outputTitle, outputSpecs, toggle, details);
+      return shell;
+    }
+
+    function sectionTitle(text) {
+      const title = document.createElement("h3");
+      title.className = "placeholder-section-title";
+      title.textContent = text;
+      return title;
+    }
+
+    function copyBlock(text, className = "") {
+      const block = document.createElement("p");
+      block.className = `placeholder-copy ${className}`.trim();
+      block.textContent = text;
+      return block;
+    }
+
+    function renderSpecs(specs) {
+      const list = document.createElement("dl");
+      list.className = "placeholder-specs";
+      for (const [key, value] of Object.entries(specs)) {
+        const item = document.createElement("div");
+        item.className = "placeholder-spec";
+        const term = document.createElement("dt");
+        term.textContent = formatSpecLabel(key);
+        const description = document.createElement("dd");
+        description.textContent = String(value);
+        item.append(term, description);
+        list.append(item);
+      }
+      return list;
+    }
+
+    function formatSpecLabel(value) {
+      return {
+        aspectRatio: "画幅",
+        durationSeconds: "时长",
+        resolution: "分辨率",
+        fps: "帧率",
+        outputCount: "数量",
+        audio: "音频",
+        size: "尺寸",
+        quality: "质量",
+        format: "格式",
+        promptLanguage: "提示词语言"
+      }[value] || String(value).replace(/([a-z])([A-Z])/g, "$1 $2").replace(/_/g, " ");
     }
 
     function renderMarkdown(markdown) {
@@ -567,7 +720,7 @@
       }
       renderEdges();
       updateMinimap();
-      await Promise.all(objects.map(persistGeometry));
+      for (const object of objects) await persistGeometry(object);
       fitAll();
     }
 

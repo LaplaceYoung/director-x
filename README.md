@@ -207,7 +207,7 @@ node scripts/directorx.mjs placeholder \
   --prompt "Opening on the product silhouette, the camera slowly cranes upward as the skyline appears."
 ```
 
-The resulting text node is visibly marked as waiting for generation access. It contains ready-to-use prompt material, shot-ranked mainstream model routes, target parameters, verification status, and official documentation links. The catalog considers Seedance/Seedream, Kling, Veo, Sora, GPT Image, and Imagen. Happy Horse remains an explicitly unverified experimental candidate until authoritative documentation is supplied. Remotion ignores these placeholders; Director X does not silently replace a requested generative shot with a motion-graphics fallback.
+The resulting text node is visibly marked as waiting for generation access. Its collapsed state shows the expected output; expanding it reveals the detailed prompt, negative constraints, model buttons, model-specific parameters, verification status, and official documentation links. The catalog considers Seedance/Seedream, Kling, Veo, Sora, GPT Image, and Imagen. Happy Horse remains an explicitly unverified experimental candidate until authoritative documentation is supplied. Remotion ignores these placeholders; Director X does not silently replace a requested generative shot with a motion-graphics fallback.
 
 ### Compose and render
 

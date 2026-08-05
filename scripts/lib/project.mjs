@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -49,8 +49,10 @@ export async function readCanvas(projectPath) {
 export async function writeCanvas(projectPath, canvas) {
   const { canvasPath } = projectPaths(projectPath);
   const next = { ...canvas, updatedAt: new Date().toISOString() };
+  const temporaryPath = `${canvasPath}.${randomUUID()}.tmp`;
   await mkdir(dirname(canvasPath), { recursive: true });
-  await writeFile(canvasPath, `${JSON.stringify(next, null, 2)}\n`, "utf8");
+  await writeFile(temporaryPath, `${JSON.stringify(next, null, 2)}\n`, "utf8");
+  await rename(temporaryPath, canvasPath);
   return next;
 }
 
