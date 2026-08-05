@@ -68,6 +68,7 @@ for (const path of [
   "scripts/directorx.mjs",
   "scripts/canvas-server.mjs",
   "scripts/analyze-video.mjs",
+  "scripts/lib/generation-placeholders.mjs",
   "scripts/lib/provider-profiles.mjs",
   "scripts/lib/provider-request.mjs",
   "scripts/lib/video-analysis.mjs",

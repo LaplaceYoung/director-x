@@ -39,6 +39,7 @@ Version 0.2.0 is a clean foundation. It intentionally does **not** add an MCP ru
 - Bundles a pinned macOS `yt-dlp` executable and uses packaged FFmpeg/FFprobe dependencies.
 - Downloads an approved reference URL, separates audio, extracts frames, estimates scene cuts, creates shot boards, and generates a sampled color system.
 - Includes visual prompt-writing guidance distilled from 133 Flova skills.
+- Adds generation placeholder nodes when a shot needs an image/video model but no usable API key is available. Each node keeps the production prompt, negative constraints, recommended models, official docs, and target specifications on the canvas.
 - Builds simple media sequences with Remotion and renders preview or final MP4 files.
 - Stores provider metadata locally and reads API credentials only from a user-selected environment variable.
 
@@ -173,6 +174,23 @@ node scripts/directorx.mjs add \
 
 Media files must be inside the video project before they can be registered on the canvas.
 
+### Continue a generative production without a key
+
+```bash
+node scripts/directorx.mjs placeholder \
+  --project /path/to/video-project \
+  --modality video \
+  --title "Shot 03 — rooftop reveal" \
+  --aspect-ratio 16:9 \
+  --needs camera,identity,audio,multishot \
+  --duration 6 \
+  --resolution 1080p \
+  --fps 24 \
+  --prompt "Opening on the product silhouette, the camera slowly cranes upward as the skyline appears."
+```
+
+The resulting text node is visibly marked as waiting for generation access. It contains ready-to-use prompt material, shot-ranked mainstream model routes, target parameters, verification status, and official documentation links. The catalog considers Seedance/Seedream, Kling, Veo, Sora, GPT Image, and Imagen. Happy Horse remains an explicitly unverified experimental candidate until authoritative documentation is supplied. Remotion ignores these placeholders; Director X does not silently replace a requested generative shot with a motion-graphics fallback.
+
 ### Compose and render
 
 ```bash
@@ -224,6 +242,7 @@ flowchart LR
 | Plugin entry | `.codex-plugin/plugin.json` and `skills/directorx/SKILL.md` |
 | Canvas | `app/canvas.html` backed by `.directorx/canvas.json` |
 | Video understanding | `scripts/analyze-video.mjs` and `scripts/lib/video-analysis.mjs` |
+| Generation placeholders | `scripts/lib/generation-placeholders.mjs` |
 | Media runtime | packaged FFmpeg/FFprobe dependencies and `runtime/bin/darwin-universal/yt-dlp` |
 | Prompt writing | `skills/directorx-prompt-writer/` |
 | Web fallback | `skills/directorx-web-access/` |

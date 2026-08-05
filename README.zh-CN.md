@@ -39,6 +39,7 @@ Director X 是一个轻量、贴合 Codex 原生设计的视频插件。对话�
 - 内置固定版本的 macOS `yt-dlp`，并使用项目依赖提供 FFmpeg/FFprobe。
 - 对已获授权的参考视频下载、分离音频、抽帧、估算镜头切点、生成镜头板和采样色彩系统。
 - 内置从 Flova 133 个 Skills 中提炼出的生图、生视频提示词写作能力。
+- 当镜头需要生成模型但用户没有可用 API Key 时，在画布创建生成占位节点。节点保留完整提示词、排除条件、推荐模型、官方文档和目标规格。
 - 使用 Remotion 构建简单媒体序列，渲染预览或最终 MP4。
 - 本地保存 Provider 元数据，API Key 只从用户指定的环境变量读取。
 
@@ -173,6 +174,23 @@ node scripts/directorx.mjs add \
 
 媒体文件必须位于视频项目目录内，才能注册到画布。
 
+### 没有 Key 时继续生成型制作
+
+```bash
+node scripts/directorx.mjs placeholder \
+  --project /path/to/video-project \
+  --modality video \
+  --title "镜头 03 — 天台揭示" \
+  --aspect-ratio 16:9 \
+  --needs camera,identity,audio,multishot \
+  --duration 6 \
+  --resolution 1080p \
+  --fps 24 \
+  --prompt "从产品剪影开场，摄影机缓慢升起，城市天际线逐渐显现。"
+```
+
+生成的文本节点会明确标记为“等待生成权限”，并包含可直接使用的提示词、根据镜头需要排序的主流模型路线、目标参数、核验状态和官方文档链接。推荐目录会考虑 Seedance/Seedream、Kling、Veo、Sora、GPT Image 和 Imagen。Happy Horse 在获得权威官方文档前只作为明确标注的未核验实验候选。Remotion 会忽略这些占位节点；Director X 不会把用户要求的生成镜头静默替换成动效合成。
+
 ### 合成与渲染
 
 ```bash
@@ -224,6 +242,7 @@ flowchart LR
 | 插件入口 | `.codex-plugin/plugin.json` 与 `skills/directorx/SKILL.md` |
 | 画布 | `app/canvas.html`，数据来自 `.directorx/canvas.json` |
 | 视频理解 | `scripts/analyze-video.mjs` 与 `scripts/lib/video-analysis.mjs` |
+| 生成占位节点 | `scripts/lib/generation-placeholders.mjs` |
 | 媒体 Runtime | npm 提供的 FFmpeg/FFprobe 与 `runtime/bin/darwin-universal/yt-dlp` |
 | 提示词能力 | `skills/directorx-prompt-writer/` |
 | 联网补齐 | `skills/directorx-web-access/` |

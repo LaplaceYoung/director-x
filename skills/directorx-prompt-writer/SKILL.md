@@ -63,3 +63,5 @@ Review checklist:
 ```
 
 When the user works in Chinese, write prompt prose in Chinese unless the provider documentation or the user requires another language. Keep exact dialogue, lyrics, and on-screen text in their intended output language.
+
+If no generation credential is available, preserve the complete output in a Director X generation placeholder. Do not shorten the prompt into a planning note and do not substitute a Remotion composition for a requested generative shot.

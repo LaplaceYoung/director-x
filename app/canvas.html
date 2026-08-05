@@ -17,6 +17,11 @@
     #plane { position: absolute; width: 8000px; height: 8000px; transform-origin: 0 0; }
     .card { position: absolute; display: flex; flex-direction: column; min-width: 180px; min-height: 120px; overflow: hidden; border: 1px solid #383838; border-radius: 8px; background: #1a1a1a; box-shadow: 0 12px 30px rgb(0 0 0 / 22%); resize: both; }
     .card.selected { border-color: #e85d3f; }
+    .card.generation-placeholder { border: 1px dashed #a86f37; background: #1d1914; }
+    .card.generation-placeholder .card-head { border-bottom-color: #4a3521; }
+    .card.generation-placeholder .card-head span { color: #e5a15d; }
+    .card.generation-placeholder .content { background: #17130f; }
+    .placeholder-status { margin: 12px 12px 0; padding: 7px 9px; border: 1px solid #65431f; border-radius: 5px; color: #f0b36f; background: #2b1f13; font: 600 9px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; text-transform: uppercase; }
     .card-head { height: 32px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 9px; border-bottom: 1px solid #303030; cursor: move; user-select: none; }
     .card-head strong { min-width: 0; overflow: hidden; font-size: 10px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
     .card-head span { color: #777; font-size: 8px; text-transform: uppercase; }
@@ -110,6 +115,8 @@
     function createCard(object) {
       const card = document.createElement("article");
       card.className = "card";
+      const generationPlaceholder = object.metadata?.kind === "generation-placeholder";
+      if (generationPlaceholder) card.classList.add("generation-placeholder");
       card.style.left = `${object.x}px`;
       card.style.top = `${object.y}px`;
       card.style.width = `${object.width}px`;
@@ -121,12 +128,20 @@
       const title = document.createElement("strong");
       title.textContent = object.title;
       const kind = document.createElement("span");
-      kind.textContent = object.type;
+      kind.textContent = generationPlaceholder
+        ? `${object.metadata.modality} · waiting`
+        : object.type;
       head.append(title, kind);
 
       const content = document.createElement("div");
       content.className = "content";
       if (object.type === "text") {
+        if (generationPlaceholder) {
+          const placeholderStatus = document.createElement("div");
+          placeholderStatus.className = "placeholder-status";
+          placeholderStatus.textContent = "Awaiting generation access";
+          content.append(placeholderStatus);
+        }
         const pre = document.createElement("pre");
         pre.textContent = object.text || "";
         content.append(pre);

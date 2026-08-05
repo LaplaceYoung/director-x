@@ -42,6 +42,7 @@ Read `references/video-understanding.md` before analysis. Inspect the contact sh
 - Read `references/remotion.md` before composition.
 - Read `references/providers.md` before configuring or calling an image/video generation provider.
 - Ask whether the user has an image/video generation provider only when generation is needed. Ask for provider name, model, official documentation, and whether a key is available through native questions. Never ask the user to paste an API key into chat; read it only from the configured local environment variable.
+- If the user requires generated media but has no usable key, do not replace the requested generation route with Remotion. Add one generation placeholder per required image or shot to the canvas. Each placeholder must contain the approved prompt, negative constraints, desired output specs, recommended models, and official documentation links.
 - A plan, analysis, script, or storyboard is never completion. After the user answers a question, continue in the same task toward a playable video.
 
 ## Canvas contract
@@ -64,3 +65,22 @@ The canvas contains only:
 - text: brief, research, lyrics, script, screenplay, storyboard, shot list, visual system, prompt, or edit note
 
 Keep technical artifacts in `.directorx/`; put them on the canvas only when they help the user understand or make a creative decision.
+
+## Generation placeholders
+
+Create a placeholder after the shot prompt is production-ready:
+
+```bash
+node <plugin-root>/scripts/directorx.mjs placeholder \
+  --project <project-path> \
+  --modality video \
+  --title "Shot 03 — rooftop reveal" \
+  --aspect-ratio 16:9 \
+  --needs camera,identity,audio,multishot \
+  --duration 6 \
+  --resolution 1080p \
+  --fps 24 \
+  --prompt "<approved production prompt>"
+```
+
+The placeholder is a structured text object with `metadata.kind=generation-placeholder`. It remains visible and movable on the canvas but is excluded from Remotion composition. Model routes are ranked from shot needs such as `identity`, `multishot`, `complex-motion`, `camera`, `lip-sync`, `audio`, `first-last-frame`, `physics`, `multi-reference`, `text`, `editing`, and `open-source`. Replace it with the generated image or video when access becomes available.

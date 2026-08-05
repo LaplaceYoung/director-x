@@ -23,6 +23,10 @@ import {
   listProviders
 } from "../scripts/lib/provider-profiles.mjs";
 import { requestProvider } from "../scripts/lib/provider-request.mjs";
+import {
+  addGenerationPlaceholder,
+  buildGenerationPlaceholder
+} from "../scripts/lib/generation-placeholders.mjs";
 
 test("initializes a canvas and stores only supported content objects", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "directorx-"));
@@ -67,6 +71,71 @@ test("rejects unsupported canvas object types", async () => {
   await assert.rejects(
     addCanvasObject(projectPath, { type: "workflow", text: "No" }),
     /Unsupported canvas object type/
+  );
+});
+
+test("adds a generation placeholder with prompt, model recommendations, and specs", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-placeholder-"));
+  const object = await addGenerationPlaceholder(projectPath, {
+    modality: "video",
+    title: "Shot 03 — rooftop reveal",
+    prompt: "Opening on the product silhouette, the camera slowly cranes upward as the skyline appears.",
+    aspectRatio: "16:9",
+    needs: "camera,identity,audio,multishot",
+    durationSeconds: 6,
+    resolution: "1080p",
+    fps: 24
+  });
+
+  assert.equal(object.type, "text");
+  assert.equal(object.metadata.kind, "generation-placeholder");
+  assert.equal(object.metadata.status, "awaiting-generation-access");
+  assert.equal(object.metadata.desiredSpecs.durationSeconds, 6);
+  assert.equal(object.metadata.recommendations[0].model, "Kling 3.0 / Kling Omni family");
+  assert.equal(object.metadata.recommendations[1].model, "Seedance 2.5 family");
+  const veo = object.metadata.recommendations.find((item) => item.model === "veo-3.1-generate-001");
+  const sora = object.metadata.recommendations.find((item) => item.model === "sora-2");
+  assert.equal(veo.specs.durationSeconds, 6);
+  assert.equal(sora.specs.durationSeconds, 8);
+  assert.match(object.text, /WAITING FOR GENERATION ACCESS/);
+  assert.match(object.text, /RECOMMENDED ROUTES/);
+  assert.match(object.text, /do not silently switch to Remotion/i);
+});
+
+test("considers Happy Horse only as an unverified need-matched candidate", () => {
+  const placeholder = buildGenerationPlaceholder({
+    modality: "video",
+    prompt: "Use a local open-source audiovisual model for this image-to-video shot.",
+    needs: "open-source,experimental,audio"
+  });
+  const happyHorse = placeholder.recommendations.find((item) => item.provider === "Happy Horse");
+  assert.ok(happyHorse);
+  assert.equal(happyHorse.docsUrl, null);
+  assert.match(happyHorse.status, /unverified candidate/);
+});
+
+test("recommends Seedream routes for matching image-generation needs", () => {
+  const placeholder = buildGenerationPlaceholder({
+    modality: "image",
+    prompt: "Create a 4K multi-reference character keyframe with exact poster text.",
+    needs: "4k,multi-reference,identity,text"
+  });
+  assert.equal(placeholder.recommendations[0].model, "Seedream 4.0");
+  assert.ok(placeholder.recommendations.some((item) => item.model === "Seedream 5.0 Lite"));
+});
+
+test("validates generation placeholder inputs", () => {
+  assert.throws(
+    () => buildGenerationPlaceholder({ modality: "audio", prompt: "Test" }),
+    /modality must be image or video/
+  );
+  assert.throws(
+    () => buildGenerationPlaceholder({ modality: "video", prompt: "Test", aspectRatio: "1:1" }),
+    /support 16:9 or 9:16/
+  );
+  assert.throws(
+    () => buildGenerationPlaceholder({ modality: "image" }),
+    /prompt is required/
   );
 });
 
@@ -163,6 +232,11 @@ test("builds a minimal Remotion spec from canvas media and text", async () => {
     type: "text",
     title: "Title",
     text: "Hello Director X"
+  });
+  await addGenerationPlaceholder(projectPath, {
+    modality: "video",
+    title: "Future generated shot",
+    prompt: "A generated shot that must not appear in the Remotion fallback."
   });
   await addCanvasObject(projectPath, {
     type: "video",

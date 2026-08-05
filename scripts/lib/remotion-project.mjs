@@ -19,6 +19,7 @@ export async function composeRemotionProject(projectPath, options = {}) {
 
   for (const [index, object] of canvas.objects.entries()) {
     if (object.metadata?.renderer === "remotion") continue;
+    if (object.metadata?.kind === "generation-placeholder") continue;
     if (object.type === "audio" && object.path && !audio) {
       audio = {
         src: await stageMedia(projectPath, object.path, paths.mediaRoot, index),

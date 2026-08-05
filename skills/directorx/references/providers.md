@@ -14,6 +14,31 @@ Ask only when image or video generation is needed:
 
 Do not ask the user to paste a key into chat or place it on the canvas.
 
+## Continue without a key
+
+If generation is necessary but the user has no usable API key:
+
+1. finish the prompt and continuity constraints;
+2. create one canvas generation placeholder for each required image or video shot;
+3. include recommended model routes and concrete output specifications;
+4. keep official documentation links visible in the placeholder;
+5. continue planning the remaining shots instead of stopping the task;
+6. do not silently turn the requested generative route into a Remotion-only video.
+
+```bash
+node <plugin-root>/scripts/directorx.mjs placeholder \
+  --project <project-path> \
+  --modality image \
+  --title "Character identity reference" \
+  --aspect-ratio 16:9 \
+  --needs identity,multi-reference \
+  --prompt "<production-ready prompt>"
+```
+
+Recommendations are ranked from the shot's needs rather than a fixed provider list. The catalog considers mainstream Seed/Seedance, Seedream, Kling, Veo, Sora, GPT Image, and Imagen routes. Happy Horse is considered only as an experimental candidate: no authoritative first-party model or API documentation was verified on 2026-08-05, so it must not be called until the user supplies official documentation.
+
+Recommendations are presets, not permission to call a provider. Recheck the linked official documentation and exact model ID before configuring or submitting a request.
+
 ## Configure non-secret metadata
 
 Choose a clear environment variable name, then run:

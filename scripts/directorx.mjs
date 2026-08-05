@@ -12,6 +12,7 @@ import {
   listProviders
 } from "./lib/provider-profiles.mjs";
 import { requestProvider } from "./lib/provider-request.mjs";
+import { addGenerationPlaceholder } from "./lib/generation-placeholders.mjs";
 
 const [command = "help", ...rawArgs] = process.argv.slice(2);
 const providerAction = command === "provider" && rawArgs[0] && !rawArgs[0].startsWith("--")
@@ -43,6 +44,23 @@ try {
     if (!options.input) throw new Error("analyze requires --input <video-or-url>");
     const result = await analyzeVideo({ projectPath, input: options.input, title: options.title });
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  } else if (command === "placeholder") {
+    const object = await addGenerationPlaceholder(projectPath, {
+      modality: options.modality,
+      mode: options.mode,
+      title: options.title,
+      prompt: options.prompt,
+      negativePrompt: options.negative,
+      aspectRatio: options["aspect-ratio"],
+      needs: options.needs,
+      durationSeconds: options.duration,
+      resolution: options.resolution,
+      fps: options.fps,
+      outputCount: options["output-count"],
+      quality: options.quality,
+      format: options.format
+    });
+    process.stdout.write(`${JSON.stringify(object, null, 2)}\n`);
   } else if (command === "doctor") {
     const result = await doctorMediaTools();
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
@@ -128,6 +146,7 @@ function printHelp() {
     "  directorx canvas [--project PATH] [--port PORT]",
     "  directorx add --project PATH [--type image|video|audio|text] [--path FILE] [--text TEXT] [--title TITLE]",
     "  directorx analyze --project PATH --input VIDEO_OR_URL [--title TITLE]",
+    "  directorx placeholder --project PATH --modality image|video --prompt TEXT [--title TITLE] [--mode MODE] [--negative TEXT] [--aspect-ratio 16:9|9:16|1:1|4:3|3:4] [--needs TAG,TAG] [--duration SEC] [--resolution VALUE] [--fps N] [--output-count N]",
     "  directorx doctor",
     "  directorx compose --project PATH [--title TITLE] [--width PX] [--height PX] [--fps FPS] [--seconds-per-item N]",
     "  directorx render --project PATH [--quality preview|final] [--output PROJECT_FILE]",
