@@ -5,6 +5,7 @@ import { addCanvasObject, inferObjectType, initProject } from "./lib/project.mjs
 import { startCanvasServer } from "./canvas-server.mjs";
 import { analyzeVideo } from "./analyze-video.mjs";
 import { doctorMediaTools } from "./lib/media-tools.mjs";
+import { composeRemotionProject, renderRemotionProject } from "./lib/remotion-project.mjs";
 
 const [command = "help", ...args] = process.argv.slice(2);
 const options = parseArgs(args);
@@ -36,6 +37,21 @@ try {
     const result = await doctorMediaTools();
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     if (!result.ok) process.exitCode = 1;
+  } else if (command === "compose") {
+    const result = await composeRemotionProject(projectPath, {
+      title: options.title,
+      width: options.width,
+      height: options.height,
+      fps: options.fps,
+      secondsPerItem: options["seconds-per-item"]
+    });
+    process.stdout.write(`${JSON.stringify({ specPath: result.specPath, spec: result.spec }, null, 2)}\n`);
+  } else if (command === "render") {
+    const result = await renderRemotionProject(projectPath, {
+      quality: options.quality,
+      output: options.output
+    });
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   } else {
     printHelp();
   }
@@ -64,6 +80,8 @@ function printHelp() {
     "  directorx add --project PATH [--type image|video|audio|text] [--path FILE] [--text TEXT] [--title TITLE]",
     "  directorx analyze --project PATH --input VIDEO_OR_URL [--title TITLE]",
     "  directorx doctor",
+    "  directorx compose --project PATH [--title TITLE] [--width PX] [--height PX] [--fps FPS] [--seconds-per-item N]",
+    "  directorx render --project PATH [--quality preview|final] [--output PROJECT_FILE]",
     ""
   ].join("\n"));
 }

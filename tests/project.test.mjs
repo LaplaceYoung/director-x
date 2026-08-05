@@ -10,6 +10,7 @@ import {
   updateObjectPosition
 } from "../scripts/lib/project.mjs";
 import { doctorMediaTools, inspectMediaTool } from "../scripts/lib/media-tools.mjs";
+import { composeRemotionProject } from "../scripts/lib/remotion-project.mjs";
 
 test("initializes a canvas and stores only supported content objects", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "directorx-"));
@@ -94,4 +95,41 @@ test("media doctor reports managed tool availability without installing anything
   assert.equal(result.tools.ffmpeg.source, "plugin-runtime");
   assert.equal(result.tools.ffprobe.source, "plugin-runtime");
   assert.equal(result.tools["yt-dlp"].available, false);
+});
+
+test("builds a minimal Remotion spec from canvas media and text", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-remotion-"));
+  const mediaRoot = join(projectPath, ".directorx", "media");
+  await mkdir(mediaRoot, { recursive: true });
+  const imagePath = join(mediaRoot, "cover.jpg");
+  await writeFile(imagePath, "test");
+  await addCanvasObject(projectPath, {
+    type: "image",
+    title: "Cover",
+    path: imagePath
+  });
+  await addCanvasObject(projectPath, {
+    type: "text",
+    title: "Title",
+    text: "Hello Director X"
+  });
+  await addCanvasObject(projectPath, {
+    type: "video",
+    title: "Old preview",
+    path: imagePath,
+    metadata: { renderer: "remotion", quality: "preview" }
+  });
+
+  const result = await composeRemotionProject(projectPath, {
+    width: 641,
+    height: 359,
+    fps: 24,
+    secondsPerItem: 2
+  });
+
+  assert.equal(result.spec.width, 642);
+  assert.equal(result.spec.height, 360);
+  assert.equal(result.spec.durationInFrames, 96);
+  assert.equal(result.spec.clips.length, 2);
+  assert.equal(result.spec.clips[0].src, "media/000-cover.jpg");
 });

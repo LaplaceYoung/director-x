@@ -50,9 +50,13 @@ for (const path of [
 
 for (const path of [
   "app/canvas.html",
+  "remotion/index.jsx",
+  "remotion/root.jsx",
+  "remotion/composition.jsx",
   "scripts/directorx.mjs",
   "scripts/canvas-server.mjs",
-  "scripts/analyze-video.mjs"
+  "scripts/analyze-video.mjs",
+  "scripts/lib/remotion-project.mjs"
 ]) {
   await requirePath(`./${path}`, path);
 }
