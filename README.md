@@ -105,7 +105,9 @@ The canvas only contains user-facing production material:
 - `audio`
 - `text`
 
-It does not show agents, workflow nodes, approvals, provider jobs, internal logs, or execution state.
+Text nodes render a safe Markdown subset including headings, lists, tables, quotes, code, emphasis, and links. Objects may remain isolated or declare dependencies; dependency edges are validated as a DAG and shown directly between cards. The toolbar provides automatic DAG layout, fit-to-canvas, zoom controls, and quick node location. The minimap supports click-and-drag navigation.
+
+It does not show agents, approvals, provider jobs, internal logs, or execution state. Connections describe production-material dependencies, not an internal Agent workflow.
 
 ![Restored Director X canvas prototype](assets/screenshots/live-production-canvas.jpg)
 
@@ -169,10 +171,26 @@ node scripts/directorx.mjs add \
   --project /path/to/video-project \
   --type text \
   --title "Storyboard" \
-  --text "Opening shot..."
+  --text "# Opening shot"
 ```
 
 Media files must be inside the video project before they can be registered on the canvas.
+
+Add a dependent node directly, or connect two existing nodes:
+
+```bash
+node scripts/directorx.mjs add \
+  --project /path/to/video-project \
+  --type text \
+  --title "Shot 01" \
+  --text "## Camera\n\nSlow dolly in." \
+  --depends-on BRIEF_NODE_ID
+
+node scripts/directorx.mjs connect \
+  --project /path/to/video-project \
+  --from SHOT_NODE_ID \
+  --to VIDEO_NODE_ID
+```
 
 ### Continue a generative production without a key
 

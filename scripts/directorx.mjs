@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 
 import { resolve } from "node:path";
-import { addCanvasObject, inferObjectType, initProject } from "./lib/project.mjs";
+import {
+  addCanvasObject,
+  connectCanvasObjects,
+  inferObjectType,
+  initProject
+} from "./lib/project.mjs";
 import { startCanvasServer } from "./canvas-server.mjs";
 import { analyzeVideo } from "./analyze-video.mjs";
 import { doctorMediaTools } from "./lib/media-tools.mjs";
@@ -37,7 +42,8 @@ try {
       title: options.title,
       path: filePath,
       text: options.text,
-      sourceUrl: options.source
+      sourceUrl: options.source,
+      dependsOn: options["depends-on"]
     });
     process.stdout.write(`${JSON.stringify(object, null, 2)}\n`);
   } else if (command === "analyze") {
@@ -58,9 +64,14 @@ try {
       fps: options.fps,
       outputCount: options["output-count"],
       quality: options.quality,
-      format: options.format
+      format: options.format,
+      dependsOn: options["depends-on"]
     });
     process.stdout.write(`${JSON.stringify(object, null, 2)}\n`);
+  } else if (command === "connect") {
+    if (!options.from || !options.to) throw new Error("connect requires --from SOURCE_ID --to TARGET_ID");
+    const edge = await connectCanvasObjects(projectPath, options.from, options.to);
+    process.stdout.write(`${JSON.stringify(edge, null, 2)}\n`);
   } else if (command === "doctor") {
     const result = await doctorMediaTools();
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
@@ -144,9 +155,10 @@ function printHelp() {
     "",
     "  directorx init [--project PATH]",
     "  directorx canvas [--project PATH] [--port PORT]",
-    "  directorx add --project PATH [--type image|video|audio|text] [--path FILE] [--text TEXT] [--title TITLE]",
+    "  directorx add --project PATH [--type image|video|audio|text] [--path FILE] [--text TEXT] [--title TITLE] [--depends-on ID,ID]",
     "  directorx analyze --project PATH --input VIDEO_OR_URL [--title TITLE]",
-    "  directorx placeholder --project PATH --modality image|video --prompt TEXT [--title TITLE] [--mode MODE] [--negative TEXT] [--aspect-ratio 16:9|9:16|1:1|4:3|3:4] [--needs TAG,TAG] [--duration SEC] [--resolution VALUE] [--fps N] [--output-count N]",
+    "  directorx placeholder --project PATH --modality image|video --prompt TEXT [--title TITLE] [--mode MODE] [--negative TEXT] [--aspect-ratio 16:9|9:16|1:1|4:3|3:4] [--needs TAG,TAG] [--duration SEC] [--resolution VALUE] [--fps N] [--output-count N] [--depends-on ID,ID]",
+    "  directorx connect --project PATH --from SOURCE_ID --to TARGET_ID",
     "  directorx doctor",
     "  directorx compose --project PATH [--title TITLE] [--width PX] [--height PX] [--fps FPS] [--seconds-per-item N]",
     "  directorx render --project PATH [--quality preview|final] [--output PROJECT_FILE]",

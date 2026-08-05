@@ -12,6 +12,7 @@ export async function addGenerationPlaceholder(projectPath, input) {
     text: formatGenerationPlaceholder(placeholder),
     width: 420,
     height: 520,
+    dependsOn: input.dependsOn,
     metadata: {
       kind: "generation-placeholder",
       status: "awaiting-generation-access",

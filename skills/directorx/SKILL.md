@@ -54,7 +54,8 @@ node <plugin-root>/scripts/directorx.mjs add \
   --project <project-path> \
   --type text \
   --title "Storyboard" \
-  --text "<content>"
+  --text "<markdown-content>" \
+  --depends-on <optional-upstream-node-id>
 ```
 
 The canvas contains only:
@@ -65,6 +66,15 @@ The canvas contains only:
 - text: brief, research, lyrics, script, screenplay, storyboard, shot list, visual system, prompt, or edit note
 
 Keep technical artifacts in `.directorx/`; put them on the canvas only when they help the user understand or make a creative decision.
+
+Use Markdown for structured production text. Nodes may stay isolated or depend on upstream material. Dependencies must remain acyclic. Connect existing nodes with:
+
+```bash
+node <plugin-root>/scripts/directorx.mjs connect \
+  --project <project-path> \
+  --from <upstream-node-id> \
+  --to <dependent-node-id>
+```
 
 ## Generation placeholders
 

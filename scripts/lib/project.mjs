@@ -59,24 +59,42 @@ export async function addCanvasObject(projectPath, input) {
     throw new Error(`Unsupported canvas object type: ${input.type}`);
   }
   const canvas = await initProject(projectPath);
+  const dependsOn = normalizeDependencies(input.dependsOn);
+  validateDependencies(canvas.objects, input.id, dependsOn);
   const index = canvas.objects.length;
+  const suggestedPosition = suggestPosition(canvas.objects, dependsOn, index);
   const object = {
     id: input.id || randomUUID(),
     type: input.type,
     title: input.title || defaultTitle(input),
-    x: Number.isFinite(input.x) ? input.x : 80 + (index % 4) * 340,
-    y: Number.isFinite(input.y) ? input.y : 80 + Math.floor(index / 4) * 280,
+    x: Number.isFinite(input.x) ? input.x : suggestedPosition.x,
+    y: Number.isFinite(input.y) ? input.y : suggestedPosition.y,
     width: Number.isFinite(input.width) ? input.width : input.type === "text" ? 360 : 320,
     height: Number.isFinite(input.height) ? input.height : input.type === "text" ? 240 : 220,
     createdAt: new Date().toISOString()
   };
+  if (dependsOn.length) object.dependsOn = dependsOn;
   if (input.text !== undefined) object.text = String(input.text);
   if (input.path) object.path = normalizeProjectPath(projectPath, input.path);
   if (input.sourceUrl) object.sourceUrl = String(input.sourceUrl);
   if (input.metadata) object.metadata = input.metadata;
   canvas.objects.push(object);
+  assertAcyclic(canvas.objects);
   await writeCanvas(projectPath, canvas);
   return object;
+}
+
+export async function connectCanvasObjects(projectPath, sourceId, targetId) {
+  const canvas = await readCanvas(projectPath);
+  const source = canvas.objects.find((item) => item.id === sourceId);
+  const target = canvas.objects.find((item) => item.id === targetId);
+  if (!source) throw new Error(`Canvas dependency source not found: ${sourceId}`);
+  if (!target) throw new Error(`Canvas dependency target not found: ${targetId}`);
+  if (sourceId === targetId) throw new Error("A canvas object cannot depend on itself.");
+  target.dependsOn = [...new Set([...(target.dependsOn || []), sourceId])];
+  assertAcyclic(canvas.objects);
+  await writeCanvas(projectPath, canvas);
+  return { sourceId, targetId };
 }
 
 export async function updateObjectPosition(projectPath, id, position) {
@@ -122,4 +140,50 @@ function normalizeProjectPath(projectPath, filePath) {
 function defaultTitle(input) {
   if (input.path) return input.path.split("/").at(-1);
   return input.type === "text" ? "Production note" : "Untitled media";
+}
+
+function normalizeDependencies(value) {
+  const values = Array.isArray(value) ? value : String(value || "").split(",");
+  return [...new Set(values.map((item) => String(item).trim()).filter(Boolean))];
+}
+
+function validateDependencies(objects, objectId, dependsOn) {
+  const knownIds = new Set(objects.map((item) => item.id));
+  for (const dependencyId of dependsOn) {
+    if (dependencyId === objectId) throw new Error("A canvas object cannot depend on itself.");
+    if (!knownIds.has(dependencyId)) {
+      throw new Error(`Canvas dependency not found: ${dependencyId}`);
+    }
+  }
+}
+
+function assertAcyclic(objects) {
+  const dependencies = new Map(objects.map((item) => [item.id, item.dependsOn || []]));
+  const visiting = new Set();
+  const visited = new Set();
+  function visit(id) {
+    if (visiting.has(id)) throw new Error("Canvas dependencies must form a DAG; cycle detected.");
+    if (visited.has(id)) return;
+    visiting.add(id);
+    for (const dependencyId of dependencies.get(id) || []) visit(dependencyId);
+    visiting.delete(id);
+    visited.add(id);
+  }
+  for (const id of dependencies.keys()) visit(id);
+}
+
+function suggestPosition(objects, dependsOn, index) {
+  if (!dependsOn.length) {
+    return {
+      x: 80 + (index % 4) * 340,
+      y: 80 + Math.floor(index / 4) * 280
+    };
+  }
+  const dependencies = dependsOn
+    .map((id) => objects.find((item) => item.id === id))
+    .filter(Boolean);
+  return {
+    x: Math.max(...dependencies.map((item) => item.x + item.width)) + 140,
+    y: Math.round(dependencies.reduce((sum, item) => sum + item.y, 0) / dependencies.length)
+  };
 }

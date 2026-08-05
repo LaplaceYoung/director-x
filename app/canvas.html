@@ -9,67 +9,143 @@
     * { box-sizing: border-box; }
     html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
     body { background: #111; }
-    header { position: fixed; z-index: 20; top: 0; left: 0; right: 0; height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; border-bottom: 1px solid #2c2c2c; background: #151515; }
-    header strong { font-size: 13px; font-weight: 600; }
-    header span { color: #777; font-size: 10px; }
-    #viewport { position: absolute; inset: 48px 0 0; overflow: hidden; cursor: grab; background-color: #101010; background-image: radial-gradient(#343434 1px, transparent 1px); background-size: 24px 24px; }
+    button, select { font: inherit; }
+    header { position: fixed; z-index: 30; top: 0; left: 0; right: 0; height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 12px 0 14px; border-bottom: 1px solid #2c2c2c; background: #151515; }
+    .brand { display: flex; align-items: baseline; gap: 9px; min-width: 120px; }
+    .brand strong { font-size: 13px; font-weight: 650; }
+    .brand span { color: #777; font-size: 10px; }
+    .toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; }
+    .toolbar select, .tool-button { height: 30px; border: 1px solid #343434; border-radius: 5px; color: #bdbdbd; background: #1d1d1d; }
+    .toolbar select { width: min(230px, 28vw); padding: 0 28px 0 9px; font-size: 10px; }
+    .tool-button { min-width: 30px; padding: 0 9px; cursor: pointer; font-size: 10px; }
+    .tool-button:hover { border-color: #555; color: #fff; background: #242424; }
+    .tool-button:focus-visible, .toolbar select:focus-visible { outline: 1px solid #e85d3f; outline-offset: 1px; }
+    #viewport { position: absolute; inset: 52px 0 0; overflow: hidden; cursor: grab; background-color: #101010; background-image: radial-gradient(#343434 1px, transparent 1px); background-size: 24px 24px; }
     #viewport.dragging { cursor: grabbing; }
     #plane { position: absolute; width: 8000px; height: 8000px; transform-origin: 0 0; }
-    .card { position: absolute; display: flex; flex-direction: column; min-width: 180px; min-height: 120px; overflow: hidden; border: 1px solid #383838; border-radius: 8px; background: #1a1a1a; box-shadow: 0 12px 30px rgb(0 0 0 / 22%); resize: both; }
-    .card.selected { border-color: #e85d3f; }
+    #edge-layer { position: absolute; inset: 0; width: 8000px; height: 8000px; overflow: visible; pointer-events: none; }
+    .dag-edge { fill: none; stroke: #595959; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+    .card { position: absolute; z-index: 2; display: flex; flex-direction: column; min-width: 180px; min-height: 120px; overflow: hidden; border: 1px solid #383838; border-radius: 8px; background: #1a1a1a; box-shadow: 0 12px 30px rgb(0 0 0 / 22%); resize: both; }
+    .card.selected { border-color: #e85d3f; box-shadow: 0 0 0 1px #e85d3f55, 0 16px 38px rgb(0 0 0 / 30%); }
     .card.generation-placeholder { border: 1px dashed #a86f37; background: #1d1914; }
     .card.generation-placeholder .card-head { border-bottom-color: #4a3521; }
     .card.generation-placeholder .card-head span { color: #e5a15d; }
     .card.generation-placeholder .content { background: #17130f; }
-    .placeholder-status { margin: 12px 12px 0; padding: 7px 9px; border: 1px solid #65431f; border-radius: 5px; color: #f0b36f; background: #2b1f13; font: 600 9px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; text-transform: uppercase; }
-    .card-head { height: 32px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 9px; border-bottom: 1px solid #303030; cursor: move; user-select: none; }
-    .card-head strong { min-width: 0; overflow: hidden; font-size: 10px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
+    .card-head { height: 32px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: 0 0 auto; padding: 0 9px; border-bottom: 1px solid #303030; cursor: move; user-select: none; }
+    .card-head strong { min-width: 0; overflow: hidden; font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
     .card-head span { color: #777; font-size: 8px; text-transform: uppercase; }
     .content { min-height: 0; flex: 1; overflow: auto; background: #131313; }
     img, video { display: block; width: 100%; height: 100%; object-fit: contain; background: #0a0a0a; }
     audio { width: calc(100% - 20px); margin: 24px 10px; }
-    pre { margin: 0; padding: 14px; color: #d0d0d0; font: 11px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; }
+    .placeholder-status { margin: 12px 12px 0; padding: 7px 9px; border: 1px solid #65431f; border-radius: 5px; color: #f0b36f; background: #2b1f13; font: 600 9px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; text-transform: uppercase; }
+    .markdown { padding: 14px; color: #d0d0d0; font-size: 11px; line-height: 1.65; overflow-wrap: anywhere; }
+    .markdown > :first-child { margin-top: 0; }
+    .markdown > :last-child { margin-bottom: 0; }
+    .markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6 { margin: 1.1em 0 .55em; color: #f0f0f0; line-height: 1.3; }
+    .markdown h1 { font-size: 17px; }
+    .markdown h2 { font-size: 15px; }
+    .markdown h3 { font-size: 13px; }
+    .markdown h4, .markdown h5, .markdown h6 { font-size: 11px; }
+    .markdown p { margin: .7em 0; }
+    .markdown ul, .markdown ol { margin: .65em 0; padding-left: 20px; }
+    .markdown li { margin: .25em 0; }
+    .markdown blockquote { margin: .8em 0; padding: 2px 0 2px 10px; border-left: 2px solid #5b5b5b; color: #9f9f9f; }
+    .markdown code { padding: 1px 4px; border-radius: 3px; color: #f0ba7a; background: #26211b; font: 10px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .markdown pre { margin: .8em 0; padding: 10px; overflow: auto; border: 1px solid #303030; border-radius: 5px; background: #0d0d0d; }
+    .markdown pre code { padding: 0; color: #cfcfcf; background: transparent; }
+    .markdown a { color: #8db8e8; text-decoration: none; }
+    .markdown a:hover { text-decoration: underline; }
+    .markdown hr { margin: 12px 0; border: 0; border-top: 1px solid #363636; }
+    .markdown table { width: 100%; margin: .8em 0; border-collapse: collapse; font-size: 10px; }
+    .markdown th, .markdown td { padding: 5px 6px; border: 1px solid #343434; text-align: left; vertical-align: top; }
+    .markdown th { color: #eee; background: #202020; }
     .empty { position: absolute; top: 42%; left: 50%; width: min(420px, calc(100% - 40px)); transform: translate(-50%, -50%); color: #777; text-align: center; }
     .empty strong { display: block; margin-bottom: 7px; color: #bbb; font-size: 14px; }
     .empty p { margin: 0; font-size: 11px; line-height: 1.6; }
+    #minimap { position: absolute; z-index: 25; right: 14px; bottom: 14px; width: 190px; height: 126px; overflow: hidden; border: 1px solid #3c3c3c; border-radius: 7px; background: #171717e8; box-shadow: 0 10px 26px rgb(0 0 0 / 30%); cursor: crosshair; }
+    #minimap svg { display: block; width: 100%; height: 100%; }
+    .minimap-edge { stroke: #5b5b5b; stroke-width: 2; }
+    .minimap-node { fill: #666; }
+    .minimap-node.media { fill: #7090a8; }
+    .minimap-node.placeholder { fill: #c38748; }
+    .minimap-viewport { fill: #e85d3f18; stroke: #e85d3f; stroke-width: 2; vector-effect: non-scaling-stroke; }
+    .zoom-readout { min-width: 42px; color: #777; font-size: 9px; text-align: center; }
+    @media (max-width: 760px) {
+      .toolbar select { width: 130px; }
+      .tool-button[data-wide] { display: none; }
+      #minimap { width: 150px; height: 100px; }
+    }
   </style>
 </head>
 <body>
   <header>
-    <strong>Director X</strong>
-    <span id="status">Connecting</span>
+    <div class="brand">
+      <strong>Director X</strong>
+      <span id="status">Connecting</span>
+    </div>
+    <div class="toolbar" aria-label="画布工具">
+      <select id="locator" aria-label="快速定位节点">
+        <option value="">快速定位节点…</option>
+      </select>
+      <button class="tool-button" id="layout" type="button" data-wide>自动布局</button>
+      <button class="tool-button" id="fit" type="button" data-wide>适合画布</button>
+      <button class="tool-button" id="zoom-out" type="button" aria-label="缩小">−</button>
+      <span class="zoom-readout" id="zoom-readout">100%</span>
+      <button class="tool-button" id="zoom-in" type="button" aria-label="放大">＋</button>
+      <button class="tool-button" id="zoom-reset" type="button" aria-label="恢复百分之百">100%</button>
+    </div>
   </header>
   <div id="viewport">
     <div id="plane"></div>
+    <div id="minimap" aria-label="画布小地图">
+      <svg id="minimap-svg" role="img" aria-label="节点位置概览"></svg>
+    </div>
   </div>
   <script>
+    const SVG_NS = "http://www.w3.org/2000/svg";
     const viewport = document.querySelector("#viewport");
     const plane = document.querySelector("#plane");
     const status = document.querySelector("#status");
+    const locator = document.querySelector("#locator");
+    const minimap = document.querySelector("#minimap");
+    const minimapSvg = document.querySelector("#minimap-svg");
+    const zoomReadout = document.querySelector("#zoom-readout");
     let view = { x: 80, y: 60, scale: 1 };
     let canvasVersion = "";
     let pan = null;
+    let minimapPan = false;
+    let objects = [];
+    let cards = new Map();
+    let edgeLayer = null;
+    let resizeObservers = [];
 
     function applyView() {
       plane.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
       viewport.style.backgroundPosition = `${view.x}px ${view.y}px`;
       viewport.style.backgroundSize = `${24 * view.scale}px ${24 * view.scale}px`;
+      zoomReadout.textContent = `${Math.round(view.scale * 100)}%`;
+      updateMinimap();
+    }
+
+    function zoomAt(nextScale, clientX, clientY) {
+      const previous = view.scale;
+      const scale = Math.max(.2, Math.min(2.5, nextScale));
+      const rect = viewport.getBoundingClientRect();
+      const px = clientX - rect.left;
+      const py = clientY - rect.top;
+      view.x = px - ((px - view.x) / previous) * scale;
+      view.y = py - ((py - view.y) / previous) * scale;
+      view.scale = scale;
+      applyView();
     }
 
     viewport.addEventListener("wheel", (event) => {
       event.preventDefault();
-      const previous = view.scale;
-      view.scale = Math.max(.25, Math.min(2.5, view.scale * (event.deltaY > 0 ? .9 : 1.1)));
-      const rect = viewport.getBoundingClientRect();
-      const px = event.clientX - rect.left;
-      const py = event.clientY - rect.top;
-      view.x = px - ((px - view.x) / previous) * view.scale;
-      view.y = py - ((py - view.y) / previous) * view.scale;
-      applyView();
+      zoomAt(view.scale * (event.deltaY > 0 ? .9 : 1.1), event.clientX, event.clientY);
     }, { passive: false });
 
     viewport.addEventListener("pointerdown", (event) => {
-      if (event.target !== viewport && event.target !== plane) return;
+      if (event.target !== viewport && event.target !== plane && event.target !== edgeLayer) return;
       pan = { x: event.clientX, y: event.clientY, vx: view.x, vy: view.y };
       viewport.classList.add("dragging");
       viewport.setPointerCapture(event.pointerId);
@@ -85,6 +161,17 @@
       viewport.classList.remove("dragging");
     });
 
+    document.querySelector("#zoom-in").addEventListener("click", () => zoomFromCenter(view.scale * 1.2));
+    document.querySelector("#zoom-out").addEventListener("click", () => zoomFromCenter(view.scale / 1.2));
+    document.querySelector("#zoom-reset").addEventListener("click", () => zoomFromCenter(1));
+    document.querySelector("#fit").addEventListener("click", fitAll);
+    document.querySelector("#layout").addEventListener("click", autoLayout);
+    locator.addEventListener("change", () => {
+      if (locator.value) centerObject(locator.value);
+      locator.value = "";
+    });
+    window.addEventListener("resize", updateMinimap);
+
     async function refresh() {
       try {
         const response = await fetch("/api/canvas", { cache: "no-store" });
@@ -94,22 +181,87 @@
           canvasVersion = version;
           render(canvas.objects);
         }
-        status.textContent = `${canvas.objects.length} objects`;
+        const edgeCount = canvas.objects.reduce((sum, object) => sum + (object.dependsOn?.length || 0), 0);
+        status.textContent = `${canvas.objects.length} 节点 · ${edgeCount} 连接`;
       } catch {
         status.textContent = "Disconnected";
       }
     }
 
-    function render(objects) {
+    function render(nextObjects) {
+      objects = nextObjects;
+      cards = new Map();
+      resizeObservers.forEach((observer) => observer.disconnect());
+      resizeObservers = [];
       plane.replaceChildren();
+      edgeLayer = document.createElementNS(SVG_NS, "svg");
+      edgeLayer.id = "edge-layer";
+      edgeLayer.append(createArrowMarker());
+      plane.append(edgeLayer);
+      updateLocator();
       if (!objects.length) {
         const empty = document.createElement("div");
         empty.className = "empty";
         empty.innerHTML = "<strong>空白制作画布</strong><p>Codex 获取、分析或生成的图片、视频、音频和制作文本会出现在这里。</p>";
         plane.append(empty);
+        updateMinimap();
         return;
       }
-      for (const object of objects) plane.append(createCard(object));
+      for (const object of objects) {
+        const card = createCard(object);
+        cards.set(object.id, card);
+        plane.append(card);
+      }
+      requestAnimationFrame(() => {
+        renderEdges();
+        updateMinimap();
+      });
+    }
+
+    function createArrowMarker() {
+      const defs = document.createElementNS(SVG_NS, "defs");
+      const marker = document.createElementNS(SVG_NS, "marker");
+      marker.setAttribute("id", "dag-arrow");
+      marker.setAttribute("viewBox", "0 0 8 8");
+      marker.setAttribute("refX", "7");
+      marker.setAttribute("refY", "4");
+      marker.setAttribute("markerWidth", "7");
+      marker.setAttribute("markerHeight", "7");
+      marker.setAttribute("orient", "auto-start-reverse");
+      const arrow = document.createElementNS(SVG_NS, "path");
+      arrow.setAttribute("d", "M 0 0 L 8 4 L 0 8 z");
+      arrow.setAttribute("fill", "#707070");
+      marker.append(arrow);
+      defs.append(marker);
+      return defs;
+    }
+
+    function renderEdges() {
+      if (!edgeLayer) return;
+      edgeLayer.querySelectorAll(".dag-edge").forEach((edge) => edge.remove());
+      for (const target of objects) {
+        for (const sourceId of target.dependsOn || []) {
+          const sourceCard = cards.get(sourceId);
+          const targetCard = cards.get(target.id);
+          const source = objects.find((item) => item.id === sourceId);
+          if (!source || !sourceCard || !targetCard) continue;
+          const sourceWidth = sourceCard.offsetWidth;
+          const sourceHeight = sourceCard.offsetHeight;
+          const targetWidth = targetCard.offsetWidth;
+          const targetHeight = targetCard.offsetHeight;
+          const forward = target.x >= source.x;
+          const x1 = forward ? source.x + sourceWidth : source.x;
+          const y1 = source.y + sourceHeight / 2;
+          const x2 = forward ? target.x : target.x + targetWidth;
+          const y2 = target.y + targetHeight / 2;
+          const bend = Math.max(70, Math.abs(x2 - x1) * .45);
+          const path = document.createElementNS(SVG_NS, "path");
+          path.classList.add("dag-edge");
+          path.setAttribute("d", `M ${x1} ${y1} C ${x1 + (forward ? bend : -bend)} ${y1}, ${x2 - (forward ? bend : -bend)} ${y2}, ${x2} ${y2}`);
+          path.setAttribute("marker-end", "url(#dag-arrow)");
+          edgeLayer.append(path);
+        }
+      }
     }
 
     function createCard(object) {
@@ -142,9 +294,7 @@
           placeholderStatus.textContent = "Awaiting generation access";
           content.append(placeholderStatus);
         }
-        const pre = document.createElement("pre");
-        pre.textContent = object.text || "";
-        content.append(pre);
+        content.append(renderMarkdown(object.text || ""));
       } else {
         const media = document.createElement(object.type);
         media.src = `/media/${encodeURIComponent(object.path)}`;
@@ -154,7 +304,164 @@
       }
       card.append(head, content);
       bindDrag(card, head, object);
+      let resizeTimer = null;
+      const resizeObserver = new ResizeObserver(() => {
+        const width = card.offsetWidth;
+        const height = card.offsetHeight;
+        const changed = width !== object.width || height !== object.height;
+        object.width = width;
+        object.height = height;
+        renderEdges();
+        updateMinimap();
+        if (changed) {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(() => void persistGeometry(object), 250);
+        }
+      });
+      resizeObserver.observe(card);
+      resizeObservers.push(resizeObserver);
       return card;
+    }
+
+    function renderMarkdown(markdown) {
+      const root = document.createElement("div");
+      root.className = "markdown";
+      const lines = String(markdown).replace(/\r\n?/g, "\n").split("\n");
+      let index = 0;
+      while (index < lines.length) {
+        const line = lines[index];
+        if (!line.trim()) {
+          index += 1;
+          continue;
+        }
+        if (/^```/.test(line)) {
+          const code = [];
+          index += 1;
+          while (index < lines.length && !/^```/.test(lines[index])) code.push(lines[index++]);
+          if (index < lines.length) index += 1;
+          const pre = document.createElement("pre");
+          const codeElement = document.createElement("code");
+          codeElement.textContent = code.join("\n");
+          pre.append(codeElement);
+          root.append(pre);
+          continue;
+        }
+        if (isTableStart(lines, index)) {
+          const table = document.createElement("table");
+          const headers = splitTableRow(lines[index]);
+          const head = document.createElement("thead");
+          const headRow = document.createElement("tr");
+          for (const value of headers) {
+            const cell = document.createElement("th");
+            appendInline(cell, value);
+            headRow.append(cell);
+          }
+          head.append(headRow);
+          table.append(head);
+          index += 2;
+          const body = document.createElement("tbody");
+          while (index < lines.length && lines[index].includes("|") && lines[index].trim()) {
+            const row = document.createElement("tr");
+            for (const value of splitTableRow(lines[index])) {
+              const cell = document.createElement("td");
+              appendInline(cell, value);
+              row.append(cell);
+            }
+            body.append(row);
+            index += 1;
+          }
+          table.append(body);
+          root.append(table);
+          continue;
+        }
+        const heading = line.match(/^(#{1,6})\s+(.+)$/);
+        if (heading) {
+          const element = document.createElement(`h${heading[1].length}`);
+          appendInline(element, heading[2]);
+          root.append(element);
+          index += 1;
+          continue;
+        }
+        if (/^\s*[-*]\s+/.test(line) || /^\s*\d+\.\s+/.test(line)) {
+          const ordered = /^\s*\d+\.\s+/.test(line);
+          const list = document.createElement(ordered ? "ol" : "ul");
+          while (index < lines.length) {
+            const match = lines[index].match(ordered ? /^\s*\d+\.\s+(.+)$/ : /^\s*[-*]\s+(.+)$/);
+            if (!match) break;
+            const item = document.createElement("li");
+            appendInline(item, match[1]);
+            list.append(item);
+            index += 1;
+          }
+          root.append(list);
+          continue;
+        }
+        if (/^>\s?/.test(line)) {
+          const quote = document.createElement("blockquote");
+          const values = [];
+          while (index < lines.length && /^>\s?/.test(lines[index])) values.push(lines[index++].replace(/^>\s?/, ""));
+          appendInline(quote, values.join(" "));
+          root.append(quote);
+          continue;
+        }
+        if (/^\s*(?:---+|\*\*\*+)\s*$/.test(line)) {
+          root.append(document.createElement("hr"));
+          index += 1;
+          continue;
+        }
+        const paragraph = [];
+        while (index < lines.length && lines[index].trim() && !isBlockStart(lines, index)) paragraph.push(lines[index++]);
+        const element = document.createElement("p");
+        paragraph.forEach((value, lineIndex) => {
+          if (lineIndex) element.append(document.createElement("br"));
+          appendInline(element, value);
+        });
+        root.append(element);
+      }
+      return root;
+    }
+
+    function appendInline(parent, value) {
+      const pattern = /(\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|`([^`]+)`|\*\*([^*]+)\*\*|\*([^*]+)\*)/g;
+      let cursor = 0;
+      for (const match of String(value).matchAll(pattern)) {
+        if (match.index > cursor) parent.append(document.createTextNode(value.slice(cursor, match.index)));
+        if (match[2] && match[3]) {
+          const link = document.createElement("a");
+          link.textContent = match[2];
+          link.href = match[3];
+          link.target = "_blank";
+          link.rel = "noreferrer";
+          parent.append(link);
+        } else if (match[4]) {
+          const code = document.createElement("code");
+          code.textContent = match[4];
+          parent.append(code);
+        } else if (match[5]) {
+          const strong = document.createElement("strong");
+          strong.textContent = match[5];
+          parent.append(strong);
+        } else if (match[6]) {
+          const emphasis = document.createElement("em");
+          emphasis.textContent = match[6];
+          parent.append(emphasis);
+        }
+        cursor = match.index + match[0].length;
+      }
+      if (cursor < value.length) parent.append(document.createTextNode(value.slice(cursor)));
+    }
+
+    function isTableStart(lines, index) {
+      return lines[index]?.includes("|") && /^\s*\|?\s*:?-{3,}/.test(lines[index + 1] || "");
+    }
+
+    function splitTableRow(line) {
+      return line.trim().replace(/^\||\|$/g, "").split("|").map((value) => value.trim());
+    }
+
+    function isBlockStart(lines, index) {
+      const line = lines[index] || "";
+      return /^```|^#{1,6}\s|^\s*[-*]\s+|^\s*\d+\.\s+|^>\s?|^\s*(?:---+|\*\*\*+)\s*$/.test(line) || isTableStart(lines, index);
     }
 
     function bindDrag(card, handle, object) {
@@ -170,17 +477,188 @@
         object.y = drag.top + (event.clientY - drag.y) / view.scale;
         card.style.left = `${object.x}px`;
         card.style.top = `${object.y}px`;
+        renderEdges();
+        updateMinimap();
       });
       handle.addEventListener("pointerup", async () => {
         if (!drag) return;
         drag = null;
-        await fetch(`/api/objects/${encodeURIComponent(object.id)}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ x: object.x, y: object.y })
-        });
+        await persistGeometry(object);
       });
     }
+
+    async function persistGeometry(object) {
+      await fetch(`/api/objects/${encodeURIComponent(object.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          x: object.x,
+          y: object.y,
+          width: object.width,
+          height: object.height
+        })
+      });
+    }
+
+    function zoomFromCenter(scale) {
+      const rect = viewport.getBoundingClientRect();
+      zoomAt(scale, rect.left + rect.width / 2, rect.top + rect.height / 2);
+    }
+
+    function updateLocator() {
+      locator.replaceChildren(new Option("快速定位节点…", ""));
+      for (const object of objects) locator.append(new Option(`${object.title} · ${object.type}`, object.id));
+    }
+
+    function centerObject(id) {
+      const object = objects.find((item) => item.id === id);
+      const card = cards.get(id);
+      if (!object || !card) return;
+      view.x = viewport.clientWidth / 2 - (object.x + card.offsetWidth / 2) * view.scale;
+      view.y = viewport.clientHeight / 2 - (object.y + card.offsetHeight / 2) * view.scale;
+      applyView();
+      card.classList.add("selected");
+      setTimeout(() => card.classList.remove("selected"), 1400);
+    }
+
+    function fitAll() {
+      if (!objects.length) return;
+      const bounds = objectBounds();
+      const padding = 70;
+      const scale = Math.max(.2, Math.min(1.5, Math.min(
+        (viewport.clientWidth - padding * 2) / bounds.width,
+        (viewport.clientHeight - padding * 2) / bounds.height
+      )));
+      view.scale = scale;
+      view.x = (viewport.clientWidth - bounds.width * scale) / 2 - bounds.x * scale;
+      view.y = (viewport.clientHeight - bounds.height * scale) / 2 - bounds.y * scale;
+      applyView();
+    }
+
+    async function autoLayout() {
+      const byId = new Map(objects.map((object) => [object.id, object]));
+      const ranks = new Map();
+      function rank(id, stack = new Set()) {
+        if (ranks.has(id)) return ranks.get(id);
+        if (stack.has(id)) return 0;
+        stack.add(id);
+        const object = byId.get(id);
+        const value = object?.dependsOn?.length
+          ? Math.max(...object.dependsOn.map((dependencyId) => rank(dependencyId, new Set(stack)))) + 1
+          : 0;
+        ranks.set(id, value);
+        return value;
+      }
+      for (const object of objects) rank(object.id);
+      const groups = new Map();
+      for (const object of objects) {
+        const level = ranks.get(object.id) || 0;
+        groups.set(level, [...(groups.get(level) || []), object]);
+      }
+      for (const [level, group] of [...groups.entries()].sort((left, right) => left[0] - right[0])) {
+        group.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+        group.forEach((object, index) => {
+          object.x = 80 + level * 460;
+          object.y = 80 + index * 300;
+          const card = cards.get(object.id);
+          card.style.left = `${object.x}px`;
+          card.style.top = `${object.y}px`;
+        });
+      }
+      renderEdges();
+      updateMinimap();
+      await Promise.all(objects.map(persistGeometry));
+      fitAll();
+    }
+
+    function objectBounds() {
+      if (!objects.length) return { x: 0, y: 0, width: 1, height: 1 };
+      const values = objects.map((object) => {
+        const card = cards.get(object.id);
+        return {
+          left: object.x,
+          top: object.y,
+          right: object.x + (card?.offsetWidth || object.width),
+          bottom: object.y + (card?.offsetHeight || object.height)
+        };
+      });
+      const left = Math.min(...values.map((item) => item.left));
+      const top = Math.min(...values.map((item) => item.top));
+      const right = Math.max(...values.map((item) => item.right));
+      const bottom = Math.max(...values.map((item) => item.bottom));
+      return { x: left, y: top, width: Math.max(1, right - left), height: Math.max(1, bottom - top) };
+    }
+
+    function updateMinimap() {
+      minimapSvg.replaceChildren();
+      if (!objects.length) return;
+      const bounds = objectBounds();
+      const margin = 120;
+      const mapBounds = {
+        x: bounds.x - margin,
+        y: bounds.y - margin,
+        width: bounds.width + margin * 2,
+        height: bounds.height + margin * 2
+      };
+      minimapSvg.setAttribute("viewBox", `${mapBounds.x} ${mapBounds.y} ${mapBounds.width} ${mapBounds.height}`);
+      minimapSvg.dataset.bounds = JSON.stringify(mapBounds);
+      for (const target of objects) {
+        for (const sourceId of target.dependsOn || []) {
+          const source = objects.find((item) => item.id === sourceId);
+          if (!source) continue;
+          const line = document.createElementNS(SVG_NS, "line");
+          line.classList.add("minimap-edge");
+          line.setAttribute("x1", source.x + source.width / 2);
+          line.setAttribute("y1", source.y + source.height / 2);
+          line.setAttribute("x2", target.x + target.width / 2);
+          line.setAttribute("y2", target.y + target.height / 2);
+          minimapSvg.append(line);
+        }
+      }
+      for (const object of objects) {
+        const node = document.createElementNS(SVG_NS, "rect");
+        node.classList.add("minimap-node");
+        if (object.type !== "text") node.classList.add("media");
+        if (object.metadata?.kind === "generation-placeholder") node.classList.add("placeholder");
+        node.setAttribute("x", object.x);
+        node.setAttribute("y", object.y);
+        node.setAttribute("width", Math.max(28, object.width));
+        node.setAttribute("height", Math.max(18, object.height));
+        node.setAttribute("rx", "4");
+        minimapSvg.append(node);
+      }
+      const visible = document.createElementNS(SVG_NS, "rect");
+      visible.classList.add("minimap-viewport");
+      visible.setAttribute("x", -view.x / view.scale);
+      visible.setAttribute("y", -view.y / view.scale);
+      visible.setAttribute("width", viewport.clientWidth / view.scale);
+      visible.setAttribute("height", viewport.clientHeight / view.scale);
+      minimapSvg.append(visible);
+    }
+
+    function locateFromMinimap(event) {
+      const bounds = JSON.parse(minimapSvg.dataset.bounds || "null");
+      if (!bounds) return;
+      const rect = minimap.getBoundingClientRect();
+      const worldX = bounds.x + ((event.clientX - rect.left) / rect.width) * bounds.width;
+      const worldY = bounds.y + ((event.clientY - rect.top) / rect.height) * bounds.height;
+      view.x = viewport.clientWidth / 2 - worldX * view.scale;
+      view.y = viewport.clientHeight / 2 - worldY * view.scale;
+      applyView();
+    }
+
+    minimap.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+      minimapPan = true;
+      minimap.setPointerCapture(event.pointerId);
+      locateFromMinimap(event);
+    });
+    minimap.addEventListener("pointermove", (event) => {
+      if (minimapPan) locateFromMinimap(event);
+    });
+    minimap.addEventListener("pointerup", () => {
+      minimapPan = false;
+    });
 
     applyView();
     refresh();

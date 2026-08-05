@@ -105,7 +105,9 @@ Codex 会继续检查镜头功能、构图、摄影机与主体运动、字体�
 - `audio`
 - `text`
 
-画布不展示 Agent、流程节点、审批、Provider 任务、内部日志或执行状态。
+文本节点支持安全的 Markdown 子集，包括标题、列表、表格、引用、代码、强调和链接。节点可以孤立，也可以声明素材依赖；依赖关系会校验为 DAG，并直接绘制在节点之间。工具栏提供 DAG 自动布局、适合画布、缩放按钮和快速定位，小地图支持点击或拖动导航。
+
+画布不展示 Agent、审批、Provider 任务、内部日志或执行状态。连接线只描述制片素材之间的依赖，不代表内部 Agent 工作流。
 
 ![恢复的 Director X 画布原型截图](assets/screenshots/live-production-canvas.jpg)
 
@@ -169,10 +171,26 @@ node scripts/directorx.mjs add \
   --project /path/to/video-project \
   --type text \
   --title "分镜本" \
-  --text "开场镜头……"
+  --text "# 开场镜头"
 ```
 
 媒体文件必须位于视频项目目录内，才能注册到画布。
+
+可以在创建节点时声明依赖，也可以连接两个已有节点：
+
+```bash
+node scripts/directorx.mjs add \
+  --project /path/to/video-project \
+  --type text \
+  --title "镜头 01" \
+  --text "## 运镜\n\n缓慢推进。" \
+  --depends-on BRIEF_NODE_ID
+
+node scripts/directorx.mjs connect \
+  --project /path/to/video-project \
+  --from SHOT_NODE_ID \
+  --to VIDEO_NODE_ID
+```
 
 ### 没有 Key 时继续生成型制作
 

@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import test from "node:test";
 import {
   addCanvasObject,
+  connectCanvasObjects,
   initProject,
   readCanvas,
   updateObjectPosition
@@ -64,6 +65,48 @@ test("persists canvas positions", async () => {
   const [stored] = (await readCanvas(projectPath)).objects;
   assert.equal(stored.x, 420);
   assert.equal(stored.y, 240);
+});
+
+test("stores DAG dependencies and rejects missing or cyclic edges", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "directorx-dag-"));
+  const brief = await addCanvasObject(projectPath, {
+    type: "text",
+    title: "Brief",
+    text: "# Brief"
+  });
+  const script = await addCanvasObject(projectPath, {
+    type: "text",
+    title: "Script",
+    text: "## Script",
+    dependsOn: brief.id
+  });
+  const shot = await addCanvasObject(projectPath, {
+    type: "text",
+    title: "Shot",
+    text: "Shot 01"
+  });
+  await connectCanvasObjects(projectPath, script.id, shot.id);
+
+  const canvas = await readCanvas(projectPath);
+  assert.deepEqual(canvas.objects.find((item) => item.id === script.id).dependsOn, [brief.id]);
+  assert.deepEqual(canvas.objects.find((item) => item.id === shot.id).dependsOn, [script.id]);
+  await assert.rejects(
+    addCanvasObject(projectPath, { type: "text", text: "Broken", dependsOn: "missing" }),
+    /dependency not found/
+  );
+  await assert.rejects(
+    connectCanvasObjects(projectPath, shot.id, brief.id),
+    /cycle detected/
+  );
+});
+
+test("ships canvas controls for Markdown, DAG navigation, and zoom", async () => {
+  const html = await readFile(join(import.meta.dirname, "..", "app", "canvas.html"), "utf8");
+  assert.match(html, /id="minimap"/);
+  assert.match(html, /id="locator"/);
+  assert.match(html, /id="zoom-in"/);
+  assert.match(html, /function renderMarkdown/);
+  assert.match(html, /classList\.add\("dag-edge"\)/);
 });
 
 test("rejects unsupported canvas object types", async () => {
