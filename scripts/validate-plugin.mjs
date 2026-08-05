@@ -11,6 +11,7 @@ const packageJson = await readJson("package.json");
 requireText(manifest, "name");
 requireText(manifest, "version");
 requireText(manifest, "description");
+requireText(manifest, "license");
 requireText(manifest?.author, "name", "author.name");
 requireText(manifest?.interface, "displayName", "interface.displayName");
 requireText(manifest?.interface, "shortDescription", "interface.shortDescription");
@@ -26,6 +27,12 @@ if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(manifest?.v
 }
 if (manifest?.version !== packageJson?.version) {
   errors.push("plugin and package versions must match");
+}
+if (manifest?.license !== packageJson?.license) {
+  errors.push("plugin and package licenses must match");
+}
+if (manifest?.license !== "Apache-2.0") {
+  errors.push("plugin license must be Apache-2.0");
 }
 if (manifest?.mcpServers) {
   errors.push("the new Director X foundation must not declare an MCP server");

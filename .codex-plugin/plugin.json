@@ -8,7 +8,7 @@
   },
   "homepage": "https://github.com/LaplaceYoung/director-x",
   "repository": "https://github.com/LaplaceYoung/director-x",
-  "license": "AGPL-3.0-or-later",
+  "license": "Apache-2.0",
   "keywords": [
     "video",
     "canvas",
