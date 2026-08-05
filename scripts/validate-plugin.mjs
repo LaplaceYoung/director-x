@@ -42,6 +42,13 @@ if (!/image[\s\S]*video[\s\S]*audio[\s\S]*text/.test(skill)) {
 }
 
 for (const path of [
+  "skills/directorx-prompt-writer/SKILL.md",
+  "skills/directorx-web-access/SKILL.md"
+]) {
+  await requirePath(`./${path}`, path);
+}
+
+for (const path of [
   "app/canvas.html",
   "scripts/directorx.mjs",
   "scripts/canvas-server.mjs",

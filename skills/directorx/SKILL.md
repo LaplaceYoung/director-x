@@ -37,7 +37,7 @@ Read `references/video-understanding.md` before analysis. Inspect the contact sh
 
 ## Direct and produce
 
-- Read `references/prompt-writing.md` before writing image or video prompts.
+- Load `$directorx-prompt-writer` before writing image or video prompts.
 - Read `references/multi-agent.md` before delegating research, visual direction, or editing.
 - Read `references/remotion.md` before composition.
 - Ask whether the user has an image/video generation provider only when generation is needed. Ask for provider name, model, and official documentation through native questions. Never ask the user to paste an API key into chat; collect it through a secure local input or environment variable.
