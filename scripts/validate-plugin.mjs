@@ -118,6 +118,44 @@ if (!/## 致谢与第三方工具[\s\S]*yt-dlp[\s\S]*FFmpeg[\s\S]*web-access[\s\
   errors.push("README.zh-CN.md must acknowledge core third-party tools");
 }
 
+for (const path of [
+  "site/index.html",
+  "site/styles.css",
+  "site/favicon.svg",
+  "site/robots.txt",
+  "site/sitemap.xml",
+  "site/.nojekyll",
+  ".github/workflows/pages.yml"
+]) {
+  await requirePath(`./${path}`, path);
+}
+
+const site = await readText("site/index.html");
+for (const marker of [
+  "<title>Director X — Open-Source AI Video Plugin for Codex</title>",
+  'name="description"',
+  'name="robots"',
+  'rel="canonical"',
+  'application/ld+json',
+  "Reference-video analysis",
+  "Remotion rendering"
+]) {
+  if (!site.includes(marker)) errors.push(`site/index.html must contain ${marker}`);
+}
+if (/native Goals|persistent production Run|AGPL-3\.0|dedicated DX agents/i.test(site)) {
+  errors.push("site/index.html must not advertise the retired Director X runtime");
+}
+
+const robots = await readText("site/robots.txt");
+if (!/Sitemap:\s*https:\/\/laplaceyoung\.github\.io\/director-x\/sitemap\.xml/.test(robots)) {
+  errors.push("site/robots.txt must point to the public sitemap");
+}
+
+const sitemap = await readText("site/sitemap.xml");
+if (!sitemap.includes("https://laplaceyoung.github.io/director-x/")) {
+  errors.push("site/sitemap.xml must include the public Director X website");
+}
+
 await requireChecksum(
   "runtime/bin/darwin-universal/yt-dlp",
   "498bd0dae17855c599d371d68ec5bafc439a9d8640e838be25c765a9792f261b"

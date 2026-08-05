@@ -2,10 +2,10 @@
   <img src="assets/brand/directorx-logo.png" alt="Director X" width="720" />
 </p>
 
-# Director X — Video creation and understanding for Codex
+# Director X — Open-source AI video production plugin for Codex
 
 <p align="center">
-  <strong>Infinite media canvas · reference analysis · visual prompts · Remotion composition</strong>
+  <strong>Infinite media canvas · reference-video analysis · AI image/video prompts · Remotion rendering</strong>
 </p>
 
 <p align="center">
@@ -16,6 +16,7 @@
 </p>
 
 <p align="center">
+  <a href="https://laplaceyoung.github.io/director-x/">Website</a> ·
   <a href="#what-it-does">What it does</a> ·
   <a href="#demo-films">Demos</a> ·
   <a href="#quick-start">Quick start</a> ·
@@ -27,7 +28,7 @@
 
 ---
 
-Director X is a lightweight, Codex-native video plugin. It keeps the conversation and decisions in Codex while opening an infinite side canvas for useful production material: images, video, audio, scripts, storyboards, shot lists, visual systems, prompts, and edit notes.
+Director X is an open-source AI video production and understanding plugin for OpenAI Codex. It keeps the conversation and decisions in Codex while opening an infinite side canvas for useful production material: images, video, audio, scripts, storyboards, shot lists, visual systems, image/video generation prompts, and edit notes.
 
 Version 0.2.0 is a clean foundation. It intentionally does **not** add an MCP runtime, a second agent protocol, a durable workflow engine, or a separate desktop application. Codex remains the host, asks native user questions, performs web research, and coordinates native subagents.
 

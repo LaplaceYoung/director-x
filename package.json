@@ -2,9 +2,34 @@
   "name": "@laplaceyoung/director-x",
   "version": "0.2.0+codex.20260805095946",
   "private": false,
-  "description": "A Codex-native video creation plugin with an infinite media canvas.",
+  "description": "Open-source Codex plugin for AI video creation, reference-video analysis, visual prompting, and Remotion rendering.",
   "license": "Apache-2.0",
   "type": "module",
+  "homepage": "https://laplaceyoung.github.io/director-x/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LaplaceYoung/director-x.git"
+  },
+  "bugs": {
+    "url": "https://github.com/LaplaceYoung/director-x/issues"
+  },
+  "keywords": [
+    "ai-video",
+    "codex",
+    "codex-plugin",
+    "ffmpeg",
+    "infinite-canvas",
+    "openai-codex",
+    "prompt-engineering",
+    "reference-video-analysis",
+    "remotion",
+    "storyboard",
+    "video-analysis",
+    "video-editing",
+    "video-generation",
+    "video-production",
+    "yt-dlp"
+  ],
   "engines": {
     "node": ">=22"
   },

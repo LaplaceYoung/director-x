@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Director X — Open-Source AI Video Plugin for Codex</title>
+  <meta name="description" content="Director X is an open-source Codex plugin for AI video creation, reference-video analysis, visual prompting, infinite-canvas planning, and Remotion rendering.">
+  <meta name="robots" content="index,follow,max-image-preview:large,max-video-preview:-1">
+  <meta name="theme-color" content="#F3EFE6">
+  <link rel="canonical" href="https://laplaceyoung.github.io/director-x/">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Director X">
+  <meta property="og:title" content="Director X — Open-Source AI Video Plugin for Codex">
+  <meta property="og:description" content="Create and understand videos in Codex with an infinite media canvas, FFmpeg/yt-dlp analysis, AI prompts, and Remotion rendering.">
+  <meta property="og:url" content="https://laplaceyoung.github.io/director-x/">
+  <meta property="og:image" content="https://laplaceyoung.github.io/director-x/assets/screenshots/live-production-canvas.jpg">
+  <meta property="og:image:alt" content="Director X infinite media canvas showing video production assets in Codex">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Director X — AI Video Plugin for Codex">
+  <meta name="twitter:description" content="Reference-video analysis, storyboards, generation prompts, media canvas, and Remotion rendering for Codex.">
+  <meta name="twitter:image" content="https://laplaceyoung.github.io/director-x/assets/screenshots/live-production-canvas.jpg">
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "SoftwareApplication",
+          "name": "Director X",
+          "alternateName": [
+            "Director X Codex Plugin",
+            "Director X AI Video Plugin"
+          ],
+          "applicationCategory": "MultimediaApplication",
+          "operatingSystem": "macOS",
+          "softwareVersion": "0.2.0",
+          "description": "Open-source Codex plugin for AI video creation, reference-video analysis, visual prompting, infinite-canvas planning, and Remotion rendering.",
+          "url": "https://laplaceyoung.github.io/director-x/",
+          "codeRepository": "https://github.com/LaplaceYoung/director-x",
+          "downloadUrl": "https://github.com/LaplaceYoung/director-x",
+          "license": "https://www.apache.org/licenses/LICENSE-2.0",
+          "image": "https://laplaceyoung.github.io/director-x/assets/screenshots/live-production-canvas.jpg",
+          "screenshot": "https://laplaceyoung.github.io/director-x/assets/screenshots/live-production-canvas.jpg",
+          "isAccessibleForFree": true,
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "featureList": [
+            "Infinite media canvas for images, video, audio, and production text",
+            "Reference-video analysis with FFmpeg, FFprobe, and yt-dlp",
+            "Shot boards, color systems, storyboards, and visual prompting",
+            "Image and video generation placeholders without an API key",
+            "Simple Remotion composition and MP4 rendering"
+          ],
+          "author": {
+            "@type": "Person",
+            "name": "LaplaceYoung",
+            "url": "https://github.com/LaplaceYoung"
+          }
+        },
+        {
+          "@type": "VideoObject",
+          "name": "Director X WAIC × MOSS promotional film v4",
+          "description": "A 60-second promotional film produced through the Director X video workflow.",
+          "thumbnailUrl": "https://laplaceyoung.github.io/director-x/assets/demos/directorx-waic-moss-promo-v4-poster.jpg",
+          "contentUrl": "https://laplaceyoung.github.io/director-x/assets/demos/directorx-waic-moss-promo-v4.mp4",
+          "uploadDate": "2026-07-22",
+          "duration": "PT1M"
+        },
+        {
+          "@type": "VideoObject",
+          "name": "Director X WAIC × MOSS promotional film v2",
+          "description": "A second 60-second promotional-film iteration produced through Director X.",
+          "thumbnailUrl": "https://laplaceyoung.github.io/director-x/assets/demos/directorx-waic-moss-promo-v2-poster.jpg",
+          "contentUrl": "https://laplaceyoung.github.io/director-x/assets/demos/directorx-waic-moss-promo-v2.mp4",
+          "uploadDate": "2026-07-22",
+          "duration": "PT1M"
+        }
+      ]
+    }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <a class="wordmark" href="#top" aria-label="Director X home">
+      <span class="wordmark-mark">DX</span>
+      <span>Director X</span>
+    </a>
+    <nav aria-label="Primary navigation">
+      <a href="#capabilities">Capabilities</a>
+      <a href="#workflow">Workflow</a>
+      <a href="#demos">Demos</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/LaplaceYoung/director-x">GitHub</a>
+      <a href="https://github.com/LaplaceYoung/director-x/blob/main/README.zh-CN.md">中文</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="hero-copy">
+        <p class="eyebrow">Open-source · Apache-2.0 · Codex-native</p>
+        <h1>AI video production and understanding for Codex.</h1>
+        <p class="hero-summary">
+          Director X is an open-source Codex video plugin for reference-video analysis,
+          storyboards, image and video generation prompts, an infinite media canvas,
+          and Remotion rendering.
+        </p>
+        <div class="hero-actions">
+          <a class="button primary" href="https://github.com/LaplaceYoung/director-x">View the GitHub repository</a>
+          <a class="button secondary" href="#install">Install locally</a>
+        </div>
+      </div>
+      <dl class="hero-facts">
+        <div>
+          <dt>Host</dt>
+          <dd>OpenAI Codex</dd>
+        </div>
+        <div>
+          <dt>Plugin shape</dt>
+          <dd>Skills + local runtime</dd>
+        </div>
+        <div>
+          <dt>Media tools</dt>
+          <dd>FFmpeg · FFprobe · yt-dlp</dd>
+        </div>
+        <div>
+          <dt>Composition</dt>
+          <dd>Remotion · MP4</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="canvas-proof" aria-labelledby="canvas-title">
+      <div class="section-heading">
+        <p class="eyebrow">Infinite media canvas</p>
+        <h2 id="canvas-title">Production evidence stays visible.</h2>
+        <p>
+          Images, video, audio, scripts, shot lists, storyboards, color systems, and
+          generation prompts appear as previewable DAG nodes. Internal Agent state and
+          technical logs stay out of the creative canvas.
+        </p>
+      </div>
+      <figure>
+        <img
+          src="assets/screenshots/live-production-canvas.jpg"
+          alt="Director X infinite media canvas with video, image, audio, storyboard, and color-system nodes"
+          width="2488"
+          height="1664"
+        >
+        <figcaption>Director X canvas — media previews, production text, and dependency lines.</figcaption>
+      </figure>
+    </section>
+
+    <section class="capabilities" id="capabilities" aria-labelledby="capabilities-title">
+      <div class="section-heading narrow">
+        <p class="eyebrow">What Director X does</p>
+        <h2 id="capabilities-title">One focused video workflow.</h2>
+      </div>
+      <div class="capability-list">
+        <article>
+          <span>01</span>
+          <div>
+            <h3>Reference-video analysis</h3>
+            <p>Download approved sources, inspect metadata, separate audio, extract frames, estimate scene cuts, and generate shot boards and color cards.</p>
+          </div>
+        </article>
+        <article>
+          <span>02</span>
+          <div>
+            <h3>Video planning on an infinite canvas</h3>
+            <p>Keep research, scripts, storyboards, visual systems, images, audio, video, and dependency relationships in one reviewable workspace.</p>
+          </div>
+        </article>
+        <article>
+          <span>03</span>
+          <div>
+            <h3>AI image and video prompt engineering</h3>
+            <p>Write provider-aware prompts with continuity locks, negative constraints, target specifications, and single-variable repair guidance.</p>
+          </div>
+        </article>
+        <article>
+          <span>04</span>
+          <div>
+            <h3>Production without an API key</h3>
+            <p>Create generation placeholder nodes containing the expected output, complete prompt, recommended model routes, and technical parameters.</p>
+          </div>
+        </article>
+        <article>
+          <span>05</span>
+          <div>
+            <h3>Remotion composition and rendering</h3>
+            <p>Turn approved media and production text into simple programmable video sequences, preview renders, and final MP4 output.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="workflow" id="workflow" aria-labelledby="workflow-title">
+      <div class="section-heading narrow">
+        <p class="eyebrow">Codex-native workflow</p>
+        <h2 id="workflow-title">Research, decide, make, review.</h2>
+        <p>Codex remains the host. Director X adds video-specific skills and tools without creating another chat system, desktop app, or MCP runtime.</p>
+      </div>
+      <ol>
+        <li><strong>Clarify</strong><span>Codex asks one material question at a time.</span></li>
+        <li><strong>Understand</strong><span>FFmpeg evidence supports shot, color, motion, and audio analysis.</span></li>
+        <li><strong>Direct</strong><span>Build the visual system, script, storyboard, and production prompts.</span></li>
+        <li><strong>Produce</strong><span>Acquire, generate, or preserve missing shots as explicit placeholders.</span></li>
+        <li><strong>Compose</strong><span>Use Remotion for simple editing, sequencing, and MP4 rendering.</span></li>
+      </ol>
+    </section>
+
+    <section class="demos" id="demos" aria-labelledby="demos-title">
+      <div class="section-heading">
+        <p class="eyebrow">Playable outputs</p>
+        <h2 id="demos-title">WAIC × MOSS promotional films.</h2>
+        <p>Two 60-second films produced through earlier Director X workflows and retained as public production examples.</p>
+      </div>
+      <div class="demo-grid">
+        <article>
+          <video controls playsinline preload="metadata" poster="assets/demos/directorx-waic-moss-promo-v4-poster.jpg">
+            <source src="assets/demos/directorx-waic-moss-promo-v4.mp4" type="video/mp4">
+          </video>
+          <div><strong>WAIC × MOSS Promo · v4</strong><span>60 seconds · MP4</span></div>
+        </article>
+        <article>
+          <video controls playsinline preload="metadata" poster="assets/demos/directorx-waic-moss-promo-v2-poster.jpg">
+            <source src="assets/demos/directorx-waic-moss-promo-v2.mp4" type="video/mp4">
+          </video>
+          <div><strong>WAIC × MOSS Promo · v2</strong><span>60 seconds · MP4</span></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="install" id="install" aria-labelledby="install-title">
+      <div>
+        <p class="eyebrow">Local development</p>
+        <h2 id="install-title">Run Director X from the repository.</h2>
+        <p>Director X currently targets Codex on macOS with Node.js 22 or later.</p>
+      </div>
+      <pre><code>git clone https://github.com/LaplaceYoung/director-x.git
+cd director-x
+npm install
+npm run ci
+
+node scripts/directorx.mjs doctor
+node scripts/directorx.mjs init --project /path/to/video-project
+node scripts/directorx.mjs canvas --project /path/to/video-project</code></pre>
+      <div class="install-links">
+        <a href="https://github.com/LaplaceYoung/director-x#quick-start">Read the full quick start</a>
+        <a href="https://github.com/LaplaceYoung/director-x/blob/main/skills/directorx/SKILL.md">Inspect the core Director X skill</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <img src="assets/brand/directorx-logo.png" alt="Director X" width="2172" height="724">
+    <p>Open-source AI video production for Codex.</p>
+    <nav aria-label="Footer navigation">
+      <a href="https://github.com/LaplaceYoung/director-x">GitHub</a>
+      <a href="https://github.com/LaplaceYoung/director-x/blob/main/README.md">Documentation</a>
+      <a href="https://github.com/LaplaceYoung/director-x/blob/main/LICENSE">Apache-2.0</a>
+      <a href="https://github.com/LaplaceYoung/director-x/issues">Issues</a>
+    </nav>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,49 @@
+name: Deploy Director X website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "assets/brand/directorx-logo.png"
+      - "assets/screenshots/live-production-canvas.jpg"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Prepare static site
+        run: |
+          mkdir -p _site/assets/brand _site/assets/screenshots
+          cp -R site/. _site/
+          cp assets/brand/directorx-logo.png _site/assets/brand/directorx-logo.png
+          cp assets/screenshots/live-production-canvas.jpg _site/assets/screenshots/live-production-canvas.jpg
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload static site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

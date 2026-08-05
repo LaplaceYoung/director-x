@@ -2,10 +2,10 @@
   <img src="assets/brand/directorx-logo.png" alt="Director X" width="720" />
 </p>
 
-# Director X — 面向 Codex 的视频创作与理解插件
+# Director X — 开源 Codex AI 视频创作与理解插件
 
 <p align="center">
-  <strong>无限媒体画布 · 参考片分析 · 视觉提示词 · Remotion 合成</strong>
+  <strong>无限媒体画布 · 参考视频分析 · AI 生图/生视频提示词 · Remotion 渲染</strong>
 </p>
 
 <p align="center">
@@ -16,6 +16,7 @@
 </p>
 
 <p align="center">
+  <a href="https://laplaceyoung.github.io/director-x/">官网</a> ·
   <a href="#当前能力">当前能力</a> ·
   <a href="#demo-成片">Demo 成片</a> ·
   <a href="#快速开始">快速开始</a> ·
@@ -27,7 +28,7 @@
 
 ---
 
-Director X 是一个轻量、贴合 Codex 原生设计的视频插件。对话和决策仍在 Codex 中完成，插件在侧边栏打开无限画布，只呈现有用的制片内容：图片、视频、音频、脚本、剧本、分镜、镜头表、视觉系统、提示词和剪辑备注。
+Director X 是一个开源、贴合 OpenAI Codex 原生设计的 AI 视频创作与理解插件。对话和决策仍在 Codex 中完成，插件在侧边栏打开无限画布，只呈现有用的制片内容：图片、视频、音频、脚本、剧本、分镜、镜头表、视觉系统、生图/生视频提示词和剪辑备注。
 
 0.2.0 是从零重建后的基础版本。当前实现明确**不增加 MCP Runtime、不自建第二套 Agent 协议、不引入持久化工作流引擎，也不开发独立桌面应用**。Codex 仍然是宿主，负责原生提问、联网搜索和原生多 Agent 协作。
 
