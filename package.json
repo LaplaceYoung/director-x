@@ -12,7 +12,7 @@
     "directorx": "./scripts/directorx.mjs"
   },
   "scripts": {
-    "check": "node --check scripts/directorx.mjs && node --check scripts/canvas-server.mjs && node --check scripts/analyze-video.mjs",
+    "check": "node --check scripts/directorx.mjs && node --check scripts/canvas-server.mjs && node --check scripts/analyze-video.mjs && node --check scripts/lib/media-tools.mjs && node --check skills/directorx-web-access/scripts/browser-discovery.mjs && node --check skills/directorx-web-access/scripts/cdp-proxy.mjs && node --check skills/directorx-web-access/scripts/check-deps.mjs && node --check skills/directorx-web-access/scripts/find-url.mjs && node --check skills/directorx-web-access/scripts/match-site.mjs",
     "test": "node --test tests/*.test.mjs",
     "validate:plugin": "node scripts/validate-plugin.mjs",
     "ci": "npm run validate:plugin && npm run check && npm test"

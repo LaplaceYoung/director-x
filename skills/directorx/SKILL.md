@@ -10,13 +10,14 @@ Director X is a lightweight Codex-native video workspace. Keep the conversation 
 ## Start immediately
 
 1. Run `node <plugin-root>/scripts/directorx.mjs init --project <project-path>`.
-2. Run `node <plugin-root>/scripts/directorx.mjs canvas --project <project-path>` in a persistent terminal.
-3. Open the returned loopback URL in the Codex side Browser and keep that tab available.
-4. Use native `request_user_input` only for choices that materially change the result. Do not invent a second interaction protocol.
+2. Run `node <plugin-root>/scripts/directorx.mjs doctor` before media download or analysis.
+3. Run `node <plugin-root>/scripts/directorx.mjs canvas --project <project-path>` in a persistent terminal.
+4. Open the returned loopback URL in the Codex side Browser and keep that tab available.
+5. Use native `request_user_input` only for choices that materially change the result. Do not invent a second interaction protocol.
 
 ## Work with Codex, not around it
 
-- Use Codex web search/fetch first. Use the bundled web-access workflow when a page requires browser rendering, login state, scrolling, DOM inspection, or media URL extraction.
+- Use Codex web search/fetch first. Load `$directorx-web-access` when a page requires browser rendering, login state, scrolling, DOM inspection, or media URL extraction.
 - Use `yt-dlp` only after the source and download intent are clear. Preserve source URLs and warn about rights; downloading does not grant reuse rights.
 - Use Codex native subagents for independent specialist work. The parent remains the director and the only agent that asks the user questions or decides the final direction.
 - Never display agents, workflow nodes, approvals, provider jobs, logs, or internal state on the canvas.

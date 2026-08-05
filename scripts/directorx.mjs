@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { addCanvasObject, inferObjectType, initProject } from "./lib/project.mjs";
 import { startCanvasServer } from "./canvas-server.mjs";
 import { analyzeVideo } from "./analyze-video.mjs";
+import { doctorMediaTools } from "./lib/media-tools.mjs";
 
 const [command = "help", ...args] = process.argv.slice(2);
 const options = parseArgs(args);
@@ -31,6 +32,10 @@ try {
     if (!options.input) throw new Error("analyze requires --input <video-or-url>");
     const result = await analyzeVideo({ projectPath, input: options.input, title: options.title });
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  } else if (command === "doctor") {
+    const result = await doctorMediaTools();
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    if (!result.ok) process.exitCode = 1;
   } else {
     printHelp();
   }
@@ -58,6 +63,7 @@ function printHelp() {
     "  directorx canvas [--project PATH] [--port PORT]",
     "  directorx add --project PATH [--type image|video|audio|text] [--path FILE] [--text TEXT] [--title TITLE]",
     "  directorx analyze --project PATH --input VIDEO_OR_URL [--title TITLE]",
+    "  directorx doctor",
     ""
   ].join("\n"));
 }

@@ -2,14 +2,15 @@ import { access, copyFile, mkdir, writeFile } from "node:fs/promises";
 import { basename, extname, join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { addCanvasObject, initProject, projectPaths } from "./lib/project.mjs";
+import { resolveMediaTool } from "./lib/media-tools.mjs";
 
 export async function analyzeVideo({ projectPath, input, title = "Reference video" }) {
   const paths = projectPaths(projectPath);
   await initProject(projectPath);
   const tools = {
-    ffmpeg: await resolveTool("ffmpeg"),
-    ffprobe: await resolveTool("ffprobe"),
-    ytdlp: await resolveTool("yt-dlp", { optional: !isUrl(input) })
+    ffmpeg: await resolveMediaTool("ffmpeg"),
+    ffprobe: await resolveMediaTool("ffprobe"),
+    ytdlp: await resolveMediaTool("yt-dlp", { optional: !isUrl(input) })
   };
   const slug = `${Date.now()}-${safeName(title)}`;
   const outputRoot = join(paths.analysisRoot, slug);
@@ -113,21 +114,6 @@ async function copyReference(projectPath, input, outputRoot) {
   const target = join(outputRoot, `reference${extname(source) || ".mp4"}`);
   await copyFile(source, target);
   return target;
-}
-
-async function resolveTool(name, { optional = false } = {}) {
-  const envName = `DIRECTORX_${name.toUpperCase().replaceAll("-", "_")}`;
-  const configured = process.env[envName];
-  if (configured) return configured;
-  const localName = process.arch === "arm64" ? "darwin-arm64" : "darwin-x64";
-  const local = resolve(new URL(`../runtime/bin/${localName}/${name}`, import.meta.url).pathname);
-  if (await exists(local)) return local;
-  try {
-    return (await capture("/usr/bin/env", ["which", name])).trim();
-  } catch (error) {
-    if (optional) return null;
-    throw new Error(`${name} is unavailable. Director X will add its managed media runtime next; set ${envName} or install the tool temporarily.`);
-  }
 }
 
 function run(command, args, { allowFailure = false } = {}) {
