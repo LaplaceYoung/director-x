@@ -352,95 +352,123 @@ function initParticlePlayer() {
   const surface = document.querySelector("[data-player-particles]");
   if (!section || !surface) return;
 
-  const context = surface.getContext("2d");
-  const particleCount = narrowScreen ? 560 : 1100;
-  const particles = Array.from({ length: particleCount }, (_, index) => ({
-    seed: index * 12.9898,
-    x: 0,
-    y: 0,
-    targetX: 0,
-    targetY: 0,
-    size: index % 17 === 0 ? 2 : 1,
-    accent: index % 13 === 0
-  }));
   let width = 1;
   let height = 1;
-  let pixelRatio = 1;
+  const particleCount = narrowScreen ? 900 : 1800;
+  const positions = new Float32Array(particleCount * 3);
+  const targets = new Float32Array(particleCount * 3);
+  const colors = new Float32Array(particleCount * 3);
+  const seeds = new Float32Array(particleCount);
+  const geometry = new THREE.BufferGeometry();
+  const material = new THREE.PointsMaterial({
+    size: narrowScreen ? 2.2 : 2.8,
+    sizeAttenuation: true,
+    transparent: true,
+    opacity: .9,
+    vertexColors: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const points = new THREE.Points(geometry, material);
+  const playerScene = new THREE.Scene();
+  const playerCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 100);
+  let playerRenderer;
+  let ready = false;
+
+  try {
+    playerRenderer = new THREE.WebGLRenderer({ canvas: surface, alpha: true, antialias: true, powerPreference: "high-performance" });
+    playerRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    playerRenderer.setClearColor(0x000000, 0);
+    playerScene.add(points);
+    playerCamera.position.z = 10;
+    ready = true;
+  } catch {
+    surface.remove();
+    return;
+  }
 
   function resizeParticles() {
     const rect = section.getBoundingClientRect();
     width = Math.max(rect.width, 1);
     height = Math.max(rect.height, 1);
-    pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-    surface.width = Math.round(width * pixelRatio);
-    surface.height = Math.round(height * pixelRatio);
-    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    playerRenderer.setSize(width, height, false);
+    playerCamera.left = -width / height;
+    playerCamera.right = width / height;
+    playerCamera.top = 1;
+    playerCamera.bottom = -1;
+    playerCamera.updateProjectionMatrix();
 
-    const iconWidth = Math.min(width * .42, 460);
+    const iconWidth = Math.min((width / height) * 1.2, 2.8);
     const iconHeight = iconWidth * .62;
-    const left = (width - iconWidth) / 2;
-    const top = (height - iconHeight) / 2;
     const corner = iconWidth * .09;
-    const perimeterCount = Math.floor(particleCount * .7);
+    const perimeterCount = Math.floor(particleCount * .64);
+    for (let index = 0; index < particleCount; index += 1) {
+      const seed = index * 12.9898 + 1;
+      seeds[index] = seed;
+      const randomX = (pseudoRandom(seed) - .5) * (width / height) * 2;
+      const randomY = (pseudoRandom(seed + 8.4) - .5) * 2;
+      positions[index * 3] ||= randomX;
+      positions[index * 3 + 1] ||= randomY;
+      positions[index * 3 + 2] = (pseudoRandom(seed + 19) - .5) * 1.4;
 
-    particles.forEach((particle, index) => {
-      const randomX = pseudoRandom(particle.seed) * width;
-      const randomY = pseudoRandom(particle.seed + 8.4) * height;
-      particle.x ||= randomX;
-      particle.y ||= randomY;
-
+      let target;
       if (index < perimeterCount) {
         const distance = (index / perimeterCount) * (2 * (iconWidth + iconHeight - 4 * corner) + 2 * Math.PI * corner);
-        const point = roundedRectPoint(distance, left, top, iconWidth, iconHeight, corner);
-        particle.targetX = point.x;
-        particle.targetY = point.y;
+        target = roundedRectPoint(distance, -iconWidth / 2, -iconHeight / 2, iconWidth, iconHeight, corner);
       } else {
-        const first = Math.sqrt(pseudoRandom(particle.seed + 21));
-        const second = pseudoRandom(particle.seed + 34);
+        const first = Math.sqrt(pseudoRandom(seed + 21));
+        const second = pseudoRandom(seed + 34);
         const topWeight = 1 - first;
         const pointWeight = first * (1 - second);
         const bottomWeight = first * second;
-        particle.targetX = width / 2 + iconWidth * (-.065 * topWeight + .185 * pointWeight - .065 * bottomWeight);
-        particle.targetY = height / 2 + iconHeight * (-.215 * topWeight + .215 * bottomWeight);
-        particle.accent = true;
+        target = {
+          x: iconWidth * (-.155 * topWeight + .44 * pointWeight - .155 * bottomWeight),
+          y: iconHeight * (-.345 * topWeight + .345 * bottomWeight)
+        };
       }
-    });
+      targets[index * 3] = target.x;
+      targets[index * 3 + 1] = -target.y;
+      targets[index * 3 + 2] = .15 + pseudoRandom(seed + 44) * .18;
+      const accent = index >= perimeterCount || index % 13 === 0;
+      colors[index * 3] = accent ? 0.95 : 0.72;
+      colors[index * 3 + 1] = accent ? 0.22 : 0.72;
+      colors[index * 3 + 2] = accent ? 0.12 : 0.66;
+    }
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    geometry.attributes.position.needsUpdate = true;
   }
 
-  function drawParticles(time) {
+  function renderParticles(time = 0) {
+    if (!ready) return;
     const rect = section.getBoundingClientRect();
     const gather = reducedMotion
       ? 1
-      : smoothStep(THREE.MathUtils.clamp((window.innerHeight * .92 - rect.top) / (window.innerHeight * .78), 0, 1));
-    context.clearRect(0, 0, width, height);
-
-    for (const particle of particles) {
-      const driftX = (pseudoRandom(particle.seed + 2.2) - .5) * width * .7;
-      const driftY = (pseudoRandom(particle.seed + 4.7) - .5) * height * .72;
-      const originX = width / 2 + driftX + Math.sin(time * .00025 + particle.seed) * 18;
-      const originY = height / 2 + driftY + Math.cos(time * .0002 + particle.seed) * 14;
-      const eased = Math.min(1, gather * (1.08 + pseudoRandom(particle.seed + 1.3) * .18));
-      particle.x += (THREE.MathUtils.lerp(originX, particle.targetX, eased) - particle.x) * (reducedMotion ? 1 : .075);
-      particle.y += (THREE.MathUtils.lerp(originY, particle.targetY, eased) - particle.y) * (reducedMotion ? 1 : .075);
-
-      const alpha = .2 + gather * (particle.accent ? .78 : .58);
-      context.fillStyle = particle.accent ? `rgba(232,93,63,${alpha})` : `rgba(242,240,233,${alpha})`;
-      context.fillRect(particle.x, particle.y, particle.size, particle.size);
+      : smoothStep(THREE.MathUtils.clamp((window.innerHeight * .95 - rect.top) / (window.innerHeight * .8), 0, 1));
+    const seconds = time * .001;
+    const position = geometry.attributes.position.array;
+    for (let index = 0; index < particleCount; index += 1) {
+      const seed = seeds[index];
+      const originX = (pseudoRandom(seed) - .5) * (width / height) * 2 + Math.sin(seconds * .28 + seed) * .018;
+      const originY = (pseudoRandom(seed + 8.4) - .5) * 2 + Math.cos(seconds * .22 + seed) * .014;
+      const originZ = (pseudoRandom(seed + 19) - .5) * 1.4 + Math.sin(seconds * .35 + seed) * .03;
+      const eased = Math.min(1, gather * (1.08 + pseudoRandom(seed + 1.3) * .18));
+      const offset = index * 3;
+      position[offset] += (THREE.MathUtils.lerp(originX, targets[offset], eased) - position[offset]) * (reducedMotion ? 1 : .075);
+      position[offset + 1] += (THREE.MathUtils.lerp(originY, targets[offset + 1], eased) - position[offset + 1]) * (reducedMotion ? 1 : .075);
+      position[offset + 2] += (THREE.MathUtils.lerp(originZ, targets[offset + 2], eased) - position[offset + 2]) * (reducedMotion ? 1 : .075);
     }
-
-    if (gather > .86) {
-      const pulse = (Math.sin(time * .003) + 1) * .5;
-      context.fillStyle = `rgba(232,93,63,${(gather - .86) * .4 * pulse})`;
-      context.beginPath();
-      context.arc(width / 2, height / 2, 30 + pulse * 12, 0, Math.PI * 2);
-      context.fill();
-    }
-    requestAnimationFrame(drawParticles);
+    points.rotation.z = Math.sin(seconds * .18) * .025 * (1 - gather);
+    points.rotation.y = Math.sin(seconds * .12) * .14 * (1 - gather);
+    material.opacity = .18 + gather * .78;
+    geometry.attributes.position.needsUpdate = true;
+    playerRenderer.render(playerScene, playerCamera);
+    requestAnimationFrame(renderParticles);
   }
 
   resizeParticles();
   window.addEventListener("resize", resizeParticles, { passive: true });
-  requestAnimationFrame(drawParticles);
+  requestAnimationFrame(renderParticles);
 }
 
 function pseudoRandom(value) {
