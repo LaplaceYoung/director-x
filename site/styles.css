@@ -178,6 +178,12 @@ h3 { font-size: clamp(28px, 3vw, 48px); line-height: 1; letter-spacing: -.045em;
 .closing > p { color: var(--signal); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .1em; }
 .closing h2 { max-width: 1050px; margin: 42px 0; font-size: clamp(72px, 10vw, 160px); }
 
+.player-finale { position: relative; z-index: 2; min-height: min(86vh, 920px); overflow: hidden; color: var(--paper); background: var(--night); }
+.player-particles { position: absolute; inset: 0; width: 100%; height: 100%; }
+.player-finale-copy { position: absolute; right: clamp(20px, 5vw, 78px); bottom: 38px; left: clamp(20px, 5vw, 78px); display: flex; justify-content: space-between; align-items: end; padding-top: 14px; border-top: 1px solid #44423d; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
+.player-finale-copy span { color: #8f8c84; }
+.player-finale-copy strong { color: var(--signal); font-weight: 500; }
+
 footer { display: grid; grid-template-columns: 1fr auto auto; gap: 40px; align-items: end; padding: 30px clamp(20px, 5vw, 78px); border-top: 1px solid var(--rule); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
 footer div { display: flex; gap: 18px; }
 footer div:first-child { flex-direction: column; gap: 4px; }
@@ -242,6 +248,8 @@ footer div:first-child span { color: var(--muted); }
   .roadmap-list article { grid-template-columns: 1fr; gap: 14px; }
   .closing { padding-top: 100px; padding-bottom: 100px; }
   .closing h2 { font-size: clamp(62px, 20vw, 105px); }
+  .player-finale { min-height: 68svh; }
+  .player-finale-copy { bottom: 24px; }
   footer { grid-template-columns: 1fr; gap: 20px; }
   .scene-hud { display: none; }
   .site-loader { padding: 24px; }
@@ -254,4 +262,5 @@ footer div:first-child span { color: var(--muted); }
   .site-loader { display: none; }
   .word-mask > span { transform: none; }
   .canvas-section::before, .lineage-strip, .canvas-stage { transform: none; }
+  .player-particles { opacity: .9; }
 }

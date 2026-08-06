@@ -33,6 +33,7 @@ document.body.classList.toggle("loading", !reducedMotion);
 prepareTextReveals();
 startEntrance();
 requestAnimationFrame(updateDomMotion);
+initParticlePlayer();
 
 try {
   renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance" });
@@ -345,3 +346,133 @@ document.querySelector("[data-copy]").addEventListener("click", async event => {
     event.currentTarget.textContent = "Select text";
   }
 });
+
+function initParticlePlayer() {
+  const section = document.querySelector("[data-player-finale]");
+  const surface = document.querySelector("[data-player-particles]");
+  if (!section || !surface) return;
+
+  const context = surface.getContext("2d");
+  const particleCount = narrowScreen ? 560 : 1100;
+  const particles = Array.from({ length: particleCount }, (_, index) => ({
+    seed: index * 12.9898,
+    x: 0,
+    y: 0,
+    targetX: 0,
+    targetY: 0,
+    size: index % 17 === 0 ? 2 : 1,
+    accent: index % 13 === 0
+  }));
+  let width = 1;
+  let height = 1;
+  let pixelRatio = 1;
+
+  function resizeParticles() {
+    const rect = section.getBoundingClientRect();
+    width = Math.max(rect.width, 1);
+    height = Math.max(rect.height, 1);
+    pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    surface.width = Math.round(width * pixelRatio);
+    surface.height = Math.round(height * pixelRatio);
+    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+
+    const iconWidth = Math.min(width * .42, 460);
+    const iconHeight = iconWidth * .62;
+    const left = (width - iconWidth) / 2;
+    const top = (height - iconHeight) / 2;
+    const corner = iconWidth * .09;
+    const perimeterCount = Math.floor(particleCount * .7);
+
+    particles.forEach((particle, index) => {
+      const randomX = pseudoRandom(particle.seed) * width;
+      const randomY = pseudoRandom(particle.seed + 8.4) * height;
+      particle.x ||= randomX;
+      particle.y ||= randomY;
+
+      if (index < perimeterCount) {
+        const distance = (index / perimeterCount) * (2 * (iconWidth + iconHeight - 4 * corner) + 2 * Math.PI * corner);
+        const point = roundedRectPoint(distance, left, top, iconWidth, iconHeight, corner);
+        particle.targetX = point.x;
+        particle.targetY = point.y;
+      } else {
+        const first = Math.sqrt(pseudoRandom(particle.seed + 21));
+        const second = pseudoRandom(particle.seed + 34);
+        const topWeight = 1 - first;
+        const pointWeight = first * (1 - second);
+        const bottomWeight = first * second;
+        particle.targetX = width / 2 + iconWidth * (-.065 * topWeight + .185 * pointWeight - .065 * bottomWeight);
+        particle.targetY = height / 2 + iconHeight * (-.215 * topWeight + .215 * bottomWeight);
+        particle.accent = true;
+      }
+    });
+  }
+
+  function drawParticles(time) {
+    const rect = section.getBoundingClientRect();
+    const gather = reducedMotion
+      ? 1
+      : smoothStep(THREE.MathUtils.clamp((window.innerHeight * .92 - rect.top) / (window.innerHeight * .78), 0, 1));
+    context.clearRect(0, 0, width, height);
+
+    for (const particle of particles) {
+      const driftX = (pseudoRandom(particle.seed + 2.2) - .5) * width * .7;
+      const driftY = (pseudoRandom(particle.seed + 4.7) - .5) * height * .72;
+      const originX = width / 2 + driftX + Math.sin(time * .00025 + particle.seed) * 18;
+      const originY = height / 2 + driftY + Math.cos(time * .0002 + particle.seed) * 14;
+      const eased = Math.min(1, gather * (1.08 + pseudoRandom(particle.seed + 1.3) * .18));
+      particle.x += (THREE.MathUtils.lerp(originX, particle.targetX, eased) - particle.x) * (reducedMotion ? 1 : .075);
+      particle.y += (THREE.MathUtils.lerp(originY, particle.targetY, eased) - particle.y) * (reducedMotion ? 1 : .075);
+
+      const alpha = .2 + gather * (particle.accent ? .78 : .58);
+      context.fillStyle = particle.accent ? `rgba(232,93,63,${alpha})` : `rgba(242,240,233,${alpha})`;
+      context.fillRect(particle.x, particle.y, particle.size, particle.size);
+    }
+
+    if (gather > .86) {
+      const pulse = (Math.sin(time * .003) + 1) * .5;
+      context.fillStyle = `rgba(232,93,63,${(gather - .86) * .4 * pulse})`;
+      context.beginPath();
+      context.arc(width / 2, height / 2, 30 + pulse * 12, 0, Math.PI * 2);
+      context.fill();
+    }
+    requestAnimationFrame(drawParticles);
+  }
+
+  resizeParticles();
+  window.addEventListener("resize", resizeParticles, { passive: true });
+  requestAnimationFrame(drawParticles);
+}
+
+function pseudoRandom(value) {
+  return Math.abs(Math.sin(value) * 43758.5453) % 1;
+}
+
+function smoothStep(value) {
+  return value * value * (3 - 2 * value);
+}
+
+function roundedRectPoint(distance, x, y, width, height, radius) {
+  const straightWidth = width - 2 * radius;
+  const straightHeight = height - 2 * radius;
+  const arcLength = Math.PI * radius / 2;
+  const segments = [
+    { length: straightWidth, point: value => ({ x: x + radius + value, y }) },
+    { length: arcLength, point: value => arcPoint(x + width - radius, y + radius, radius, -Math.PI / 2 + value / radius) },
+    { length: straightHeight, point: value => ({ x: x + width, y: y + radius + value }) },
+    { length: arcLength, point: value => arcPoint(x + width - radius, y + height - radius, radius, value / radius) },
+    { length: straightWidth, point: value => ({ x: x + width - radius - value, y: y + height }) },
+    { length: arcLength, point: value => arcPoint(x + radius, y + height - radius, radius, Math.PI / 2 + value / radius) },
+    { length: straightHeight, point: value => ({ x, y: y + height - radius - value }) },
+    { length: arcLength, point: value => arcPoint(x + radius, y + radius, radius, Math.PI + value / radius) }
+  ];
+  let remaining = distance % segments.reduce((total, segment) => total + segment.length, 0);
+  for (const segment of segments) {
+    if (remaining <= segment.length) return segment.point(remaining);
+    remaining -= segment.length;
+  }
+  return { x: x + radius, y };
+}
+
+function arcPoint(x, y, radius, angle) {
+  return { x: x + Math.cos(angle) * radius, y: y + Math.sin(angle) * radius };
+}
